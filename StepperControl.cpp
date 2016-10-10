@@ -45,7 +45,7 @@ void initializeAccelerationTable() {
 ISR(TIMER1_OVF_vect) {
 	TCNT1 = NEXT_SCHEDULED_TIME;
 	PORTB |= CURRENT_SCHEDULED_ACTIVATIONS;
-	
+
 	if (SCHEDULE_START == SCHEDULE_END) {
 		if (NEXT_SCHEDULED_TIME == 65535) {
 			// we have schedule stream end
@@ -81,19 +81,16 @@ void Steppers::initialize()
 }
 
 
-void ensureSchedulerEnabled() {
+bool ensureSchedulerEnabled() {
 	if (TIMSK1 != 0) {
-		if (Serial.available()) {
-			int data = Serial.read();
-			//Serial.println(data);
-		}
-		//scheduler is running
-		return;
+		//scheduler is already enabled
+		//we are free to do other things
+		return true;
 	}
 
 	if (SCHEDULE_START == SCHEDULE_END)
 		//schedule is empty - no point in schedule enabling
-		return;
+		return false;
 
 	CURRENT_SCHEDULED_ACTIVATIONS = 0; //we are starting with empty schedule
 	NEXT_SCHEDULED_TIME = SCHEDULE_BUFFER[SCHEDULE_END];
@@ -104,6 +101,8 @@ void ensureSchedulerEnabled() {
 
 	TCNT1 = 65535; //schedule call will cause immediate step
 	TIMSK1 = (1 << TOIE1); //enable scheduler
+
+	return false;
 }
 
 
@@ -111,8 +110,10 @@ void ensureSchedulerEnabled() {
 void Steppers::runPlanning(StepperGroup & group, Plan ** plans)
 {
 	Steppers::initPlanning(group, plans);
-	while (Steppers::fillSchedule(group, plans));
 
+	bool hasPlan = true;
+	while (hasPlan)
+		hasPlan = Steppers::fillSchedule(group, plans);
 
 	Serial.println("Deleting plans.");
 	Serial.flush();
@@ -176,23 +177,25 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 			}
 		}
 
-		if (!hasActivePlan) {
+		if (!hasActivePlan)
 			//there is not any active plan
-			ensureSchedulerEnabled();
-			return false;
-		}
+			break;
 
 		//schedule
-		byte scheduleStart = SCHEDULE_START + 1;
-		while (scheduleStart == SCHEDULE_END) {
-			//schedule is full for now
+		while ((byte)(SCHEDULE_START + 1) == SCHEDULE_END) {
+			//wait until schedule buffer has empty space
 			ensureSchedulerEnabled();
-			return true;
 		}
 
 		SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestScheduleTime;
-		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = clockMask;		
+		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = clockMask;
+
+		if ((byte)(SCHEDULE_START + 1) == SCHEDULE_END)
+			//we have free time
+			return true;
 	}
+	ensureSchedulerEnabled();
+	return false;
 }
 
 StepperGroup::StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[])
