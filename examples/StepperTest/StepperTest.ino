@@ -2,7 +2,7 @@
 
 int STEP_CLK_PIN = 8;
 int STEP_DIR_PIN = 9;
-Stepper& stepper1 = Steppers::createStepper(8, 9, 110);
+StepperGroup group1 = StepperGroup(1, new byte[1]{ STEP_CLK_PIN }, new byte[1]{ STEP_DIR_PIN });
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -20,33 +20,25 @@ void setup() {
 void loop() {
 	digitalWrite(13, HIGH);
 
-	int32_t totalSteps = 400 * 10;
-	Fraction32 desiredSpeed = Fraction32(1500L*400, 60);
-	Fraction32 accelerationCoeff = Fraction32(1, 1);
-	Fraction32 decelerationCoeff = accelerationCoeff *-1;
-	Fraction32 startVelocity = Fraction32(0);
 
-	int16_t decelerationStartDeltaT = (uint16_t)(Fraction32(TIMESCALE) / desiredSpeed).to_int32_t();
-	Serial.println(decelerationStartDeltaT);
-	int32_t accelerationSteps = Steppers::calculateAccelerationDistance(startVelocity, accelerationCoeff, desiredSpeed);
-	AccelerationPlan plan1 = AccelerationPlan(accelerationCoeff, START_DELTA_T, accelerationSteps);
 
-	int32_t constantStepCount = totalSteps - 2 * accelerationSteps;
-	Serial.println(constantStepCount);
-	int32_t time = (Fraction32(constantStepCount) / desiredSpeed*TIMESCALE).to_int32_t();
-	Serial.println(time);
-	Serial.flush();
-	ConstantPlan plan2 = ConstantPlan(constantStepCount, time);
-	AccelerationPlan plan3 = AccelerationPlan(decelerationCoeff, decelerationStartDeltaT, accelerationSteps);
+	Plan** plans;
+	plans = new Plan*[1]{
+		new AccelerationPlan(625, 1, 1, START_DELTA_T)
+	};
+	Steppers::runPlanning(group1, plans);
 
-	Steppers::runPlanning(stepper1, plan1);
-	Steppers::runPlanning(stepper1, plan2);
-	Steppers::runPlanning(stepper1, plan3);
+	plans = new Plan*[1]{
+		new ConstantPlan(400 * 30 - 625 - 6250,100,0)
+	};
+	Steppers::runPlanning(group1, plans);
 
-	while (stepper1.isBusy()) {
-		delay(10);
-	}
+	plans = new Plan*[1]{
+		new AccelerationPlan(6250, -1, 10, 100)
+	};
+	Steppers::runPlanning(group1, plans);
 
+	Serial.println();
 	digitalWrite(13, LOW);
 	delay(1000);
 }

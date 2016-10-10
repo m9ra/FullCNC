@@ -27,30 +27,7 @@ Editor:	http://www.visualmicro.com
 #define CLIP_D(delta) max(MIN_DELTA_T,min(START_DELTA_T,delta))
 
 class Steppers;
-class Stepper;
-
-class Fraction32 {
-public:
-	const int32_t Numerator;
-
-	const int32_t Denominator;
-
-	Fraction32(int32_t numerator, int32_t denominator = 1);
-
-	int32_t to_int32_t();
-
-	Fraction32 absolute();
-
-	Fraction32 operator*(uint32_t factor);
-
-	Fraction32 operator+(Fraction32 op2);
-
-	Fraction32 operator-(Fraction32 op2);
-
-	Fraction32 operator*(Fraction32 op2);
-
-	Fraction32 operator/(Fraction32 op2);
-};
+class StepperGroup;
 
 class Plan {
 	friend Steppers;
@@ -61,114 +38,80 @@ public:
 
 	Plan(int32_t stepCount);
 
+	
+
 private:
+	// Determine whether plan is still active.
+	// Is managed by the planner.
+	bool _isActive;
+
+	// Time of next schedule of the plan. 
+	// Is managed by the planner.
+	uint16_t _nextScheduleTime;
+
 	// Outputs next step time (in 0.5us resolution) of the plan - zero means end of the plan.
 	virtual uint16_t _createNextDeltaT() = 0;
 };
 
 class AccelerationPlan : public Plan {
 public:
-	AccelerationPlan(Fraction32& accelerationCoefficient, uint16_t initialDeltaT, int32_t stepCount);
+	AccelerationPlan(int16_t stepCount, int16_t accelerationNumerator, int16_t accelerationDenominator, uint16_t initialDelta);
 
 private:
-	// fraction of max acceleration according to precomputed acc. curve
-	const Fraction32 _accelerationCoefficient;
+	// how many steps remains to do with this plan
+	uint16_t _remainingSteps;
 
-	const int _accelerationIncrement;
+	// numerator used for acceleration factoring
+	const uint16_t _accelerationNumerator;
 
-	int32_t _doneTrack;
+	// denominator used for acceleration factoring
+	const uint16_t _accelerationDenominator;
+
+	// buffer for acceleration numerator buffering (to avoid multiplication)
+	uint32_t _accelerationNumeratorBuffer;
+
+	// determine whether plan corresponds to deceleration
+	bool _isDeceleration;
 
 	// current deltaT which is used
 	uint16_t _currentDeltaT;
-
-	// how many steps remains to do with this plan
-	int32_t _remainingSteps;
 
 	virtual uint16_t _createNextDeltaT();
 };
 
 class ConstantPlan : public Plan {
 public:
-	ConstantPlan(int32_t stepCount, int32_t totalTime);
+	ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t remainderPeriod);
 
 private:
 	//how many steps remains to do with this plan
-	long _remainingSteps;
+	uint16_t _remainingSteps;
 
 	const uint16_t _baseDeltaT;
 
-	const int32_t _remainderPeriod;
+	const uint16_t _remainderPeriod;
 
 	int32_t _currentRemainderOffset;
 
 	virtual uint16_t _createNextDeltaT();
 };
 
-class StepPlan {
-	friend Stepper;
-
-public:
-	// How many steps should be done.
-	const int count;
-
-	// Delay between steps.
-	const int delay;
-
-	StepPlan(int count, int delay);
-
-private:
-	// Next plan in the linked list.
-	StepPlan* _next_plan;
-};
-
-class Stepper {
+class StepperGroup {
 	friend Steppers;
-
 public:
-	Stepper(int pinClk, int pinDir, int inertia);
+	//How many steppers is contained by the group
+	const byte StepperCount;
 
-	// Adds plan for the stepper for given counts (sign determines direction) and delay is a desired number of skipped control pulses between steps.
-	void step(int count, int delay = 0);
-
-	// Determine whether stepper has some plan to execute.
-	bool isBusy();
+	// Creates group with specified number of steppers.
+	StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[]);
 
 private:
-	// Initialize steppers pins.
-	void _initialize();
 
-	// Control pulse for the stepper 16khz.
-	void _controlPulse(bool activePeriod);
+	//port masks for clock (only PORTB is supported)
+	byte* _clockBports;
 
-	// Inertia settings of the stepper.
-	const int _inertia;
-
-	// Clock pin of the stepper.
-	const int _pin_clk;
-
-	// Dir pin of the stepper.
-	const int _pin_dir;
-
-	// How many iterations was done since last step.
-	int _last_step_iterations;
-
-	// How many steps in current plan is missing.
-	int _planProgress;
-
-	// What delay are we missing.
-	int _delayProgress;
-
-	// Next plan for the stepper.
-	StepPlan* _next_plan;
-
-	// Next plan for the stepper.
-	StepPlan* _last_plan;
-
-	// Currently processed plan.
-	StepPlan* _active_plan;
-
-	// Next stepper in linked list.
-	Stepper* _next_stepper;
+	//pinout masks for direction (only PORTB is supported)
+	byte* _dirBports;
 };
 
 class Steppers {
@@ -177,23 +120,13 @@ public:
 	// Initialize registered steppers - no new steppers can be created afterewards.
 	static void initialize();
 
-	// Routine that runs given plan on the stepper.
-	static void runPlanning(Stepper& stepper, Plan& plan);
-
-	static int32_t calculateAccelerationDistance(Fraction32& startVelocity, Fraction32& accelerationCoefficient, Fraction32& targetVelocity);
-
-	// Creates a stepper using given digital pins and interna inertia.
-	static Stepper & createStepper(int pinClk, int pinDir, int inertia);
+	// Routine that runs given plans on the group of steppers.
+	// Plans and containing array are DESTROYED by this method.
+	static void runPlanning(StepperGroup& group, Plan** plans);
 
 private:
 	// Determine whether all routines are initialized.
 	static bool _is_initialized;
-
-	// Determine whether current period is active.
-	static bool _active_period;
-
-	// First stepper in the linked list.
-	static Stepper* _first_stepper;
 };
 
 
