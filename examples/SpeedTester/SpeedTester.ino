@@ -69,7 +69,7 @@ void doSteps(long stepCount, int direction, int speed = 30) {
 void initializeAccelerationTable() {
 	long long stepsPerRevolution = 400;
 	long long maxAcceleration = 400;
-	long long minDeltaT = 300;
+	long long minDeltaT = 30;
 	long long timeScale = 1000000;
 	for (int deltaT = START_DELTA_T; deltaT >= minDeltaT; --deltaT) {
 		/*long v = timeScale / (deltaT * stepsPerRevolution);

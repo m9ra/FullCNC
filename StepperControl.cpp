@@ -46,15 +46,15 @@ ISR(TIMER1_OVF_vect) {
 	TCNT1 = NEXT_SCHEDULED_TIME;
 	PORTB |= CURRENT_SCHEDULED_ACTIVATIONS;
 	
-	if (SCHEDULE_START == SCHEDULE_END) {		
+	if (SCHEDULE_START == SCHEDULE_END) {
 		if (NEXT_SCHEDULED_TIME == 65535) {
 			// we have schedule stream end
 			// stop scheduling after this step
 			TIMSK1 = 0;
 		}
-		else{
-			//TODO this shouts for being improved
+		else {
 			//one step still remains in current next scheduled activations
+			//TODO this shouts for being improved
 			NEXT_SCHEDULED_TIME = 65535;
 			CURRENT_SCHEDULED_ACTIVATIONS = NEXT_SCHEDULED_ACTIVATIONS;
 		}
@@ -82,9 +82,14 @@ void Steppers::initialize()
 
 
 void ensureSchedulerEnabled() {
-	if (TIMSK1 != 0)
+	if (TIMSK1 != 0) {
+		if (Serial.available()) {
+			int data = Serial.read();
+			//Serial.println(data);
+		}
 		//scheduler is running
 		return;
+	}
 
 	if (SCHEDULE_START == SCHEDULE_END)
 		//schedule is empty - no point in schedule enabling
@@ -105,6 +110,21 @@ void ensureSchedulerEnabled() {
 
 void Steppers::runPlanning(StepperGroup & group, Plan ** plans)
 {
+	Steppers::initPlanning(group, plans);
+	while (Steppers::fillSchedule(group, plans));
+
+
+	Serial.println("Deleting plans.");
+	Serial.flush();
+	//free plan memory
+	for (int i = 0; i < group.StepperCount; ++i)
+		delete plans[i];
+
+	delete plans;
+}
+
+inline void Steppers::initPlanning(StepperGroup & group, Plan ** plans)
+{
 	//initialize port info
 	byte dirPorts = 0;
 	byte clockMask = 0;
@@ -122,7 +142,10 @@ void Steppers::runPlanning(StepperGroup & group, Plan ** plans)
 
 	//TODO ensure that this remains unchanged between scheduler runs (CANNOT BE CHANGED WITHOUT SCHEDULER DISABLING)
 	SCHEDULE_ACTIVATIONS_MASK = clockMask;
-	
+}
+
+inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
+{
 	for (;;) {
 		//find earliest plan
 		uint16_t earliestScheduleTime = 65535;
@@ -153,27 +176,23 @@ void Steppers::runPlanning(StepperGroup & group, Plan ** plans)
 			}
 		}
 
-		if (!hasActivePlan)
+		if (!hasActivePlan) {
 			//there is not any active plan
-			break;
+			ensureSchedulerEnabled();
+			return false;
+		}
 
 		//schedule
 		byte scheduleStart = SCHEDULE_START + 1;
 		while (scheduleStart == SCHEDULE_END) {
-			ensureSchedulerEnabled();//wait until schedule buffer has empty space
+			//schedule is full for now
+			ensureSchedulerEnabled();
+			return true;
 		}
 
 		SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestScheduleTime;
-		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = clockMask;
+		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = clockMask;		
 	}
-	ensureSchedulerEnabled();
-	Serial.println("Deleting plans.");
-	Serial.flush();
-	//free plan memory
-	for (int i = 0; i < group.StepperCount; ++i)
-		delete plans[i];
-
-	delete plans;
 }
 
 StepperGroup::StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[])

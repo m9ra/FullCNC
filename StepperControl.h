@@ -124,6 +124,20 @@ public:
 	// Plans and containing array are DESTROYED by this method.
 	static void runPlanning(StepperGroup& group, Plan** plans);
 
+	//---------MORE GRANULAR PLANNING CONTROL---------
+	// The following API is exposed to do async work during planning
+	//
+	// initPlanning(...);  
+	// while(fillSchedule(...));
+	// delete [plans and every contained plan];
+	//
+	// is equivalent to runPlanning(...);
+
+	// Has to be called before calling fillSchedulle()
+	inline static void initPlanning(StepperGroup& group, Plan** plans);
+
+	// Fills schedule buffer with given plans (and ensures scheduler is enabled along the way). Returns false if plans are complete.
+	inline static bool fillSchedule(StepperGroup& group, Plan** plans);
 private:
 	// Determine whether all routines are initialized.
 	static bool _is_initialized;
