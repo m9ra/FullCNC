@@ -1,0 +1,46 @@
+﻿<Window x:Class="ControllerCNC.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MainWindow" Height="425.49" Width="855.556">
+    <Grid Background="Gray">
+        <DockPanel LastChildFill="True">
+            <Button Height="50" Content="Run demo" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click"/>
+            <TextBox Height="50" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Output" TextWrapping="Wrap" />
+            
+            
+            <DockPanel>
+                <StackPanel Background="LightSkyBlue" DockPanel.Dock="Top">
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontSize="55">Speed tester.</TextBlock>
+                        <CheckBox VerticalAlignment="Center" IsChecked="False" Name="IsSpeedTesterEnabled" RenderTransformOrigin="1.25,1" Unchecked="IsSpeedTesterEnabled_Unchecked" Checked="IsSpeedTesterEnabled_Checked">
+                            <CheckBox.LayoutTransform>
+                                <ScaleTransform ScaleX="2" ScaleY="2" />
+                            </CheckBox.LayoutTransform>
+                        </CheckBox>
+
+                    </StackPanel>
+
+                    <Slider Name="Speed" Maximum="1500" Value="400" Minimum="10" VerticalAlignment="Top" ValueChanged="Slider_ValueChanged"/>
+                    <TextBlock Name="RPMDisplay" FontSize="20" HorizontalAlignment="Center" >400rpm</TextBlock>
+                </StackPanel>
+
+                <StackPanel Background="LightSalmon">
+
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock FontSize="55">Position tester.</TextBlock>
+                        <CheckBox VerticalAlignment="Center" IsChecked="False" Name="IsPositionTesterEnabled" RenderTransformOrigin="1.25,1" Checked="IsPositionTesterEnabled_Checked">
+                            <CheckBox.LayoutTransform>
+                                <ScaleTransform ScaleX="2" ScaleY="2" />
+                            </CheckBox.LayoutTransform>
+                        </CheckBox>
+
+                    </StackPanel>
+
+                    <Slider Name="Position" Maximum="400" Value="200" Minimum="1" VerticalAlignment="Top" ValueChanged="Position_ValueChanged"/>
+                    <TextBlock Name="StepDisplay" FontSize="20" HorizontalAlignment="Center" >200</TextBlock>
+                </StackPanel>
+            </DockPanel>
+        </DockPanel>
+    </Grid>
+</Window>
