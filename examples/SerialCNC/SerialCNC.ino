@@ -1,19 +1,22 @@
 #include "StepperControl.h"
 
 // how many bytes contains instruction from controller
-#define INSTRUCTION_SIZE 12 
+#define INSTRUCTION_SIZE 36 
 #define PLANS_BUFFER_SIZE 8 
 
-#define READ_INT16(array, position) (int16_t)(array[position] << 8 + array[position + 1])
-#define READ_UINT16(array, position) (uint16_t)(array[position] << 8 + array[position + 1])
+#define READ_INT16(buff, position) (((int16_t)buff[position]) << 8) + buff[position + 1]
+#define READ_UINT16(buff, position) (((uint16_t)buff[position]) << 8) + buff[position + 1]
 
 int STEP_CLK_PIN = 8;
 int STEP_DIR_PIN = 9;
 
 
-Plan** PLANS_BUFFER[PLANS_BUFFER_SIZE]; //here buffered plans will be stored
+Plan** PLANS_BUFFER[PLANS_BUFFER_SIZE] = { NULL }; //here buffered plans will be stored
+byte ARRIVAL_BUFFER[INSTRUCTION_SIZE] = { NULL };
 byte NEXT_PLAN_INDEX = 0; //index to next plan that will be scheduled
 byte ARRIVAL_PLAN_INDEX = 0; //index where new plan can arrive
+byte ARRIVAL_BUFFER_INDEX = 0; //index to arrival buffer
+unsigned long LAST_BYTE_ARRIVAL_TIME = 0;
 Plan** EXECUTED_PLANS = NULL;
 
 StepperGroup group1 = StepperGroup(1, new byte[1]{ STEP_CLK_PIN }, new byte[1]{ STEP_DIR_PIN });
@@ -56,16 +59,21 @@ void demo() {
 }
 
 // Processes buffer with instruction from controller - return false on invalid instruction
-inline bool processControllerInstruction(byte* buffer) {
+inline bool processControllerInstruction() {
+	const byte* buffer = ARRIVAL_BUFFER;
+
 	uint16_t checksum = 0;
-	for (int i = 0; i < INSTRUCTION_SIZE; ++i) {
-		checksum += buffer[i];
+	for (int i = 0; i < INSTRUCTION_SIZE - 2; ++i) {
+		checksum += ARRIVAL_BUFFER[i];
 	}
 
-	uint16_t receivedChecksum = READ_UINT16(buffer, INSTRUCTION_SIZE - 2);
-	if (receivedChecksum != checksum)
+	uint16_t receivedChecksum = READ_UINT16(ARRIVAL_BUFFER, INSTRUCTION_SIZE - 2);
+	if (receivedChecksum != checksum) {
 		//we received invalid instruction
+		Serial.print('C'); //invalid checksum
+		ARRIVAL_BUFFER_INDEX = 0;
 		return false;
+	}
 
 	bool canAddPlan = PLANS_BUFFER[ARRIVAL_PLAN_INDEX] == NULL;
 
@@ -77,6 +85,7 @@ inline bool processControllerInstruction(byte* buffer) {
 		//acceleration plan arrived
 		if (!canAddPlan)return true;
 
+		Serial.print('Y');
 		int16_t stepCount = READ_INT16(buffer, 1);
 		int16_t accelerationNumerator = READ_INT16(buffer, 1 + 2);
 		int16_t accelerationDenominator = READ_INT16(buffer, 1 + 2 + 2);
@@ -91,6 +100,7 @@ inline bool processControllerInstruction(byte* buffer) {
 		//constant plan arrived
 		if (!canAddPlan)return true;
 
+		Serial.print('Y');
 		int16_t stepCount = READ_INT16(buffer, 1);
 		uint16_t baseDeltaT = READ_UINT16(buffer, 1 + 2);
 		uint16_t period = READ_UINT16(buffer, 1 + 2 + 2);
@@ -105,7 +115,8 @@ inline bool processControllerInstruction(byte* buffer) {
 		return false;
 	}
 
-	return true; //instruction was processed (but still can be kept within the buffer for repetitive processing)
+	ARRIVAL_BUFFER_INDEX = 0;
+	return true; //instruction was processed 
 }
 
 inline void freeFinishedPlans() {
@@ -115,27 +126,25 @@ inline void freeFinishedPlans() {
 	}
 
 	delete EXECUTED_PLANS;
+	EXECUTED_PLANS = NULL;
 }
 
-inline void tryToFetchNextPlans() {
+void tryToFetchNextPlans() {
 	if (PLANS_BUFFER[NEXT_PLAN_INDEX] == NULL)
 		//no more plans available
 		return;
 
-	//fetch new plans
 	EXECUTED_PLANS = PLANS_BUFFER[NEXT_PLAN_INDEX];
 	PLANS_BUFFER[NEXT_PLAN_INDEX] = NULL;
-	NEXT_PLAN_INDEX = (NEXT_PLAN_INDEX + 1) & 8;
+	NEXT_PLAN_INDEX = (NEXT_PLAN_INDEX + 1) % PLANS_BUFFER_SIZE;
+	Steppers::initPlanning(group1, EXECUTED_PLANS);
 }
 
 void loop() {
 	digitalWrite(13, HIGH);
 
-	demo();
-	return;
-
-	byte arrivalBuffer[INSTRUCTION_SIZE];
-	byte arrivalBufferIndex = 0;
+	//demo();
+	//return;
 
 	for (;;) {
 		if (EXECUTED_PLANS == NULL)
@@ -144,21 +153,27 @@ void loop() {
 		if (EXECUTED_PLANS != NULL) {
 			if (!Steppers::fillSchedule(group1, EXECUTED_PLANS)) {
 				// executed plans were finished
+				Serial.print('F');
 				freeFinishedPlans();
 				continue;
 			}
 		}
 
 		//serial communication handling
-		if (arrivalBufferIndex == INSTRUCTION_SIZE) {
+		if (ARRIVAL_BUFFER_INDEX == INSTRUCTION_SIZE) {
 			//we received an instrution - do processing
-			processControllerInstruction(arrivalBuffer);
+			processControllerInstruction();
 			//TODO request repetition when data corrupted
 		}
 		else if (Serial.available()) {
 			//new data byte arrived
-			arrivalBuffer[arrivalBufferIndex++] = (byte)Serial.read();
+			ARRIVAL_BUFFER[ARRIVAL_BUFFER_INDEX++] = (byte)Serial.read();
+			LAST_BYTE_ARRIVAL_TIME = millis();
 		}
-
+		else if (ARRIVAL_BUFFER_INDEX > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 2) {
+			//we are interested only in consequent messages
+			ARRIVAL_BUFFER_INDEX = 0;
+			Serial.print('E'); //incomplete message erased
+		}
 	}
 }

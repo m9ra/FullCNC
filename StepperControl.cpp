@@ -34,9 +34,9 @@ void initializeAccelerationTable() {
 
 	for (int deltaT = START_DELTA_T; deltaT >= MIN_DELTA_T; --deltaT) {
 		long s = (uint64_t)TIMESCALE * (uint64_t)TIMESCALE / MAX_ACCELERATION / STEPS_PER_REVOLUTION / deltaT / deltaT / 2;
-		Serial.print(deltaT);
+		/*Serial.print(deltaT);
 		Serial.print(" ");
-		Serial.println(s);
+		Serial.println(s);*/
 
 		ACCELERATION_TABLE[deltaT - MIN_DELTA_T] = s;
 	}
@@ -96,8 +96,7 @@ bool ensureSchedulerEnabled() {
 	NEXT_SCHEDULED_TIME = SCHEDULE_BUFFER[SCHEDULE_END];
 	NEXT_SCHEDULED_ACTIVATIONS = SCHEDULE_ACTIVATIONS[SCHEDULE_END++];
 
-	Serial.println("Enabling scheduler");
-	Serial.flush();
+	Serial.print('S'); //enabling scheduler
 
 	TCNT1 = 65535; //schedule call will cause immediate step
 	TIMSK1 = (1 << TOIE1); //enable scheduler
@@ -115,34 +114,11 @@ void Steppers::runPlanning(StepperGroup & group, Plan ** plans)
 	while (hasPlan)
 		hasPlan = Steppers::fillSchedule(group, plans);
 
-	Serial.println("Deleting plans.");
-	Serial.flush();
 	//free plan memory
 	for (int i = 0; i < group.StepperCount; ++i)
 		delete plans[i];
 
 	delete plans;
-}
-
-inline void Steppers::initPlanning(StepperGroup & group, Plan ** plans)
-{
-	//initialize port info
-	byte dirPorts = 0;
-	byte clockMask = 0;
-	for (int i = 0; i < group.StepperCount; ++i) {
-		//preset direction ports
-		if (plans[i]->stepDirection > 0)
-			B_HIGH(group._dirBports[i]);
-		else
-			B_LOW(group._dirBports[i]);
-
-		plans[i]->_nextScheduleTime = plans[i]->_createNextDeltaT();
-
-		clockMask |= group._clockBports[i];
-	}
-
-	//TODO ensure that this remains unchanged between scheduler runs (CANNOT BE CHANGED WITHOUT SCHEDULER DISABLING)
-	SCHEDULE_ACTIVATIONS_MASK = clockMask;
 }
 
 inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
@@ -178,7 +154,7 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 		}
 
 		if (!hasActivePlan)
-			//there is not any active plan
+			//there is not any active plan - finish
 			break;
 
 		//schedule
@@ -196,6 +172,27 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 	}
 	ensureSchedulerEnabled();
 	return false;
+}
+
+void Steppers::initPlanning(StepperGroup & group, Plan ** plans)
+{
+	//initialize port info
+	byte dirPorts = 0;
+	byte clockMask = 0;
+	for (int i = 0; i < group.StepperCount; ++i) {
+		//preset direction ports
+		if (plans[i]->stepDirection > 0)
+			PORTB |= group._dirBports[i];
+		else
+			PORTB &= ~group._dirBports[i];
+
+		plans[i]->_nextScheduleTime = plans[i]->_createNextDeltaT();
+
+		clockMask |= group._clockBports[i];
+	}
+
+	//TODO ensure that this remains unchanged between scheduler runs (CANNOT BE CHANGED WITHOUT SCHEDULER DISABLING)
+	SCHEDULE_ACTIVATIONS_MASK = clockMask;
 }
 
 StepperGroup::StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[])
