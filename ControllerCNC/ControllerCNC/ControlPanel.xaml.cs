@@ -15,6 +15,8 @@ using System.Windows.Shapes;
 
 using System.Windows.Threading;
 
+using System.Threading;
+
 using System.IO.Ports;
 
 namespace ControllerCNC
@@ -37,7 +39,7 @@ namespace ControllerCNC
             System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
             myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;
 
-            _positionTimer.Interval = new TimeSpan(50 * 10 * 1000);
+            _positionTimer.Interval = new TimeSpan(1 * 10 * 1000);
             _positionTimer.IsEnabled = false;
             _positionTimer.Tick += _positionTimer_Tick;
 
@@ -72,9 +74,42 @@ namespace ControllerCNC
         {
             //_driver.SEND_Transition(0, 1500, 400 * 1500, 0);
 
-            _driver.SEND_Transition(0, 1000, 400 * 10, 500);
-            _driver.SEND_Transition(500, 500, 400 * 10, 500);
-            _driver.SEND_Transition(500, 1500, 400 * 20, 0);
+            _driver.SEND_TransitionRPM(-400 * 10, 0, 1000, 500);
+            _driver.SEND_TransitionRPM(-400 * 10, 500, 500, 500);
+            _driver.SEND_TransitionRPM(-400 * 20, 500, 1500, 0);
+        }
+
+        private void Button_Click_1(object sender, RoutedEventArgs e)
+        {
+            var segmentation = 100;
+            for (var i = 0; i < 400 / segmentation; ++i)
+            {
+                _driver.SEND_TransitionRPM(segmentation, 0, 1500, 0);
+            }
+        }
+
+        private void Button_Click_2(object sender, RoutedEventArgs e)
+        {
+            /*
+A(2,15000,1)
+A(2,4082,-3)
+A(-3,15000,1)
+C(-1,3535,0,0)
+             */
+
+
+           // _driver.SEND_Constant(2, 65000, 0, 1);
+           // _driver.SEND_Constant(-2, 65000, 0, 1);
+
+            var overShoot = 4;
+            var segmentation = 4;
+            for (var i = 0; i < 400 / segmentation; ++i)
+            {
+                _driver.SEND_TransitionRPM(-overShoot, 0, 1500, 0);
+                _driver.SEND_TransitionRPM(segmentation + overShoot, 0, 1500, 0);
+                //_positionController.SetPosition(i * segmentation - overShoot);
+                //_positionController.SetPosition(i * segmentation + overShoot + segmentation);
+            }
         }
 
         private void IsSpeedTesterEnabled_Checked(object sender, RoutedEventArgs e)
@@ -115,5 +150,9 @@ namespace ControllerCNC
             var steps = (int)Position.Value;
             StepDisplay.Text = steps.ToString();
         }
+
+
+
+
     }
 }

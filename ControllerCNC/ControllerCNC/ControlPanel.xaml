@@ -4,8 +4,12 @@
         Title="MainWindow" Height="425.49" Width="855.556">
     <Grid Background="Gray">
         <DockPanel LastChildFill="True">
-            <Button Height="50" Content="Run demo" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click"/>
-            <TextBox Height="50" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Output" TextWrapping="Wrap" />
+            <StackPanel>
+                <Button Height="50" Width="100" Content="Run demo" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click"/>
+                <Button Height="50" Width="100" Content="Interrupted rev." HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_1"/>
+                <Button Height="50" Width="100" Content="Back and forward" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2"/>
+            </StackPanel>
+            <TextBox Height="150" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Output" TextWrapping="Wrap" />
             
             
             <DockPanel>
@@ -21,7 +25,7 @@
 
                     </StackPanel>
 
-                    <Slider Name="Speed" Maximum="1500" Value="400" Minimum="10" VerticalAlignment="Top" ValueChanged="Slider_ValueChanged"/>
+                    <Slider Name="Speed" IsSnapToTickEnabled="True" Maximum="4500" Value="400" Minimum="15" VerticalAlignment="Top" ValueChanged="Slider_ValueChanged"/>
                     <TextBlock Name="RPMDisplay" FontSize="20" HorizontalAlignment="Center" >400rpm</TextBlock>
                 </StackPanel>
 
@@ -37,7 +41,7 @@
 
                     </StackPanel>
 
-                    <Slider Name="Position" Maximum="400" Value="200" Minimum="1" VerticalAlignment="Top" ValueChanged="Position_ValueChanged"/>
+                    <Slider Name="Position" IsSnapToTickEnabled="True" Maximum="400" Value="200" Minimum="1" VerticalAlignment="Top" ValueChanged="Position_ValueChanged"/>
                     <TextBlock Name="StepDisplay" FontSize="20" HorizontalAlignment="Center" >200</TextBlock>
                 </StackPanel>
             </DockPanel>

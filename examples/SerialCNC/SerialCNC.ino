@@ -27,24 +27,113 @@ void setup() {
 	pinMode(13, OUTPUT);
 	pinMode(STEP_CLK_PIN, OUTPUT);
 	pinMode(STEP_DIR_PIN, OUTPUT);
+	digitalWrite(STEP_CLK_PIN, HIGH);
 
 	Steppers::initialize();
+
+	delay(1000);
+	melodyStart();
+}
+
+void loop() {
+	digitalWrite(13, HIGH);
+	//demo();
+	//return;
+
+	for (;;) {
+		if (EXECUTED_PLANS == NULL)
+			tryToFetchNextPlans();
+
+		if (EXECUTED_PLANS != NULL) {
+			if (!Steppers::fillSchedule(group1, EXECUTED_PLANS)) {
+				// executed plans were finished
+				Serial.print('F');
+				freeFinishedPlans();
+				continue;
+			}
+		}
+
+		//serial communication handling
+		if (ARRIVAL_BUFFER_INDEX == INSTRUCTION_SIZE) {
+			//we received an instrution - do processing
+			processControllerInstruction();
+		}
+		else if (Serial.available()) {
+			//new data byte arrived
+			ARRIVAL_BUFFER[ARRIVAL_BUFFER_INDEX++] = (byte)Serial.read();
+			LAST_BYTE_ARRIVAL_TIME = millis();
+		}
+		else if (ARRIVAL_BUFFER_INDEX > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 2) {
+			//we are interested in consequent messages only
+			ARRIVAL_BUFFER_INDEX = 0;
+			Serial.print('E'); //incomplete message erased
+		}
+	}
+}
+
+
+void melody() {
+	note(300, 800);
+	note(100, 400);
+	note(300, 600);
+}
+
+void melodyStart() {
+	note(200, 600);
+	note(200, 500);
+	note(200, 400);
+	note(200, 300);
+	note(200, 200);
+}
+
+void note(int32_t length, int32_t tone) {
+	for (int32_t i = 0; i < length * 1000; i += 2 * tone) {
+		digitalWrite(STEP_DIR_PIN, LOW);
+		digitalWrite(STEP_CLK_PIN, HIGH);
+		delayMicroseconds(tone);
+		digitalWrite(STEP_CLK_PIN, LOW);
+
+		digitalWrite(STEP_DIR_PIN, HIGH);
+		digitalWrite(STEP_CLK_PIN, HIGH);
+		delayMicroseconds(tone);
+		digitalWrite(STEP_CLK_PIN, LOW);
+	}
 }
 
 void demo() {
-	Plan** plans;
-	uint32_t totalSteps = 400 * 1000L;
 
+	Plan** plans;
+	uint32_t totalSteps = 400 * 10L;
+
+
+
+	byte activations[8] = { 2,0,2,2,0,0,0,0 };
+	//int16_t timing[8] = { 7501,5626,4762,5952,7501,5626,4688,3536 };
+	int16_t interval = 65000;
+	int16_t timing[8] = { interval,interval,interval,interval,interval,interval,interval,interval };
+	int stepCount = 2;
+	byte dirMask = 2;
+
+	Steppers::directScheduleFill(activations, timing, stepCount);
+	Steppers::startScheduler();
+
+	/*plans = new Plan*[1]{
+		new ConstantPlan(400, 2 * 350, 0, 0)
+	};
+	Steppers::runPlanning(group1, plans);*/
+
+	/*
 	plans = new Plan*[1]{
-		new AccelerationPlan(625, 1, 1, START_DELTA_T)
+			new AccelerationPlan(580, START_DELTA_T * 2,52)
 	};
 	Steppers::runPlanning(group1, plans);
 
+	totalSteps -= 2 * 580;
 	while (totalSteps > 0) {
 		int16_t nextSteps = min(30000, totalSteps);
 
 		plans = new Plan*[1]{
-			new ConstantPlan(nextSteps, 100, 0)
+			new ConstantPlan(nextSteps, 2 * 100, 0, 0)
 		};
 		Steppers::runPlanning(group1, plans);
 
@@ -52,15 +141,17 @@ void demo() {
 	}
 
 	plans = new Plan*[1]{
-		new AccelerationPlan(625, -1, 1, 100)
+		new AccelerationPlan(580, 2 * 100,-580 - 52)
 	};
-	Steppers::runPlanning(group1, plans);
+	Steppers::runPlanning(group1, plans);*/
 	delay(1000);
 }
 
 // Processes buffer with instruction from controller - return false on invalid instruction
 inline bool processControllerInstruction() {
 	const byte* buffer = ARRIVAL_BUFFER;
+	ARRIVAL_BUFFER_INDEX = 0;
+
 
 	uint16_t checksum = 0;
 	for (int i = 0; i < INSTRUCTION_SIZE - 2; ++i) {
@@ -71,52 +162,81 @@ inline bool processControllerInstruction() {
 	if (receivedChecksum != checksum) {
 		//we received invalid instruction
 		Serial.print('C'); //invalid checksum
-		ARRIVAL_BUFFER_INDEX = 0;
 		return false;
 	}
-
-	bool canAddPlan = PLANS_BUFFER[ARRIVAL_PLAN_INDEX] == NULL;
 
 	//parse the instruction
 	byte command = buffer[0];
 	switch (command)
 	{
-	case 'A': {
+	case 'A':
 		//acceleration plan arrived
-		if (!canAddPlan)return true;
-
-		Serial.print('Y');
-		int16_t stepCount = READ_INT16(buffer, 1);
-		int16_t accelerationNumerator = READ_INT16(buffer, 1 + 2);
-		int16_t accelerationDenominator = READ_INT16(buffer, 1 + 2 + 2);
-		uint16_t initialDeltaT = READ_UINT16(buffer, 1 + 2 + 2 + 2);
-
-		AccelerationPlan* plan = new AccelerationPlan(stepCount, accelerationNumerator, accelerationDenominator, initialDeltaT);
-		PLANS_BUFFER[ARRIVAL_PLAN_INDEX++] = new Plan*[1]{ plan };
-		ARRIVAL_PLAN_INDEX = ARRIVAL_PLAN_INDEX % PLANS_BUFFER_SIZE;
-		break;
-	}
-	case 'C': {
+		return tryAcceptAcceleration(buffer + 1);
+	case 'C':
 		//constant plan arrived
-		if (!canAddPlan)return true;
-
-		Serial.print('Y');
-		int16_t stepCount = READ_INT16(buffer, 1);
-		uint16_t baseDeltaT = READ_UINT16(buffer, 1 + 2);
-		uint16_t period = READ_UINT16(buffer, 1 + 2 + 2);
-
-		ConstantPlan* plan = new ConstantPlan(stepCount, baseDeltaT, period);
-		PLANS_BUFFER[ARRIVAL_PLAN_INDEX++] = new Plan*[1]{ plan };
-		ARRIVAL_PLAN_INDEX = ARRIVAL_PLAN_INDEX % PLANS_BUFFER_SIZE;
-		break;
+		return tryAcceptConstantPlan(buffer + 1);
+	case 'I':
+		//welcome message
+		melody();
+		Serial.print('I');
+		return true;
 	}
-	default:
-		//unknown command
+
+	//unknown command
+	return false;
+}
+
+bool canAddPlan() {
+	return PLANS_BUFFER[ARRIVAL_PLAN_INDEX] == NULL;
+}
+
+bool tryAcceptAcceleration(const byte* buffer) {
+	if (!canAddPlan())
+	{
+		sendPlanOverflow();
 		return false;
 	}
+	else {
+		sendPlanAccepted();
+	}
+	int16_t stepCount = READ_INT16(buffer, 0);
+	uint16_t initialDeltaT = READ_UINT16(buffer, 2);
+	int16_t n = READ_INT16(buffer, 2 + 2);
 
-	ARRIVAL_BUFFER_INDEX = 0;
-	return true; //instruction was processed 
+	AccelerationPlan* plan = new AccelerationPlan(stepCount, initialDeltaT, n);
+	PLANS_BUFFER[ARRIVAL_PLAN_INDEX++] = new Plan*[1]{ plan };
+	ARRIVAL_PLAN_INDEX = ARRIVAL_PLAN_INDEX % PLANS_BUFFER_SIZE;
+
+	return true;
+}
+
+bool tryAcceptConstantPlan(const byte* buffer) {
+	if (!canAddPlan())
+	{
+		sendPlanOverflow();
+		return false;
+	}
+	else {
+		sendPlanAccepted();
+	}
+
+	int16_t stepCount = READ_INT16(buffer, 0);
+	uint16_t baseDeltaT = READ_UINT16(buffer, 2);
+	uint16_t periodNumerator = READ_UINT16(buffer, 2 + 2);
+	uint16_t periodDenominator = READ_UINT16(buffer, 2 + 2 + 2);
+
+	ConstantPlan* plan = new ConstantPlan(stepCount, baseDeltaT, periodNumerator, periodDenominator);
+	PLANS_BUFFER[ARRIVAL_PLAN_INDEX++] = new Plan*[1]{ plan };
+	ARRIVAL_PLAN_INDEX = ARRIVAL_PLAN_INDEX % PLANS_BUFFER_SIZE;
+	return true;
+}
+
+void sendPlanOverflow() {
+	Serial.print('O');
+}
+
+void sendPlanAccepted() {
+	Serial.print('Y');
 }
 
 inline void freeFinishedPlans() {
@@ -140,40 +260,3 @@ void tryToFetchNextPlans() {
 	Steppers::initPlanning(group1, EXECUTED_PLANS);
 }
 
-void loop() {
-	digitalWrite(13, HIGH);
-
-	//demo();
-	//return;
-
-	for (;;) {
-		if (EXECUTED_PLANS == NULL)
-			tryToFetchNextPlans();
-
-		if (EXECUTED_PLANS != NULL) {
-			if (!Steppers::fillSchedule(group1, EXECUTED_PLANS)) {
-				// executed plans were finished
-				Serial.print('F');
-				freeFinishedPlans();
-				continue;
-			}
-		}
-
-		//serial communication handling
-		if (ARRIVAL_BUFFER_INDEX == INSTRUCTION_SIZE) {
-			//we received an instrution - do processing
-			processControllerInstruction();
-			//TODO request repetition when data corrupted
-		}
-		else if (Serial.available()) {
-			//new data byte arrived
-			ARRIVAL_BUFFER[ARRIVAL_BUFFER_INDEX++] = (byte)Serial.read();
-			LAST_BYTE_ARRIVAL_TIME = millis();
-		}
-		else if (ARRIVAL_BUFFER_INDEX > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 2) {
-			//we are interested only in consequent messages
-			ARRIVAL_BUFFER_INDEX = 0;
-			Serial.print('E'); //incomplete message erased
-		}
-	}
-}

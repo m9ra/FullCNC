@@ -38,7 +38,10 @@ public:
 
 	Plan(int32_t stepCount);
 
-	
+protected:
+	//how many steps remains to do with this plan
+	uint16_t _remainingSteps;
+
 
 private:
 	// Determine whether plan is still active.
@@ -55,23 +58,18 @@ private:
 
 class AccelerationPlan : public Plan {
 public:
-	AccelerationPlan(int16_t stepCount, int16_t accelerationNumerator, int16_t accelerationDenominator, uint16_t initialDelta);
+	AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n);
 
 private:
-	// how many steps remains to do with this plan
-	uint16_t _remainingSteps;
-
-	// numerator used for acceleration factoring
-	const uint16_t _accelerationNumerator;
-
-	// denominator used for acceleration factoring
-	const uint16_t _accelerationDenominator;
-
-	// buffer for acceleration numerator buffering (to avoid multiplication)
-	uint32_t _accelerationNumeratorBuffer;
 
 	// determine whether plan corresponds to deceleration
 	bool _isDeceleration;
+
+	// current n parameter of Taylor incremental acceleration formula
+	uint32_t _current2N;
+
+	// buffer for remainder accumulation
+	uint32_t _currentDeltaTBuffer;
 
 	// current deltaT which is used
 	uint16_t _currentDeltaT;
@@ -81,17 +79,16 @@ private:
 
 class ConstantPlan : public Plan {
 public:
-	ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t remainderPeriod);
+	ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t periodNumerator, uint16_t periodDenominator);
 
 private:
-	//how many steps remains to do with this plan
-	uint16_t _remainingSteps;
-
 	const uint16_t _baseDeltaT;
 
-	const uint16_t _remainderPeriod;
+	const uint16_t _periodNumerator;
 
-	int32_t _currentRemainderOffset;
+	const uint16_t _periodDenominator;
+
+	uint32_t _periodAccumulator;
 
 	virtual uint16_t _createNextDeltaT();
 };
@@ -137,7 +134,13 @@ public:
 	static void initPlanning(StepperGroup& group, Plan** plans);
 
 	// Fills schedule buffer with given plans (and ensures scheduler is enabled along the way). Returns false if plans are complete.
-	inline static bool fillSchedule(StepperGroup& group, Plan** plans);
+	static bool fillSchedule(StepperGroup& group, Plan** plans);
+
+	// Directly fills schedule buffer.
+	static void directScheduleFill(byte* activations, int16_t* timing, int count);
+
+	// Starts scheduler.
+	static bool startScheduler();
 private:
 	// Determine whether all routines are initialized.
 	static bool _is_initialized;

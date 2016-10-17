@@ -16,6 +16,10 @@ namespace ControllerCNC
 
         private volatile UInt16 _desiredDeltaT;
 
+        private volatile UInt16 _desiredNumerator;
+
+        private volatile UInt16 _desiredDenominator;
+
         private volatile UInt16 _currentDeltaT;
 
         private volatile bool _stop;
@@ -34,6 +38,7 @@ namespace ControllerCNC
             _speedWorker = new Thread(worker);
             _speedWorker.IsBackground = true;
             _stop = true;
+            SetRPM(400);
             _speedWorker.Start();
         }
 
@@ -62,9 +67,9 @@ namespace ControllerCNC
                 //TODO send acceleration
                 _currentDeltaT = _desiredDeltaT;
 
-            var stepCount = (Int16)(Math.Max(2, 10000 / _currentDeltaT));
+            var stepCount = (Int16)(Math.Max(2, 20000 / _currentDeltaT));
 
-            _cnc.SEND_Constant(stepCount, _currentDeltaT, 0);
+            _cnc.SEND_Constant(stepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator);
 
             var plannedTime = stepCount * _currentDeltaT;
             _plannedTimeTotal += plannedTime;
@@ -83,10 +88,17 @@ namespace ControllerCNC
 
         internal void SetRPM(int rpm)
         {
-            var deltaT = _cnc.DeltaTFromRPM(rpm);
+            var deltaT = 2000000.0 * 60 / 400 / rpm;
+
+
             if (deltaT > UInt16.MaxValue)
                 throw new NotSupportedException("Value is out of range");
+
             _desiredDeltaT = (UInt16)deltaT;
+
+            var fraction = deltaT - Math.Floor(deltaT);
+            _desiredDenominator = 10000;
+            _desiredNumerator = (UInt16)(fraction * _desiredDenominator);
         }
     }
 }

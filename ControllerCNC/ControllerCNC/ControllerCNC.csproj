@@ -53,13 +53,18 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Planning\SegmentPlanBuilder1D.cs" />
+    <Compile Include="Planning\SegmentPlanner.cs" />
     <Compile Include="PositionController.cs" />
+    <Compile Include="Primitives\Acceleration.cs" />
+    <Compile Include="Primitives\Point4D.cs" />
+    <Compile Include="Primitives\Trajectory4D.cs" />
+    <Compile Include="Primitives\Velocity.cs" />
     <Compile Include="SpeedController.cs" />
     <Page Include="ControlPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Compile Include="Acceleration.cs" />
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
@@ -97,6 +102,7 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
