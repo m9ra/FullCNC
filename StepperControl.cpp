@@ -4,7 +4,7 @@
 //	* before pulse the dir has to be specified 
 //  * after pulse start pulse end has to be specified
 // KEEPING BOTH VALUES SAME enables computation optimization
-#define PORT_CHANGE_DELAY 5*2
+#define PORT_CHANGE_DELAY 10*2
 
 
 // length of the schedule buffer (CANNOT be changed easily - it counts on byte overflows)
@@ -188,7 +188,6 @@ void Steppers::directScheduleFill(byte* activations, int16_t* timing, int count)
 StepperGroup::StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[])
 	:StepperCount(stepperCount)
 {
-	this->_clockBports = new byte[stepperCount];
 	this->_dirBports = new byte[stepperCount];
 	for (int i = 0; i < stepperCount; ++i) {
 		this->_clockBports[i] = 1 << (clockPins[i] - 8);
@@ -311,13 +310,13 @@ void ConstantPlan::_createNextActivation()
 
 	uint16_t currentDelta = this->_baseDeltaT;
 
-	//if (this->_periodNumerator > 0) {
-	this->_periodAccumulator += this->_periodNumerator;
-	if (this->_periodDenominator >= this->_periodAccumulator) {
-		this->_periodAccumulator -= this->_periodDenominator;
-		currentDelta += 1;
+	if (this->_periodNumerator > 0) {
+		this->_periodAccumulator += this->_periodNumerator;
+		if (this->_periodDenominator >= this->_periodAccumulator) {
+			this->_periodAccumulator -= this->_periodDenominator;
+			currentDelta += 1;
+		}
 	}
-	//}
 
 
 	this->_isPulseStartPhase = false;

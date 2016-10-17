@@ -36,12 +36,12 @@ namespace ControllerCNC
         /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
-        internal static readonly int MaxAcceleration = 100 * StepsPerRevolution;
+        internal static readonly int MaxAcceleration = 400 * StepsPerRevolution;
 
         /// <summary>
         /// DeltaT which is used for steppers start.
         /// </summary>
-        public UInt16 StartDeltaT { get { return 1500; } }
+        public UInt16 StartDeltaT { get { return 2000; } }
 
         /// <summary>
         /// Fastest DeltaT which is supported
@@ -135,7 +135,12 @@ namespace ControllerCNC
 
         private void _port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            var data = readData(_port);
+            while (true)
+            {
+                var data = readData(_port);
+                OnDataReceived(data);
+            }
+            /*
             for (var i = 0; i < data.Length; ++i)
             {
                 var response = data[i];
@@ -192,7 +197,7 @@ namespace ControllerCNC
 
 
             if (OnDataReceived != null)
-                OnDataReceived(data);
+                OnDataReceived(data);*/
         }
 
         private void SERIAL_worker()
@@ -414,6 +419,8 @@ namespace ControllerCNC
         private void send(IEnumerable<byte> sendBuffer)
         {
             var data = new List<byte>(sendBuffer);
+            data.AddRange(sendBuffer.Skip(1));//send same data for the second stepper
+
             while (data.Count < _instructionLength - 2)
                 data.Add(123); // pad with value which will enable easy checksum error detection
 

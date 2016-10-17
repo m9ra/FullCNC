@@ -101,7 +101,7 @@ C(-1,3535,0,0)
            // _driver.SEND_Constant(2, 65000, 0, 1);
            // _driver.SEND_Constant(-2, 65000, 0, 1);
 
-            var overShoot = 4;
+            var overShoot = 100;
             var segmentation = 4;
             for (var i = 0; i < 400 / segmentation; ++i)
             {
