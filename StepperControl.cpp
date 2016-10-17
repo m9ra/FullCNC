@@ -1,24 +1,24 @@
 #include "StepperControl.h"
 
+// how long (on 0.5us scale)
+//	* before pulse the dir has to be specified 
+//  * after pulse start pulse end has to be specified
+// KEEPING BOTH VALUES SAME enables computation optimization
+#define PORT_CHANGE_DELAY 5*2
 
-#define B_LOW(y) (PORTB&=(~(1<<y)))
-#define B_HIGH(y) (PORTB|=(1<<y))
 
+// length of the schedule buffer (CANNOT be changed easily - it counts on byte overflows)
 #define SCHEDULE_BUFFER_LEN 256
 
 // buffer for step signal timing
 uint16_t SCHEDULE_BUFFER[SCHEDULE_BUFFER_LEN + 1];
 // bitwise activation mask for step signals (selecting active ports)
 byte SCHEDULE_ACTIVATIONS[SCHEDULE_BUFFER_LEN + 1];
-
-volatile byte SCHEDULE_ACTIVATIONS_MASK = 3;
-// bitwise mask selecting only dir related ports
-volatile byte SCHEDULE_DIR_MASK = 2;
-// bitwise mask selecting only clock related ports
-volatile byte SCHEDULE_CLK_MASK = 1;
+// cumulative activation with state up to lastly scheduled activation
+byte CUMULATIVE_SCHEDULE_ACTIVATION = 0;
 
 // determine whether schedule has next activations available
-bool HAS_NEXT_ACTIVATIONS = true;
+volatile bool HAS_NEXT_ACTIVATIONS = true;
 // pointer where new timing will be stored
 volatile byte SCHEDULE_START = 0;
 // pointer where scheduler is actually reading
@@ -32,25 +32,17 @@ volatile byte CURRENT_SCHEDULED_ACTIVATIONS = 0;
 
 ISR(TIMER1_OVF_vect) {
 	TCNT1 = NEXT_SCHEDULED_TIME;
-
-	//TODO make something about those delays!!!!
-
-	PORTB = SCHEDULE_CLK_MASK | (SCHEDULE_DIR_MASK & CURRENT_SCHEDULED_ACTIVATIONS);
-
-	delayMicroseconds(5);
 	PORTB = CURRENT_SCHEDULED_ACTIVATIONS;
-
-	//delayMicroseconds(3);
 
 	CURRENT_SCHEDULED_ACTIVATIONS = NEXT_SCHEDULED_ACTIVATIONS;
 	if (SCHEDULE_START == SCHEDULE_END) {
 		if (HAS_NEXT_ACTIVATIONS) {
-			//one step still remains in current next scheduled activations
+			//one step still remains in current scheduled activations
 			HAS_NEXT_ACTIVATIONS = false;
-			NEXT_SCHEDULED_ACTIVATIONS = SCHEDULE_CLK_MASK;
 			NEXT_SCHEDULED_TIME = 0;
 		}
-		else {// we have schedule stream end
+		else {
+			// we have schedule stream end
 			// stop scheduling after this step
 			TIMSK1 = 0;
 		}
@@ -60,7 +52,6 @@ ISR(TIMER1_OVF_vect) {
 		NEXT_SCHEDULED_ACTIVATIONS = SCHEDULE_ACTIVATIONS[SCHEDULE_END++];
 		HAS_NEXT_ACTIVATIONS = true;
 	}
-	//PORTB = SCHEDULE_CLK_MASK | (SCHEDULE_DIR_MASK & CURRENT_SCHEDULED_ACTIVATIONS);
 }
 
 bool Steppers::startScheduler() {
@@ -74,7 +65,7 @@ bool Steppers::startScheduler() {
 		//schedule is empty - no point in schedule enabling
 		return false;
 
-	CURRENT_SCHEDULED_ACTIVATIONS = SCHEDULE_CLK_MASK; //we are starting with empty schedule
+	CURRENT_SCHEDULED_ACTIVATIONS = PORTB; //we won't change activations by first iteration
 	NEXT_SCHEDULED_TIME = SCHEDULE_BUFFER[SCHEDULE_END];
 	NEXT_SCHEDULED_ACTIVATIONS = SCHEDULE_ACTIVATIONS[SCHEDULE_END++];
 	HAS_NEXT_ACTIVATIONS = true;
@@ -118,14 +109,13 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 {
 	for (;;) {
 		//find earliest plan
-		uint16_t earliestScheduleTime = 65535;
+		uint16_t earliestActivationTime = 65535;
 		for (int i = 0; i < group.StepperCount; ++i) {
-			uint16_t nextScheduleTime = plans[i]->_nextScheduleTime;
-			earliestScheduleTime = min(earliestScheduleTime, nextScheduleTime);
+			uint16_t nextActivationTime = plans[i]->_nextActivationTime;
+			earliestActivationTime = min(earliestActivationTime, nextActivationTime);
 		}
 
-		//subtract deltaT from other plans
-		byte clockMask = SCHEDULE_CLK_MASK;
+		//subtract deltaT from other plans		
 		bool hasActivePlan = false;
 		for (int i = 0; i < group.StepperCount; ++i) {
 			Plan* plan = plans[i];
@@ -133,17 +123,13 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 				continue;
 
 			hasActivePlan = true;
-			plan->_nextScheduleTime -= earliestScheduleTime;
-			if (plan->_nextScheduleTime == 0) {
-				//plan has to be scheduled
-				clockMask &= ~group._clockBports[i];
-				if (plan->stepDirection > 0)
-					clockMask |= group._dirBports[i];
-				//compute new schedule time for plan
-				plan->_nextScheduleTime = plan->_createNextDeltaT();
-				if (plan->_nextScheduleTime == 0)
-					//it is plan over
-					plan->_isActive = false;
+			plan->_nextActivationTime -= earliestActivationTime;
+			if (plan->_nextActivationTime == 0) {
+				//activation has to be scheduled
+				byte combinedRevMask = ~(plan->_clockMask | plan->_dirMask);
+				CUMULATIVE_SCHEDULE_ACTIVATION = (CUMULATIVE_SCHEDULE_ACTIVATION & combinedRevMask) | plan->_nextActivation;
+				//compute next activation
+				plan->_createNextActivation();
 			}
 		}
 
@@ -157,8 +143,13 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 			Steppers::startScheduler();
 		}
 
-		SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestScheduleTime;
-		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = clockMask;
+		SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestActivationTime;
+		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = CUMULATIVE_SCHEDULE_ACTIVATION;
+
+		/*	Serial.print("| t:");
+			Serial.print(earliestActivationTime);
+			Serial.print(", a:");
+			Serial.println(CUMULATIVE_SCHEDULE_ACTIVATION);*/
 
 		if ((byte)(SCHEDULE_START + 1) == SCHEDULE_END)
 			//we have free time
@@ -172,20 +163,12 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 
 void Steppers::initPlanning(StepperGroup & group, Plan ** plans)
 {
-	//initialize port info
-	byte dirPorts = 0;
-	byte clockMask = 0;
-	byte dirMask = 0;
-
-	//TODO
-	//SCHEDULE_ACTIVATIONS_MASK = 3;
 	for (int i = 0; i < group.StepperCount; ++i) {
-		plans[i]->_nextScheduleTime = plans[i]->_createNextDeltaT();
-		//dirMask |= group._dirBports[i];
-	}
+		plans[i]->_dirMask = group._dirBports[i];
+		plans[i]->_clockMask = group._clockBports[i];
 
-	//TODO ensure that this remains unchanged between scheduler runs (CANNOT BE CHANGED WITHOUT SCHEDULER DISABLING)
-	//SCHEDULE_DIR_MASK = dirMask;
+		plans[i]->_createNextActivation();
+	}
 }
 
 void Steppers::directScheduleFill(byte* activations, int16_t* timing, int count) {
@@ -194,7 +177,7 @@ void Steppers::directScheduleFill(byte* activations, int16_t* timing, int count)
 		int16_t time = timing[i];
 
 		if ((byte)(SCHEDULE_START + 1) == SCHEDULE_END) {
-			Serial.println(F("|Not space for direct schedule"));
+			Serial.print('X');
 		}
 
 		SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - time;
@@ -214,8 +197,29 @@ StepperGroup::StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[])
 }
 
 Plan::Plan(int32_t stepCount) :
-	stepDirection(stepCount > 0 ? 1 : 0), _isActive(true), _nextScheduleTime(0), _remainingSteps(abs(stepCount))
+	stepDirection(stepCount > 0 ? 1 : 0), _remainingSteps(abs(stepCount)),
+	_isActive(true), _dirMask(0), _clockMask(0),
+	_isPulseStartPhase(true), _isDirReported(false),
+	_nextActivationTime(0), _nextActivation(0)
 {
+}
+
+void Plan::_reportDir()
+{
+	this->_isDirReported = true;
+	this->_nextActivationTime = PORT_CHANGE_DELAY;
+	this->_nextActivation = this->_clockMask;
+	if (this->stepDirection > 0)
+		this->_nextActivation |= this->_dirMask;
+}
+
+void Plan::_reportPulseEnd()
+{
+	this->_isPulseStartPhase = true;
+	this->_nextActivationTime = PORT_CHANGE_DELAY;
+	this->_nextActivation = this->_clockMask;
+	if (this->stepDirection > 0)
+		this->_nextActivation |= this->_dirMask;
 }
 
 AccelerationPlan::AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n)
@@ -223,15 +227,27 @@ AccelerationPlan::AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, in
 {
 	this->_isDeceleration = n < 0;
 	if (this->_isDeceleration && abs(n) < stepCount) {
-		Serial.println(F("|Acceleration plan is too long!"));
+		Serial.print('X');
 		this->_remainingSteps = 0;
 	}
 }
 
-uint16_t AccelerationPlan::_createNextDeltaT()
+void AccelerationPlan::_createNextActivation()
 {
-	if (this->_remainingSteps == 0)
-		return 0;
+	if (this->_remainingSteps == 0) {
+		this->_isActive = false;
+		return;
+	}
+
+	if (!this->_isDirReported) {
+		this->_reportDir();
+		return;
+	}
+
+	if (!this->_isPulseStartPhase) {
+		this->_reportPulseEnd();
+		return;
+	}
 
 	--this->_remainingSteps;
 
@@ -264,7 +280,9 @@ uint16_t AccelerationPlan::_createNextDeltaT()
 	}
 	this->_currentDeltaT = nextDeltaT;
 
-	return this->_currentDeltaT;
+	this->_isPulseStartPhase = false;
+	this->_nextActivationTime = this->_currentDeltaT - PORT_CHANGE_DELAY;
+	this->_nextActivation = this->stepDirection > 0 ? this->_dirMask : 0;
 }
 
 ConstantPlan::ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t periodNumerator, uint16_t periodDenominator)
@@ -272,22 +290,38 @@ ConstantPlan::ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t peri
 {
 }
 
-uint16_t ConstantPlan::_createNextDeltaT()
+void ConstantPlan::_createNextActivation()
 {
-	if (this->_remainingSteps == 0)
-		return 0;
+	if (this->_remainingSteps == 0) {
+		this->_isActive = false;
+		return;
+	}
 
+	if (!this->_isDirReported) {
+		this->_reportDir();
+		return;
+	}
+
+	if (!this->_isPulseStartPhase) {
+		this->_reportPulseEnd();
+		return;
+	}
+
+	--this->_remainingSteps;
 
 	uint16_t currentDelta = this->_baseDeltaT;
 
+	//if (this->_periodNumerator > 0) {
 	this->_periodAccumulator += this->_periodNumerator;
 	if (this->_periodDenominator >= this->_periodAccumulator) {
 		this->_periodAccumulator -= this->_periodDenominator;
 		currentDelta += 1;
 	}
+	//}
 
-	--this->_remainingSteps;
 
-	return currentDelta;
+	this->_isPulseStartPhase = false;
+	this->_nextActivationTime = currentDelta - PORT_CHANGE_DELAY;
+	this->_nextActivation = this->stepDirection > 0 ? this->_dirMask : 0;
 }
 

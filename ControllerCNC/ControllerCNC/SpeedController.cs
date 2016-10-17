@@ -67,7 +67,7 @@ namespace ControllerCNC
                 //TODO send acceleration
                 _currentDeltaT = _desiredDeltaT;
 
-            var stepCount = (Int16)(Math.Max(2, 20000 / _currentDeltaT));
+            var stepCount = (Int16)(Math.Max(2, 100000 / _currentDeltaT));
 
             _cnc.SEND_Constant(stepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator);
 

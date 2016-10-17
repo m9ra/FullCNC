@@ -101,28 +101,9 @@ void note(int32_t length, int32_t tone) {
 }
 
 void demo() {
-
 	Plan** plans;
 	uint32_t totalSteps = 400 * 10L;
 
-
-
-	byte activations[8] = { 2,0,2,2,0,0,0,0 };
-	//int16_t timing[8] = { 7501,5626,4762,5952,7501,5626,4688,3536 };
-	int16_t interval = 65000;
-	int16_t timing[8] = { interval,interval,interval,interval,interval,interval,interval,interval };
-	int stepCount = 2;
-	byte dirMask = 2;
-
-	Steppers::directScheduleFill(activations, timing, stepCount);
-	Steppers::startScheduler();
-
-	/*plans = new Plan*[1]{
-		new ConstantPlan(400, 2 * 350, 0, 0)
-	};
-	Steppers::runPlanning(group1, plans);*/
-
-	/*
 	plans = new Plan*[1]{
 			new AccelerationPlan(580, START_DELTA_T * 2,52)
 	};
@@ -143,7 +124,7 @@ void demo() {
 	plans = new Plan*[1]{
 		new AccelerationPlan(580, 2 * 100,-580 - 52)
 	};
-	Steppers::runPlanning(group1, plans);*/
+	Steppers::runPlanning(group1, plans);
 	delay(1000);
 }
 

@@ -25,7 +25,7 @@
 
                     </StackPanel>
 
-                    <Slider Name="Speed" IsSnapToTickEnabled="True" Maximum="4500" Value="400" Minimum="15" VerticalAlignment="Top" ValueChanged="Slider_ValueChanged"/>
+                    <Slider Name="Speed" IsSnapToTickEnabled="False" Maximum="4500" Value="400" Minimum="15" VerticalAlignment="Top" ValueChanged="Slider_ValueChanged"/>
                     <TextBlock Name="RPMDisplay" FontSize="20" HorizontalAlignment="Center" >400rpm</TextBlock>
                 </StackPanel>
 

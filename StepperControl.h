@@ -39,21 +39,40 @@ public:
 	Plan(int32_t stepCount);
 
 protected:
-	//how many steps remains to do with this plan
-	uint16_t _remainingSteps;
-
-
-private:
 	// Determine whether plan is still active.
 	// Is managed by the planner.
 	bool _isActive;
 
+	//how many steps remains to do with this plan
+	uint16_t _remainingSteps;
+
+	// Determine whether direction was already reported
+	bool _isDirReported;
+
+	// Determine whether we are at pulse start/pulse end phase
+	bool _isPulseStartPhase;
+
+	// Mask that can be used for dir control (for now it is mandatory to set direction at least at begining of every plan).
+	byte _dirMask;
+
+	// Mask that can be used for clock control.
+	byte _clockMask;
+
+	// Value of next activation (it could use dir and clk masks only)
+	byte _nextActivation;
+
 	// Time of next schedule of the plan. 
 	// Is managed by the planner.
-	uint16_t _nextScheduleTime;
+	uint16_t _nextActivationTime;
 
 	// Outputs next step time (in 0.5us resolution) of the plan - zero means end of the plan.
-	virtual uint16_t _createNextDeltaT() = 0;
+	virtual void _createNextActivation() = 0;
+
+	// Reports intended direction of next step.
+	void _reportDir();
+
+	/// Reports end of the previous pulse.
+	void _reportPulseEnd();
 };
 
 class AccelerationPlan : public Plan {
@@ -74,7 +93,7 @@ private:
 	// current deltaT which is used
 	uint16_t _currentDeltaT;
 
-	virtual uint16_t _createNextDeltaT();
+	virtual void _createNextActivation();
 };
 
 class ConstantPlan : public Plan {
@@ -90,7 +109,7 @@ private:
 
 	uint32_t _periodAccumulator;
 
-	virtual uint16_t _createNextDeltaT();
+	virtual void _createNextActivation();
 };
 
 class StepperGroup {
