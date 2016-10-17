@@ -7,11 +7,11 @@
 #define READ_INT16(buff, position) (((int16_t)buff[position]) << 8) + buff[position + 1]
 #define READ_UINT16(buff, position) (((uint16_t)buff[position]) << 8) + buff[position + 1]
 
-int STEP_CLK_PIN1 = 8;
-int STEP_DIR_PIN1 = 9;
+byte STEP_CLK_PIN1 = 8;
+byte STEP_DIR_PIN1 = 9;
 
-int STEP_CLK_PIN2 = 10;
-int STEP_DIR_PIN2 = 11;
+byte STEP_CLK_PIN2 = 10;
+byte STEP_DIR_PIN2 = 11;
 
 
 Plan** PLANS_BUFFER[PLANS_BUFFER_SIZE] = { NULL }; //here buffered plans will be stored
@@ -22,7 +22,9 @@ byte ARRIVAL_BUFFER_INDEX = 0; //index to arrival buffer
 unsigned long LAST_BYTE_ARRIVAL_TIME = 0;
 Plan** EXECUTED_PLANS = NULL;
 
-StepperGroup group1 = StepperGroup(2, new byte[2]{ STEP_CLK_PIN1, STEP_CLK_PIN2 }, new byte[2]{ STEP_DIR_PIN1, STEP_CLK_PIN2 });
+byte clkPins[2] = { STEP_CLK_PIN1, STEP_CLK_PIN2 };
+byte dirPins[2] = { STEP_DIR_PIN1, STEP_DIR_PIN2 };
+StepperGroup group1 = StepperGroup(2, clkPins, dirPins);
 
 void setup() {
 	Serial.begin(128000);
@@ -30,11 +32,11 @@ void setup() {
 	pinMode(13, OUTPUT);
 	pinMode(STEP_CLK_PIN1, OUTPUT);
 	pinMode(STEP_DIR_PIN1, OUTPUT);
-	/*	pinMode(STEP_CLK_PIN2, OUTPUT);
-		pinMode(STEP_DIR_PIN2, OUTPUT);
+	pinMode(STEP_CLK_PIN2, OUTPUT);
+	pinMode(STEP_DIR_PIN2, OUTPUT);
 
-		digitalWrite(STEP_CLK_PIN1, HIGH);
-		digitalWrite(STEP_CLK_PIN2, HIGH);*/
+	digitalWrite(STEP_CLK_PIN1, HIGH);
+	digitalWrite(STEP_CLK_PIN2, HIGH);
 
 	Steppers::initialize();
 
@@ -66,11 +68,10 @@ void loop() {
 			ARRIVAL_BUFFER[ARRIVAL_BUFFER_INDEX++] = (byte)Serial.read();
 			LAST_BYTE_ARRIVAL_TIME = millis();
 		}
-		else if (ARRIVAL_BUFFER_INDEX > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 2) {
+		else if (ARRIVAL_BUFFER_INDEX > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 200) {
 			//we are interested in consequent messages only
-			Serial.print('E'); //incomplete message erased
 			ARRIVAL_BUFFER_INDEX = 0;
-
+			Serial.print('E'); //incomplete message erased			
 		}
 	}
 }

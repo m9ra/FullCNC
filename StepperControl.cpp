@@ -111,6 +111,8 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 		//find earliest plan
 		uint16_t earliestActivationTime = 65535;
 		for (int i = 0; i < group.StepperCount; ++i) {
+			if (!plans[i]->_isActive)
+				continue;
 			uint16_t nextActivationTime = plans[i]->_nextActivationTime;
 			earliestActivationTime = min(earliestActivationTime, nextActivationTime);
 		}
@@ -146,10 +148,10 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 		SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestActivationTime;
 		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = CUMULATIVE_SCHEDULE_ACTIVATION;
 
-		/*	Serial.print("| t:");
-			Serial.print(earliestActivationTime);
-			Serial.print(", a:");
-			Serial.println(CUMULATIVE_SCHEDULE_ACTIVATION);*/
+		/*/Serial.print("| t:");
+		Serial.print(earliestActivationTime);
+		Serial.print(", a:");
+		Serial.println(CUMULATIVE_SCHEDULE_ACTIVATION);//*/
 
 		if ((byte)(SCHEDULE_START + 1) == SCHEDULE_END)
 			//we have free time
@@ -188,6 +190,7 @@ void Steppers::directScheduleFill(byte* activations, int16_t* timing, int count)
 StepperGroup::StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[])
 	:StepperCount(stepperCount)
 {
+	this->_clockBports = new byte[stepperCount];
 	this->_dirBports = new byte[stepperCount];
 	for (int i = 0; i < stepperCount; ++i) {
 		this->_clockBports[i] = 1 << (clockPins[i] - 8);
@@ -259,8 +262,7 @@ void AccelerationPlan::_createNextActivation()
 			this->_currentDeltaTBuffer -= this->_current2N;
 			nextDeltaT += 1;
 		}
-		/*Serial.print("|D");
-		Serial.println(nextDeltaT);*/
+
 		//we increnemnt 2N by 2 to avoid multiplication
 		this->_current2N -= 2;
 	}
@@ -272,8 +274,6 @@ void AccelerationPlan::_createNextActivation()
 			nextDeltaT -= 1;
 		}
 
-		/*Serial.print("|A");
-		Serial.println(nextDeltaT);*/
 		//we increnemnt 2N by 2 to avoid multiplication
 		this->_current2N += 2;
 	}

@@ -8,6 +8,7 @@
                 <Button Height="50" Width="100" Content="Run demo" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click"/>
                 <Button Height="50" Width="100" Content="Interrupted rev." HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_1"/>
                 <Button Height="50" Width="100" Content="Back and forward" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2"/>
+                <Button Height="50" Width="100" Content="Motor 1 + 2" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_3"/>
             </StackPanel>
             <TextBox Height="150" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Output" TextWrapping="Wrap" />
             

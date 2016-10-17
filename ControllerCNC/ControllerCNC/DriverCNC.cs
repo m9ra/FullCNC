@@ -39,6 +39,12 @@ namespace ControllerCNC
         internal static readonly int MaxAcceleration = 400 * StepsPerRevolution;
 
         /// <summary>
+        /// How many steppers will be commanded.
+        /// TODO: this is workaround only - new API is required.
+        /// </summary>
+        internal int StepperIndex = 1;
+
+        /// <summary>
         /// DeltaT which is used for steppers start.
         /// </summary>
         public UInt16 StartDeltaT { get { return 2000; } }
@@ -62,6 +68,11 @@ namespace ControllerCNC
         /// Queue waiting for sending.
         /// </summary>
         private readonly Queue<byte[]> _sendQueue = new Queue<byte[]>();
+
+        /// <summary>
+        /// Buffer for instruction which is currently construted.
+        /// </summary>
+        private readonly List<byte> _constructedInstruction=new List<byte>();
 
         /// <summary>
         /// Lock for send queue synchornization.
@@ -135,12 +146,7 @@ namespace ControllerCNC
 
         private void _port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
-            while (true)
-            {
-                var data = readData(_port);
-                OnDataReceived(data);
-            }
-            /*
+            var data = readData(_port);
             for (var i = 0; i < data.Length; ++i)
             {
                 var response = data[i];
@@ -197,7 +203,7 @@ namespace ControllerCNC
 
 
             if (OnDataReceived != null)
-                OnDataReceived(data);*/
+                OnDataReceived(data);
         }
 
         private void SERIAL_worker()
@@ -419,7 +425,28 @@ namespace ControllerCNC
         private void send(IEnumerable<byte> sendBuffer)
         {
             var data = new List<byte>(sendBuffer);
-            data.AddRange(sendBuffer.Skip(1));//send same data for the second stepper
+            if (StepperIndex == 1)
+            {
+                if (_constructedInstruction.Count == 0)
+                {
+                    data.AddRange(sendBuffer.Skip(1));//send same data for the second stepper
+                }
+                else
+                {
+                    data.AddRange(_constructedInstruction);
+                    _constructedInstruction.Clear();
+                }
+            }
+            else if (StepperIndex == 2)
+            {
+                --StepperIndex;
+                _constructedInstruction.AddRange(sendBuffer.Skip(1));
+                return;
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
 
             while (data.Count < _instructionLength - 2)
                 data.Add(123); // pad with value which will enable easy checksum error detection
