@@ -115,8 +115,8 @@ C(-1,3535,0,0)
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
             _driver.StepperIndex = 2;
-            _driver.SEND_Constant(200, 1600, 0, 0);
-            _driver.SEND_Constant(3000, 800, 0, 0);
+            _driver.SEND_Constant(400, 1600, 0, 0);
+            _driver.SEND_Constant(800, 800, 0, 0);
         }
 
         private void IsSpeedTesterEnabled_Checked(object sender, RoutedEventArgs e)

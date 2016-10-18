@@ -4,7 +4,7 @@
 //	* before pulse the dir has to be specified 
 //  * after pulse start pulse end has to be specified
 // KEEPING BOTH VALUES SAME enables computation optimization
-#define PORT_CHANGE_DELAY 10*2
+#define PORT_CHANGE_DELAY 5*2
 
 
 // length of the schedule buffer (CANNOT be changed easily - it counts on byte overflows)
@@ -30,8 +30,15 @@ volatile byte NEXT_SCHEDULED_ACTIVATIONS = 0;
 // activations for current scheduler's turn
 volatile byte CURRENT_SCHEDULED_ACTIVATIONS = 0;
 
+//TODO load this during initialization
+volatile byte ACTIVATIONS_CLOCK_MASK = 1 + 4;
+
 ISR(TIMER1_OVF_vect) {
 	TCNT1 = NEXT_SCHEDULED_TIME;
+
+	//pins go LOW here (pulse start)
+	//PORTB = CURRENT_SCHEDULED_ACTIVATIONS & ~ACTIVATIONS_CLOCK_MASK;
+	//delayMicroseconds(10);
 	PORTB = CURRENT_SCHEDULED_ACTIVATIONS;
 
 	CURRENT_SCHEDULED_ACTIVATIONS = NEXT_SCHEDULED_ACTIVATIONS;
@@ -52,6 +59,8 @@ ISR(TIMER1_OVF_vect) {
 		NEXT_SCHEDULED_ACTIVATIONS = SCHEDULE_ACTIVATIONS[SCHEDULE_END++];
 		HAS_NEXT_ACTIVATIONS = true;
 	}
+	//pins go HIGH here (pulse end)
+	PORTB |= ACTIVATIONS_CLOCK_MASK;
 }
 
 bool Steppers::startScheduler() {
@@ -111,11 +120,14 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 		//find earliest plan
 		uint16_t earliestActivationTime = 65535;
 		for (int i = 0; i < group.StepperCount; ++i) {
-			if (!plans[i]->_isActive)
+			Plan* plan = plans[i];
+			if (!plan->_isActive)
 				continue;
-			uint16_t nextActivationTime = plans[i]->_nextActivationTime;
-			earliestActivationTime = min(earliestActivationTime, nextActivationTime);
+
+			earliestActivationTime = min(earliestActivationTime, plan->_nextActivationTime);
 		}
+
+		CUMULATIVE_SCHEDULE_ACTIVATION |= ACTIVATIONS_CLOCK_MASK;
 
 		//subtract deltaT from other plans		
 		bool hasActivePlan = false;
@@ -126,10 +138,20 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 
 			hasActivePlan = true;
 			plan->_nextActivationTime -= earliestActivationTime;
+
 			if (plan->_nextActivationTime == 0) {
 				//activation has to be scheduled
-				byte combinedRevMask = ~(plan->_clockMask | plan->_dirMask);
-				CUMULATIVE_SCHEDULE_ACTIVATION = (CUMULATIVE_SCHEDULE_ACTIVATION & combinedRevMask) | plan->_nextActivation;
+				if (!plan->_skipNextActivation)
+					// make the appropriate pin LOW
+					CUMULATIVE_SCHEDULE_ACTIVATION &= ~(group._clockBports[i]);
+
+				if (plan->_nextStepDirection) {
+					CUMULATIVE_SCHEDULE_ACTIVATION |= group._dirBports[i];
+				}
+				else {
+					CUMULATIVE_SCHEDULE_ACTIVATION &= ~group._dirBports[i];
+				}
+
 				//compute next activation
 				plan->_createNextActivation();
 			}
@@ -166,9 +188,6 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 void Steppers::initPlanning(StepperGroup & group, Plan ** plans)
 {
 	for (int i = 0; i < group.StepperCount; ++i) {
-		plans[i]->_dirMask = group._dirBports[i];
-		plans[i]->_clockMask = group._clockBports[i];
-
 		plans[i]->_createNextActivation();
 	}
 }
@@ -199,29 +218,11 @@ StepperGroup::StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[])
 }
 
 Plan::Plan(int32_t stepCount) :
-	stepDirection(stepCount > 0 ? 1 : 0), _remainingSteps(abs(stepCount)),
-	_isActive(true), _dirMask(0), _clockMask(0),
-	_isPulseStartPhase(true), _isDirReported(false),
-	_nextActivationTime(0), _nextActivation(0)
+	_nextStepDirection(stepCount > 0), _remainingSteps(abs(stepCount)),
+	_isActive(true), _skipNextActivation(false),
+	_nextActivationTime(0),
+	_nextDeactivationTime(-1)
 {
-}
-
-void Plan::_reportDir()
-{
-	this->_isDirReported = true;
-	this->_nextActivationTime = PORT_CHANGE_DELAY;
-	this->_nextActivation = this->_clockMask;
-	if (this->stepDirection > 0)
-		this->_nextActivation |= this->_dirMask;
-}
-
-void Plan::_reportPulseEnd()
-{
-	this->_isPulseStartPhase = true;
-	this->_nextActivationTime = PORT_CHANGE_DELAY;
-	this->_nextActivation = this->_clockMask;
-	if (this->stepDirection > 0)
-		this->_nextActivation |= this->_dirMask;
 }
 
 AccelerationPlan::AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n)
@@ -238,16 +239,6 @@ void AccelerationPlan::_createNextActivation()
 {
 	if (this->_remainingSteps == 0) {
 		this->_isActive = false;
-		return;
-	}
-
-	if (!this->_isDirReported) {
-		this->_reportDir();
-		return;
-	}
-
-	if (!this->_isPulseStartPhase) {
-		this->_reportPulseEnd();
 		return;
 	}
 
@@ -279,9 +270,7 @@ void AccelerationPlan::_createNextActivation()
 	}
 	this->_currentDeltaT = nextDeltaT;
 
-	this->_isPulseStartPhase = false;
-	this->_nextActivationTime = this->_currentDeltaT - PORT_CHANGE_DELAY;
-	this->_nextActivation = this->stepDirection > 0 ? this->_dirMask : 0;
+	this->_nextActivationTime = this->_currentDeltaT;
 }
 
 ConstantPlan::ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t periodNumerator, uint16_t periodDenominator)
@@ -293,16 +282,6 @@ void ConstantPlan::_createNextActivation()
 {
 	if (this->_remainingSteps == 0) {
 		this->_isActive = false;
-		return;
-	}
-
-	if (!this->_isDirReported) {
-		this->_reportDir();
-		return;
-	}
-
-	if (!this->_isPulseStartPhase) {
-		this->_reportPulseEnd();
 		return;
 	}
 
@@ -318,9 +297,6 @@ void ConstantPlan::_createNextActivation()
 		}
 	}
 
-
-	this->_isPulseStartPhase = false;
-	this->_nextActivationTime = currentDelta - PORT_CHANGE_DELAY;
-	this->_nextActivation = this->stepDirection > 0 ? this->_dirMask : 0;
+	this->_nextActivationTime = currentDelta;
 }
 

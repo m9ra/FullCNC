@@ -59,19 +59,14 @@ public:
 
 private:
 	unsigned long _runPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n) {
-		this->_clockMask = 0;
-		this->_dirMask = 0;
+		this->_isActive = true;
 		this->_remainingSteps = abs(stepCount);
-		(byte&)this->stepDirection = stepCount > 0 ? 1 : 0;
+		this->_nextStepDirection = stepCount > 0;
 		this->_current2N = abs(2 * n);
 		this->_isDeceleration = n < 0;
 		this->_currentDeltaT = initialDeltaT;
 		this->_currentDeltaTBuffer = 0;
-
-
-		this->_isDirReported = false;
-		this->_isActive = true;
-		this->_isPulseStartPhase = true;
+		this->_skipNextActivation = false;
 
 		unsigned long startTime = micros();
 		while (this->_isActive) {
@@ -113,16 +108,13 @@ public:
 	}
 private:
 	unsigned long _runPlan(int16_t stepCount, uint16_t periodNumerator = 0, uint16_t periodDenominator = 0) {
-		this->_clockMask = 0;
-		this->_dirMask = 0;
 		this->_remainingSteps = abs(stepCount);
-		(byte&)this->stepDirection = stepCount > 0 ? 1 : 0;
+		this->_nextStepDirection = stepCount;
 		this->_periodAccumulator = 0;
 		(uint16_t&)this->_periodNumerator = periodNumerator;
 		(uint16_t&)this->_periodDenominator = periodDenominator;
-		this->_isDirReported = false;
 		this->_isActive = true;
-		this->_isPulseStartPhase = true;
+		this->_skipNextActivation = false;
 
 		unsigned long startTime = micros();
 		while (this->_isActive) {

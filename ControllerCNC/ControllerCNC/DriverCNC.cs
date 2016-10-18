@@ -197,7 +197,8 @@ namespace ControllerCNC
                         break;
 
                     default:
-                        throw new NotImplementedException();
+                        //throw new NotImplementedException();
+                        break;
                 }
             }
 

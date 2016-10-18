@@ -45,6 +45,14 @@ void setup() {
 }
 
 void loop() {
+
+	/*Plan** plans = new Plan*[1]{
+		new ConstantPlan(400, 2 * 350, 0, 0)
+	};
+	Steppers::runPlanning(group1, plans);
+
+	delay(5000);
+	return;*/
 	for (;;) {
 		if (EXECUTED_PLANS == NULL)
 			tryToFetchNextPlans();

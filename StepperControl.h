@@ -32,10 +32,6 @@ class StepperGroup;
 class Plan {
 	friend Steppers;
 public:
-
-	// Direction of all consequent steps of the plan.
-	const byte stepDirection;
-
 	Plan(int32_t stepCount);
 
 protected:
@@ -43,36 +39,27 @@ protected:
 	// Is managed by the planner.
 	bool _isActive;
 
-	//how many steps remains to do with this plan
+	// Determine whether pulsing should be skipped for next activation.
+	// Waiting cycles.
+	bool _skipNextActivation;
+
+	// Direction of the next step to be made.
+	bool _nextStepDirection;
+
+	// How many steps remains to do with this plan.
 	uint16_t _remainingSteps;
-
-	// Determine whether direction was already reported
-	bool _isDirReported;
-
-	// Determine whether we are at pulse start/pulse end phase
-	bool _isPulseStartPhase;
-
-	// Mask that can be used for dir control (for now it is mandatory to set direction at least at begining of every plan).
-	byte _dirMask;
-
-	// Mask that can be used for clock control.
-	byte _clockMask;
-
-	// Value of next activation (it could use dir and clk masks only)
-	byte _nextActivation;
-
+				
 	// Time of next schedule of the plan. 
 	// Is managed by the planner.
 	uint16_t _nextActivationTime;
 
 	// Outputs next step time (in 0.5us resolution) of the plan - zero means end of the plan.
-	virtual void _createNextActivation() = 0;
+	inline virtual void _createNextActivation() = 0;
 
-	// Reports intended direction of next step.
-	void _reportDir();
-
-	/// Reports end of the previous pulse.
-	void _reportPulseEnd();
+private:
+	// Time when next pulse deactivation will be sent.
+	// IS MANAGED BY THE PLANNER - it is set after pulse is made.
+	int8_t _nextDeactivationTime;
 };
 
 class AccelerationPlan : public Plan {
