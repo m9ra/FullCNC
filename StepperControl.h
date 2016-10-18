@@ -79,7 +79,7 @@ class AccelerationPlan : public Plan {
 public:
 	AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n);
 
-private:
+protected:
 
 	// determine whether plan corresponds to deceleration
 	bool _isDeceleration;
@@ -100,7 +100,7 @@ class ConstantPlan : public Plan {
 public:
 	ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t periodNumerator, uint16_t periodDenominator);
 
-private:
+protected:
 	const uint16_t _baseDeltaT;
 
 	const uint16_t _periodNumerator;
