@@ -19,6 +19,10 @@ Editor:	http://www.visualmicro.com
 #define F(string_literal) string_literal
 #endif
 
+
+#define READ_INT16(buff, position) (((int16_t)buff[position]) << 8) + buff[position + 1]
+#define READ_UINT16(buff, position) (((uint16_t)buff[position]) << 8) + buff[position + 1]
+
 #define MAX_ACCELERATION 200 //rev/s^2
 #define START_DELTA_T 350 //us
 #define MIN_DELTA_T 100	//us
@@ -34,6 +38,9 @@ class Plan {
 public:
 	Plan(int32_t stepCount);
 
+	// Loads plan from given data.
+	inline virtual void loadFrom(byte* buffer) = 0;
+
 protected:
 	// Determine whether plan is still active.
 	// Is managed by the planner.
@@ -48,7 +55,7 @@ protected:
 
 	// How many steps remains to do with this plan.
 	uint16_t _remainingSteps;
-				
+
 	// Time of next schedule of the plan. 
 	// Is managed by the planner.
 	uint16_t _nextActivationTime;
@@ -56,7 +63,6 @@ protected:
 	// Outputs next step time (in 0.5us resolution) of the plan - zero means end of the plan.
 	inline virtual void _createNextActivation() = 0;
 
-private:
 	// Time when next pulse deactivation will be sent.
 	// IS MANAGED BY THE PLANNER - it is set after pulse is made.
 	int8_t _nextDeactivationTime;
@@ -65,6 +71,8 @@ private:
 class AccelerationPlan : public Plan {
 public:
 	AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n);
+
+	void loadFrom(byte* buffer);
 
 protected:
 
@@ -87,12 +95,14 @@ class ConstantPlan : public Plan {
 public:
 	ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t periodNumerator, uint16_t periodDenominator);
 
+	void loadFrom(byte* buffer);
+
 protected:
-	const uint16_t _baseDeltaT;
+	uint16_t _baseDeltaT;
 
-	const uint16_t _periodNumerator;
+	uint16_t _periodNumerator;
 
-	const uint16_t _periodDenominator;
+	uint16_t _periodDenominator;
 
 	uint32_t _periodAccumulator;
 

@@ -235,6 +235,30 @@ AccelerationPlan::AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, in
 	}
 }
 
+void AccelerationPlan::loadFrom(byte * buffer)
+{
+	int16_t stepCount = READ_INT16(buffer, 0);
+	uint16_t initialDeltaT = READ_UINT16(buffer, 2);
+	int16_t n = READ_INT16(buffer, 2 + 2);
+
+	this->_remainingSteps = abs(stepCount);
+	this->_nextStepDirection = stepCount > 0;
+	this->_isActive = true;
+	this->_skipNextActivation = false;
+	this->_nextActivationTime = 0;
+	this->_nextDeactivationTime = -1;
+
+	this->_isDeceleration = n < 0;
+	this->_currentDeltaT = initialDeltaT;
+	this->_current2N = abs(2 * n);
+	this->_currentDeltaTBuffer = 0;
+
+	if (this->_isDeceleration && abs(n) < stepCount) {
+		Serial.print('X');
+		this->_remainingSteps = 0;
+	}
+}
+
 void AccelerationPlan::_createNextActivation()
 {
 	if (this->_remainingSteps == 0) {
@@ -276,6 +300,26 @@ void AccelerationPlan::_createNextActivation()
 ConstantPlan::ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t periodNumerator, uint16_t periodDenominator)
 	:Plan(stepCount), _baseDeltaT(baseDeltaT), _periodNumerator(periodNumerator), _periodDenominator(periodDenominator), _periodAccumulator(0)
 {
+}
+
+void ConstantPlan::loadFrom(byte * buffer)
+{
+	int16_t stepCount = READ_INT16(buffer, 0);
+	uint16_t baseDeltaT = READ_UINT16(buffer, 2);
+	uint16_t periodNumerator = READ_UINT16(buffer, 2 + 2);
+	uint16_t periodDenominator = READ_UINT16(buffer, 2 + 2 + 2);
+
+	this->_remainingSteps = abs(stepCount);
+	this->_nextStepDirection = stepCount > 0;
+	this->_isActive = true;
+	this->_skipNextActivation = false;
+	this->_nextActivationTime = 0;
+	this->_nextDeactivationTime = -1;
+
+	this->_baseDeltaT = baseDeltaT;
+	this->_periodNumerator = periodNumerator;
+	this->_periodDenominator = periodDenominator;
+	this->_periodAccumulator = 0;
 }
 
 void ConstantPlan::_createNextActivation()

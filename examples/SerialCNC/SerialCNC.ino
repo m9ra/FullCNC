@@ -1,11 +1,10 @@
 #include "StepperControl.h"
 
 // how many bytes contains instruction from controller
-#define INSTRUCTION_SIZE 36 
-#define PLANS_BUFFER_SIZE 8 
-
-#define READ_INT16(buff, position) (((int16_t)buff[position]) << 8) + buff[position + 1]
-#define READ_UINT16(buff, position) (((uint16_t)buff[position]) << 8) + buff[position + 1]
+#define PLAN_SIZE 8 
+#define INSTRUCTION_SIZE (1+PLAN_SIZE*4+2+1) 
+#define BUFFERED_INSTRUCTION_COUNT 8
+#define STEPPER_COUNT 2
 
 byte STEP_CLK_PIN1 = 8;
 byte STEP_DIR_PIN1 = 9;
@@ -13,18 +12,30 @@ byte STEP_DIR_PIN1 = 9;
 byte STEP_CLK_PIN2 = 10;
 byte STEP_DIR_PIN2 = 11;
 
+//Buffer used in form of INSTRUCTION_SIZE segments which are filled with Serial data.
+byte INSTRUCTION_BUFFER[INSTRUCTION_SIZE*BUFFERED_INSTRUCTION_COUNT] = { 0 };
 
-Plan** PLANS_BUFFER[PLANS_BUFFER_SIZE] = { NULL }; //here buffered plans will be stored
-byte ARRIVAL_BUFFER[INSTRUCTION_SIZE] = { NULL };
-byte NEXT_PLAN_INDEX = 0; //index to next plan that will be scheduled
-byte ARRIVAL_PLAN_INDEX = 0; //index where new plan can arrive
-byte ARRIVAL_BUFFER_INDEX = 0; //index to arrival buffer
+//Index where next instruction segment will contain plan instruction.
+byte INSTRUCTION_BUFFER_LAST_INDEX = 0;
+//Index to a segment where data are actually written.
+byte INSTRUCTION_BUFFER_ARRIVAL_INDEX = 0;
+//Absolute offset to actually written segment.
+byte INSTRUCTION_BUFFER_ARRIVAL_OFFSET = 0;
+//Offset within actually written instruction segment.
+byte SEGMENT_ARRIVAL_OFFSET = 0;
+
+//Time where last byte has arrived (is used for incomplete message recoveries).
 unsigned long LAST_BYTE_ARRIVAL_TIME = 0;
-Plan** EXECUTED_PLANS = NULL;
+//Currently executed plan group.
+Plan** EXECUTED_PLAN_GROUP = NULL;
 
-byte clkPins[2] = { STEP_CLK_PIN1, STEP_CLK_PIN2 };
-byte dirPins[2] = { STEP_DIR_PIN1, STEP_DIR_PIN2 };
-StepperGroup group1 = StepperGroup(2, clkPins, dirPins);
+// ===ACTUAL HARDWARE SETTINGS===
+byte clkPins[STEPPER_COUNT] = { STEP_CLK_PIN1, STEP_CLK_PIN2 };
+byte dirPins[STEPPER_COUNT] = { STEP_DIR_PIN1, STEP_DIR_PIN2 };
+StepperGroup group1 = StepperGroup(STEPPER_COUNT, clkPins, dirPins);
+Plan* accelerationGroup[STEPPER_COUNT] = { new AccelerationPlan(0,0,0), new AccelerationPlan(0,0,0) };
+Plan* constantGroup[STEPPER_COUNT] = { new ConstantPlan(0,0,0,0), new ConstantPlan(0,0,0,0) };
+
 
 void setup() {
 	Serial.begin(128000);
@@ -45,40 +56,33 @@ void setup() {
 }
 
 void loop() {
-
-	/*Plan** plans = new Plan*[1]{
-		new ConstantPlan(400, 2 * 350, 0, 0)
-	};
-	Steppers::runPlanning(group1, plans);
-
-	delay(5000);
-	return;*/
 	for (;;) {
-		if (EXECUTED_PLANS == NULL)
-			tryToFetchNextPlans();
+		tryToFetchNextPlans();
 
-		if (EXECUTED_PLANS != NULL) {
-			if (!Steppers::fillSchedule(group1, EXECUTED_PLANS)) {
+		if (EXECUTED_PLAN_GROUP != NULL) {
+			if (!Steppers::fillSchedule(group1, EXECUTED_PLAN_GROUP)) {
 				// executed plans were finished
 				Serial.print('F');
-				freeFinishedPlans();
+				EXECUTED_PLAN_GROUP = NULL; //the used group can be recycled 				
+				INSTRUCTION_BUFFER_LAST_INDEX = boundedIncrement(INSTRUCTION_BUFFER_LAST_INDEX, BUFFERED_INSTRUCTION_COUNT);
 				continue;
 			}
 		}
 
 		//serial communication handling
-		if (ARRIVAL_BUFFER_INDEX == INSTRUCTION_SIZE) {
+		if (SEGMENT_ARRIVAL_OFFSET == INSTRUCTION_SIZE) {
 			//we received an instrution - do processing
 			processControllerInstruction();
 		}
 		else if (Serial.available()) {
 			//new data byte arrived
-			ARRIVAL_BUFFER[ARRIVAL_BUFFER_INDEX++] = (byte)Serial.read();
+			INSTRUCTION_BUFFER[INSTRUCTION_BUFFER_ARRIVAL_OFFSET + SEGMENT_ARRIVAL_OFFSET] = (byte)Serial.read();
+			SEGMENT_ARRIVAL_OFFSET = boundedIncrement(SEGMENT_ARRIVAL_OFFSET, INSTRUCTION_SIZE);
 			LAST_BYTE_ARRIVAL_TIME = millis();
 		}
-		else if (ARRIVAL_BUFFER_INDEX > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 200) {
-			//we are interested in consequent messages only
-			ARRIVAL_BUFFER_INDEX = 0;
+		else if (SEGMENT_ARRIVAL_OFFSET > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 2) {
+			//there may be some incomplete message - we cant wait more
+			SEGMENT_ARRIVAL_OFFSET = 0;
 			Serial.print('E'); //incomplete message erased			
 		}
 	}
@@ -86,16 +90,16 @@ void loop() {
 
 // Processes buffer with instruction from controller - return false on invalid instruction
 inline bool processControllerInstruction() {
-	const byte* buffer = ARRIVAL_BUFFER;
-	ARRIVAL_BUFFER_INDEX = 0;
+	const byte* buffer = INSTRUCTION_BUFFER + INSTRUCTION_BUFFER_ARRIVAL_OFFSET;
+	SEGMENT_ARRIVAL_OFFSET = 0;
 
 
 	uint16_t checksum = 0;
 	for (int i = 0; i < INSTRUCTION_SIZE - 2; ++i) {
-		checksum += ARRIVAL_BUFFER[i];
+		checksum += buffer[i];
 	}
 
-	uint16_t receivedChecksum = READ_UINT16(ARRIVAL_BUFFER, INSTRUCTION_SIZE - 2);
+	uint16_t receivedChecksum = READ_UINT16(buffer, INSTRUCTION_SIZE - 2);
 	if (receivedChecksum != checksum) {
 		//we received invalid instruction
 		Serial.print('C'); //invalid checksum
@@ -106,12 +110,19 @@ inline bool processControllerInstruction() {
 	byte command = buffer[0];
 	switch (command)
 	{
-	case 'A':
-		//acceleration plan arrived
-		return tryAcceptAcceleration(buffer + 1);
-	case 'C':
-		//constant plan arrived
-		return tryAcceptConstantPlan(buffer + 1);
+	case 'A': //acceleration plan arrived
+	case 'C': //constant plan arrived		
+		if (!canAddPlan()) {
+			//there is no more space for keeping the plan
+			sendPlanOverflow();
+			return false;
+		}
+
+		sendPlanAccepted();
+		//shift the arrival index to the next one
+		boundedIncrement(INSTRUCTION_BUFFER_ARRIVAL_INDEX, BUFFERED_INSTRUCTION_COUNT);
+		INSTRUCTION_BUFFER_ARRIVAL_OFFSET = INSTRUCTION_BUFFER_ARRIVAL_INDEX*INSTRUCTION_SIZE;
+		return true;
 	case 'I':
 		//welcome message
 		melody();
@@ -124,60 +135,8 @@ inline bool processControllerInstruction() {
 }
 
 bool canAddPlan() {
-	return PLANS_BUFFER[ARRIVAL_PLAN_INDEX] == NULL;
-}
-
-bool tryAcceptAcceleration(const byte* buffer) {
-	if (!canAddPlan())
-	{
-		sendPlanOverflow();
-		return false;
-	}
-	else {
-		sendPlanAccepted();
-	}
-
-	AccelerationPlan* plan1 = createAccelerationPlan(buffer);
-	AccelerationPlan* plan2 = createAccelerationPlan(buffer + 6);
-	PLANS_BUFFER[ARRIVAL_PLAN_INDEX++] = new Plan*[2]{ plan1, plan2 };
-	ARRIVAL_PLAN_INDEX = ARRIVAL_PLAN_INDEX % PLANS_BUFFER_SIZE;
-
-	return true;
-}
-
-AccelerationPlan* createAccelerationPlan(const byte* buffer) {
-	int16_t stepCount = READ_INT16(buffer, 0);
-	uint16_t initialDeltaT = READ_UINT16(buffer, 2);
-	int16_t n = READ_INT16(buffer, 2 + 2);
-
-	return new AccelerationPlan(stepCount, initialDeltaT, n);
-}
-
-bool tryAcceptConstantPlan(const byte* buffer) {
-	if (!canAddPlan())
-	{
-		sendPlanOverflow();
-		return false;
-	}
-	else {
-		sendPlanAccepted();
-	}
-
-	ConstantPlan* plan1 = createConstantPlan(buffer);
-	ConstantPlan* plan2 = createConstantPlan(buffer + 8);
-
-	PLANS_BUFFER[ARRIVAL_PLAN_INDEX++] = new Plan*[2]{ plan1, plan2 };
-	ARRIVAL_PLAN_INDEX = ARRIVAL_PLAN_INDEX % PLANS_BUFFER_SIZE;
-	return true;
-}
-
-ConstantPlan* createConstantPlan(const byte* buffer) {
-	int16_t stepCount = READ_INT16(buffer, 0);
-	uint16_t baseDeltaT = READ_UINT16(buffer, 2);
-	uint16_t periodNumerator = READ_UINT16(buffer, 2 + 2);
-	uint16_t periodDenominator = READ_UINT16(buffer, 2 + 2 + 2);
-
-	return new ConstantPlan(stepCount, baseDeltaT, periodNumerator, periodDenominator);
+	//we have to keep at least one instruction segment free for interactive instructions
+	return boundedIncrement(INSTRUCTION_BUFFER_ARRIVAL_INDEX, BUFFERED_INSTRUCTION_COUNT) == INSTRUCTION_BUFFER_LAST_INDEX;
 }
 
 void sendPlanOverflow() {
@@ -188,25 +147,44 @@ void sendPlanAccepted() {
 	Serial.print('Y');
 }
 
-inline void freeFinishedPlans() {
-	//free memory
-	for (int i = 0; i < group1.StepperCount; ++i) {
-		delete EXECUTED_PLANS[i];
-	}
-
-	delete EXECUTED_PLANS;
-	EXECUTED_PLANS = NULL;
-}
-
 void tryToFetchNextPlans() {
-	if (PLANS_BUFFER[NEXT_PLAN_INDEX] == NULL)
+	if (INSTRUCTION_BUFFER_LAST_INDEX != INSTRUCTION_BUFFER_ARRIVAL_INDEX)
 		//no more plans available
 		return;
 
-	EXECUTED_PLANS = PLANS_BUFFER[NEXT_PLAN_INDEX];
-	PLANS_BUFFER[NEXT_PLAN_INDEX] = NULL;
-	NEXT_PLAN_INDEX = (NEXT_PLAN_INDEX + 1) % PLANS_BUFFER_SIZE;
-	Steppers::initPlanning(group1, EXECUTED_PLANS);
+	byte* buffer = 1 + INSTRUCTION_BUFFER + INSTRUCTION_BUFFER_LAST_INDEX*INSTRUCTION_SIZE;
+	switch (buffer[-1]) {
+	case 'A': {
+		for (int i = 0; i < STEPPER_COUNT; ++i) {
+			accelerationGroup[i]->loadFrom(buffer);
+			buffer += PLAN_SIZE;
+		}
+		EXECUTED_PLAN_GROUP = accelerationGroup;
+		break;
+	}
+	case 'C': {
+		for (int i = 0; i < STEPPER_COUNT; ++i) {
+			constantGroup[i]->loadFrom(buffer);
+			buffer += PLAN_SIZE;
+		}
+		EXECUTED_PLAN_GROUP = constantGroup;
+		break;
+	}
+	default:
+		//This should never happend - continuation would cause undefined behaviour
+		//so we rather block here.
+		for (;;)Serial.print('U');
+		break;
+	}
+
+	Steppers::initPlanning(group1, EXECUTED_PLAN_GROUP);
+}
+
+inline byte boundedIncrement(const byte valueToIncrement, const byte exclusiveBoundary) {
+	if (valueToIncrement + 1 >= exclusiveBoundary)
+		return 0;
+
+	return valueToIncrement + 1;
 }
 
 
