@@ -17,47 +17,22 @@ byte SCHEDULE_ACTIVATIONS[SCHEDULE_BUFFER_LEN + 1];
 // cumulative activation with state up to lastly scheduled activation
 byte CUMULATIVE_SCHEDULE_ACTIVATION = 0;
 
-// determine whether schedule has next activations available
-volatile bool HAS_NEXT_ACTIVATIONS = true;
 // pointer where new timing will be stored
 volatile byte SCHEDULE_START = 0;
 // pointer where scheduler is actually reading
 volatile byte SCHEDULE_END = 0;
-// the precomputed time for scheduler's next turn
-volatile uint16_t NEXT_SCHEDULED_TIME = 0;
-// activations precomputed for next scheduler's turn
-volatile byte NEXT_SCHEDULED_ACTIVATIONS = 0;
-// activations for current scheduler's turn
-volatile byte CURRENT_SCHEDULED_ACTIVATIONS = 0;
 
 //TODO load this during initialization
 volatile byte ACTIVATIONS_CLOCK_MASK = 1 + 4;
 
 ISR(TIMER1_OVF_vect) {
-	TCNT1 = NEXT_SCHEDULED_TIME;
+	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
 
 	//pins go LOW here (pulse start)
-	//PORTB = CURRENT_SCHEDULED_ACTIVATIONS & ~ACTIVATIONS_CLOCK_MASK;
-	//delayMicroseconds(10);
-	PORTB = CURRENT_SCHEDULED_ACTIVATIONS;
-
-	CURRENT_SCHEDULED_ACTIVATIONS = NEXT_SCHEDULED_ACTIVATIONS;
+	PORTB = SCHEDULE_BUFFER[SCHEDULE_END++];
 	if (SCHEDULE_START == SCHEDULE_END) {
-		if (HAS_NEXT_ACTIVATIONS) {
-			//one step still remains in current scheduled activations
-			HAS_NEXT_ACTIVATIONS = false;
-			NEXT_SCHEDULED_TIME = 0;
-		}
-		else {
-			// we have schedule stream end
-			// stop scheduling after this step
-			TIMSK1 = 0;
-		}
-	}
-	else {
-		NEXT_SCHEDULED_TIME = SCHEDULE_BUFFER[SCHEDULE_END];
-		NEXT_SCHEDULED_ACTIVATIONS = SCHEDULE_ACTIVATIONS[SCHEDULE_END++];
-		HAS_NEXT_ACTIVATIONS = true;
+		//we are at schedule end
+		TIMSK1 = 0;
 	}
 	//pins go HIGH here (pulse end)
 	PORTB |= ACTIVATIONS_CLOCK_MASK;
@@ -74,14 +49,10 @@ bool Steppers::startScheduler() {
 		//schedule is empty - no point in schedule enabling
 		return false;
 
-	CURRENT_SCHEDULED_ACTIVATIONS = PORTB; //we won't change activations by first iteration
-	NEXT_SCHEDULED_TIME = SCHEDULE_BUFFER[SCHEDULE_END];
-	NEXT_SCHEDULED_ACTIVATIONS = SCHEDULE_ACTIVATIONS[SCHEDULE_END++];
-	HAS_NEXT_ACTIVATIONS = true;
 
 	Serial.print('S'); //enabling scheduler
 
-	TCNT1 = 65535; //wake up scheduler as early as possible
+	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END++];
 	TIMSK1 = (1 << TOIE1); //enable scheduler
 
 	return false;
@@ -168,7 +139,9 @@ inline bool Steppers::fillSchedule(StepperGroup & group, Plan ** plans)
 		}
 
 		SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestActivationTime;
-		SCHEDULE_ACTIVATIONS[SCHEDULE_START++] = CUMULATIVE_SCHEDULE_ACTIVATION;
+		SCHEDULE_ACTIVATIONS[SCHEDULE_START + 1] = CUMULATIVE_SCHEDULE_ACTIVATION;
+		//we can shift the start after activation is properly saved to array
+		++SCHEDULE_START;
 
 		/*/Serial.print("| t:");
 		Serial.print(earliestActivationTime);
