@@ -26,15 +26,12 @@ byte SEGMENT_ARRIVAL_OFFSET = 0;
 
 //Time where last byte has arrived (is used for incomplete message recoveries).
 unsigned long LAST_BYTE_ARRIVAL_TIME = 0;
-//Currently executed plan group.
-Plan** EXECUTED_PLAN_GROUP = NULL;
 
-// ===ACTUAL HARDWARE SETTINGS===
-byte clkPins[STEPPER_COUNT] = { STEP_CLK_PIN1, STEP_CLK_PIN2 };
-byte dirPins[STEPPER_COUNT] = { STEP_DIR_PIN1, STEP_DIR_PIN2 };
-StepperGroup group1 = StepperGroup(STEPPER_COUNT, clkPins, dirPins);
-Plan* accelerationGroup[STEPPER_COUNT] = { new AccelerationPlan(0,0,0), new AccelerationPlan(0,0,0) };
-Plan* constantGroup[STEPPER_COUNT] = { new ConstantPlan(0,0,0,0), new ConstantPlan(0,0,0,0) };
+bool enableConstantSchedule = false;
+PlanScheduler2D<ConstantPlan> CONSTANT_SCHEDULER(STEP_CLK_PIN1, STEP_DIR_PIN1, STEP_CLK_PIN2, STEP_DIR_PIN2);
+
+bool enableAccelerationSchedule = false;
+PlanScheduler2D<AccelerationPlan> ACCELERATION_SCHEDULER(STEP_CLK_PIN1, STEP_DIR_PIN1, STEP_CLK_PIN2, STEP_DIR_PIN2);
 
 
 void setup() {
@@ -59,14 +56,17 @@ void loop() {
 	for (;;) {
 		tryToFetchNextPlans();
 
-		if (EXECUTED_PLAN_GROUP != NULL) {
-			if (!Steppers::fillSchedule(group1, EXECUTED_PLAN_GROUP)) {
-				// executed plans were finished
-				Serial.print('F');
-				EXECUTED_PLAN_GROUP = NULL; //the used group can be recycled 				
-				INSTRUCTION_BUFFER_LAST_INDEX = boundedIncrement(INSTRUCTION_BUFFER_LAST_INDEX, BUFFERED_INSTRUCTION_COUNT);
-				continue;
-			}
+		bool isPlanFinished = false;
+		if (enableConstantSchedule)
+			isPlanFinished = !CONSTANT_SCHEDULER.fillSchedule();
+		else if (enableAccelerationSchedule)
+			isPlanFinished = !ACCELERATION_SCHEDULER.fillSchedule();
+
+		if (isPlanFinished) {
+			// executed plans were finished
+			Serial.print('F');
+			INSTRUCTION_BUFFER_LAST_INDEX = boundedIncrement(INSTRUCTION_BUFFER_LAST_INDEX, BUFFERED_INSTRUCTION_COUNT);
+			continue;
 		}
 
 		//serial communication handling
@@ -155,19 +155,13 @@ void tryToFetchNextPlans() {
 	byte* buffer = 1 + INSTRUCTION_BUFFER + INSTRUCTION_BUFFER_LAST_INDEX*INSTRUCTION_SIZE;
 	switch (buffer[-1]) {
 	case 'A': {
-		for (int i = 0; i < STEPPER_COUNT; ++i) {
-			accelerationGroup[i]->loadFrom(buffer);
-			buffer += PLAN_SIZE;
-		}
-		EXECUTED_PLAN_GROUP = accelerationGroup;
+		enableAccelerationSchedule = true;
+		ACCELERATION_SCHEDULER.initFrom(buffer);
 		break;
 	}
 	case 'C': {
-		for (int i = 0; i < STEPPER_COUNT; ++i) {
-			constantGroup[i]->loadFrom(buffer);
-			buffer += PLAN_SIZE;
-		}
-		EXECUTED_PLAN_GROUP = constantGroup;
+		enableAccelerationSchedule = true;
+		CONSTANT_SCHEDULER.initFrom(buffer);
 		break;
 	}
 	default:
@@ -176,8 +170,6 @@ void tryToFetchNextPlans() {
 		for (;;)Serial.print('U');
 		break;
 	}
-
-	Steppers::initPlanning(group1, EXECUTED_PLAN_GROUP);
 }
 
 inline byte boundedIncrement(const byte valueToIncrement, const byte exclusiveBoundary) {

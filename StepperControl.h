@@ -20,8 +20,8 @@ Editor:	http://www.visualmicro.com
 #endif
 
 
-#define READ_INT16(buff, position) (((int16_t)buff[position]) << 8) + buff[position + 1]
-#define READ_UINT16(buff, position) (((uint16_t)buff[position]) << 8) + buff[position + 1]
+#define READ_INT16(buff, position) (((int16_t)buff[(position)]) << 8) + buff[(position) + 1]
+#define READ_UINT16(buff, position) (((uint16_t)buff[(position)]) << 8) + buff[(position) + 1]
 
 #define MAX_ACCELERATION 200 //rev/s^2
 #define START_DELTA_T 350 //us
@@ -30,137 +30,205 @@ Editor:	http://www.visualmicro.com
 #define TIMESCALE 1000000 //us
 #define CLIP_D(delta) max(MIN_DELTA_T,min(START_DELTA_T,delta))
 
-class Steppers;
-class StepperGroup;
+//transforms pin to PORTB mask
+#define PIN_TO_MASK(pinB)  (1 << (pinB - 8))
+
+// how long (on 0.5us scale)
+//	* before pulse the dir has to be specified 
+//  * after pulse start pulse end has to be specified
+// KEEPING BOTH VALUES SAME enables computation optimization
+#define PORT_CHANGE_DELAY 5*2
+
+// length of the schedule buffer (CANNOT be changed easily - it counts on byte overflows)
+#define SCHEDULE_BUFFER_LEN 256
+
+// buffer for step signal timing
+extern uint16_t SCHEDULE_BUFFER[];
+// bitwise activation mask for step signals (selecting active ports)
+extern byte SCHEDULE_ACTIVATIONS[];
+
+// pointer where new timing will be stored
+extern volatile byte SCHEDULE_START;
+// pointer where scheduler is actually reading
+extern volatile byte SCHEDULE_END;
+// cumulative activation with state up to lastly scheduled activation
+extern byte CUMULATIVE_SCHEDULE_ACTIVATION;
+//TODO load this during initialization
+extern volatile byte ACTIVATIONS_CLOCK_MASK;
 
 class Plan {
-	friend Steppers;
 public:
-	Plan(int32_t stepCount);
-
-	// Loads plan from given data.
-	inline virtual void loadFrom(byte* buffer) = 0;
-
-protected:
-	// Determine whether plan is still active.
-	// Is managed by the planner.
-	bool _isActive;
-
-	// Determine whether pulsing should be skipped for next activation.
-	// Waiting cycles.
-	bool _skipNextActivation;
-
-	// Direction of the next step to be made.
-	bool _nextStepDirection;
+	// Time of next scheduled activation
+	uint16_t nextActivationTime;
 
 	// How many steps remains to do with this plan.
-	uint16_t _remainingSteps;
+	uint16_t remainingSteps;
 
-	// Time of next schedule of the plan. 
-	// Is managed by the planner.
-	uint16_t _nextActivationTime;
+	// Determine whether plan is still active.
+	bool isActive;
 
-	// Outputs next step time (in 0.5us resolution) of the plan - zero means end of the plan.
-	inline virtual void _createNextActivation() = 0;
+	Plan(byte clkPin, byte dirPin);
 
-	// Time when next pulse deactivation will be sent.
-	// IS MANAGED BY THE PLANNER - it is set after pulse is made.
-	int8_t _nextDeactivationTime;
-};
+	// Mask for clock port.
+	const byte clkMask;
+	// Mask for dir port.
+	const byte dirMask;
 
-class AccelerationPlan : public Plan {
-public:
-	AccelerationPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n);
-
-	void loadFrom(byte* buffer);
-
-protected:
-
-	// determine whether plan corresponds to deceleration
-	bool _isDeceleration;
-
-	// current n parameter of Taylor incremental acceleration formula
-	uint32_t _current2N;
-
-	// buffer for remainder accumulation
-	uint32_t _currentDeltaTBuffer;
-
-	// current deltaT which is used
-	uint16_t _currentDeltaT;
-
-	virtual void _createNextActivation();
+	// OR Mask which is used for enhancing step activations about direction.
+	byte stepMask;
 };
 
 class ConstantPlan : public Plan {
 public:
-	ConstantPlan(int16_t stepCount, uint16_t baseDeltaT, uint16_t periodNumerator, uint16_t periodDenominator);
+	// How much data is required for load
+	static const byte dataSize = 8;
 
-	void loadFrom(byte* buffer);
+	ConstantPlan(byte clkPin, byte dirPin);
 
-protected:
-	uint16_t _baseDeltaT;
+	// Loads plan from given data.
+	void loadFrom(byte* data);
 
-	uint16_t _periodNumerator;
-
-	uint16_t _periodDenominator;
-
-	uint32_t _periodAccumulator;
-
-	virtual void _createNextActivation();
-};
-
-class StepperGroup {
-	friend Steppers;
-public:
-	//How many steppers is contained by the group
-	const byte StepperCount;
-
-	// Creates group with specified number of steppers.
-	StepperGroup(byte stepperCount, byte clockPins[], byte dirPins[]);
+	// Creates next activation.
+	void createNextActivation();
 
 private:
+	// Base deltaT for step rate.
+	uint16_t _baseDeltaT;
+	// Period numerator for delay remainder displacement.
+	uint16_t _periodNumerator;
+	//Period denominator for delay remainder displacement.
+	uint16_t _periodDenominator;
+	//Period accumulator for remainder displacement.
+	uint32_t _periodAccumulator;
+};
 
-	//port masks for clock (only PORTB is supported)
-	byte* _clockBports;
+class AccelerationPlan : public Plan {
+public:
+	// How much data is required for load.
+	static const byte dataSize = 6;
 
-	//pinout masks for direction (only PORTB is supported)
-	byte* _dirBports;
+	AccelerationPlan(byte clkPin, byte dirPin);
+
+	// Loads plan from given data.
+	void loadFrom(byte* data);
+
+	// Creates next activation.
+	void createNextActivation();
+protected:
+	// determine whether plan corresponds to deceleration
+	bool _isDeceleration;
+	// current n parameter of Taylor incremental acceleration formula
+	uint32_t _current2N;
+	// buffer for remainder accumulation
+	uint32_t _currentDeltaTBuffer;
+	// current deltaT which is used
+	uint16_t _currentDeltaT;
 };
 
 class Steppers {
-
 public:
 	// Initialize registered steppers - no new steppers can be created afterewards.
 	static void initialize();
 
-	// Routine that runs given plans on the group of steppers.
-	// Plans and containing array are DESTROYED by this method.
-	static void runPlanning(StepperGroup& group, Plan** plans);
-
-	//---------MORE GRANULAR PLANNING CONTROL---------
-	// The following API is exposed to do async work during planning
-	//
-	// initPlanning(...);  
-	// while(fillSchedule(...));
-	// delete [plans and every contained plan];
-	//
-	// is equivalent to runPlanning(...);
-
-	// Has to be called before calling fillSchedulle()
-	static void initPlanning(StepperGroup& group, Plan** plans);
-
-	// Fills schedule buffer with given plans (and ensures scheduler is enabled along the way). Returns false if plans are complete.
-	static bool fillSchedule(StepperGroup& group, Plan** plans);
-
-	// Directly fills schedule buffer.
-	static void directScheduleFill(byte* activations, int16_t* timing, int count);
-
 	// Starts scheduler.
 	static bool startScheduler();
 private:
-	// Determine whether all routines are initialized.
-	static bool _is_initialized;
+	// Determine whether steppers environment is initialized.
+	static bool _isInitialized;
 };
+
+
+template<typename PlanType> class PlanScheduler2D {
+public:
+	PlanScheduler2D(byte clkPin1, byte dirPin1, byte clkPin2, byte dirPin2)
+		:_d1(clkPin1, dirPin1), _d2(clkPin2, dirPin2)
+	{
+	}
+
+	// loads plan from given data
+	void initFrom(byte * data)
+	{
+		this->_d1.loadFrom(data);
+		this->_d2.loadFrom(data + _d1.dataSize);
+
+		this->_d1.createNextActivation();
+		this->_d2.createNextActivation();
+	}
+
+	inline void triggerPlan(PlanType& plan, uint16_t nextActivationTime) {
+		if (!plan.isActive)
+			//there is nothing to do
+			return;
+
+		plan.nextActivationTime -= nextActivationTime;
+
+		if (plan.nextActivationTime != 0)
+			//no steps for the plan now
+			return;
+
+		// make the appropriate pin LOW
+		CUMULATIVE_SCHEDULE_ACTIVATION &= ~(plan.clkMask);
+		//include direction information
+		CUMULATIVE_SCHEDULE_ACTIVATION |= plan.stepMask;
+
+		//compute next activation
+		plan.createNextActivation();
+	}
+
+	// fills schedule buffer with plan data
+	// returns true when buffer is full (temporarly), false when plan is over
+	bool fillSchedule() {
+		for (;;) {
+			//find earliest plan
+			uint16_t earliestActivationTime = min(_d1.nextActivationTime, _d2.nextActivationTime);
+
+			CUMULATIVE_SCHEDULE_ACTIVATION |= ACTIVATIONS_CLOCK_MASK;
+
+			//subtract earliest plan other plans		
+			triggerPlan(_d1, earliestActivationTime);
+			triggerPlan(_d2, earliestActivationTime);
+
+
+
+			if (!_d1.isActive && !_d2.isActive)
+				//there is not any active plan - finish
+				break;
+
+			//schedule
+			while ((byte)(SCHEDULE_START + 1) == SCHEDULE_END) {
+				//wait until schedule buffer has empty space
+				Steppers::startScheduler();
+			}
+
+			SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestActivationTime;
+			SCHEDULE_ACTIVATIONS[SCHEDULE_START + 1] = CUMULATIVE_SCHEDULE_ACTIVATION;
+			//we can shift the start after activation is properly saved to array
+			++SCHEDULE_START;
+
+			/*/Serial.print("| t:");
+			Serial.print(earliestActivationTime);
+			Serial.print(", a:");
+			Serial.println(CUMULATIVE_SCHEDULE_ACTIVATION);//*/
+
+			if ((byte)(SCHEDULE_START + 1) == SCHEDULE_END)
+				//we have free time
+				return true;
+		}
+		Steppers::startScheduler();
+		return false;
+	}
+private:
+	// data for the first dimension
+	PlanType _d1;
+
+	//data for the second dimension
+	PlanType _d2;
+};
+
+
+
+
+
 
 
 #endif
