@@ -9,6 +9,7 @@
                 <Button Height="50" Width="100" Content="Interrupted rev." HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_1"/>
                 <Button Height="50" Width="100" Content="Back and forward" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2"/>
                 <Button Height="50" Width="100" Content="Motor 1 + 2" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_3"/>
+                <TextBox Height="50" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Status" TextWrapping="Wrap" />
             </StackPanel>
             <TextBox Height="150" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Output" TextWrapping="Wrap" />
             
@@ -23,7 +24,11 @@
                                 <ScaleTransform ScaleX="2" ScaleY="2" />
                             </CheckBox.LayoutTransform>
                         </CheckBox>
-
+                        <CheckBox VerticalAlignment="Center" IsChecked="False" Name="IsReversed" RenderTransformOrigin="1.25,1" Unchecked="IsReversed_Unchecked" Checked="IsReversed_Unchecked">
+                            <CheckBox.LayoutTransform>
+                                <ScaleTransform ScaleX="2" ScaleY="2" />
+                            </CheckBox.LayoutTransform>
+                        </CheckBox>
                     </StackPanel>
 
                     <Slider Name="Speed" IsSnapToTickEnabled="False" Maximum="4500" Value="400" Minimum="15" VerticalAlignment="Top" ValueChanged="Slider_ValueChanged"/>

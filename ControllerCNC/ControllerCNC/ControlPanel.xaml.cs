@@ -28,6 +28,7 @@ namespace ControllerCNC
     {
         DriverCNC _driver;
         DispatcherTimer _positionTimer = new DispatcherTimer();
+        DispatcherTimer _statusTimer = new DispatcherTimer();
         SpeedController _speedController;
         PositionController _positionController;
 
@@ -39,9 +40,7 @@ namespace ControllerCNC
             System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
             myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;
 
-            _positionTimer.Interval = new TimeSpan(1 * 10 * 1000);
-            _positionTimer.IsEnabled = false;
-            _positionTimer.Tick += _positionTimer_Tick;
+
 
             Output.ScrollToEnd();
 
@@ -51,6 +50,19 @@ namespace ControllerCNC
 
             _positionController = new PositionController(_driver);
             _speedController = new SpeedController(_driver);
+
+            _positionTimer.Interval = new TimeSpan(1 * 10 * 1000);
+            _positionTimer.Tick += _positionTimer_Tick;
+            _positionTimer.IsEnabled = false;
+
+            _statusTimer.Interval = new TimeSpan(100 * 10 * 1000);
+            _statusTimer.Tick += _statusTimer_Tick;
+            _statusTimer.IsEnabled = true;
+        }
+
+        void _statusTimer_Tick(object sender, EventArgs e)
+        {
+            Status.Text = "Incomplete: " + _driver.IncompletePlanCount;
         }
 
         void _positionTimer_Tick(object sender, EventArgs e)
@@ -98,8 +110,8 @@ C(-1,3535,0,0)
              */
 
 
-           // _driver.SEND_Constant(2, 65000, 0, 1);
-           // _driver.SEND_Constant(-2, 65000, 0, 1);
+            // _driver.SEND_Constant(2, 65000, 0, 1);
+            // _driver.SEND_Constant(-2, 65000, 0, 1);
 
             var overShoot = 100;
             var segmentation = 4;
@@ -111,7 +123,7 @@ C(-1,3535,0,0)
                 //_positionController.SetPosition(i * segmentation + overShoot + segmentation);
             }
         }
-        
+
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
             _driver.StepperIndex = 2;
@@ -129,7 +141,10 @@ C(-1,3535,0,0)
         {
             _speedController.Stop();
         }
-
+        private void IsReversed_Unchecked(object sender, RoutedEventArgs e)
+        {
+            _speedController.Direction = !_speedController.Direction;
+        }
         private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (_speedController == null)
@@ -157,5 +172,7 @@ C(-1,3535,0,0)
             var steps = (int)Position.Value;
             StepDisplay.Text = steps.ToString();
         }
-}
+
+
+    }
 }

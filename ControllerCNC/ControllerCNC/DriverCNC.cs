@@ -72,7 +72,7 @@ namespace ControllerCNC
         /// <summary>
         /// Buffer for instruction which is currently construted.
         /// </summary>
-        private readonly List<byte> _constructedInstruction=new List<byte>();
+        private readonly List<byte> _constructedInstruction = new List<byte>();
 
         /// <summary>
         /// Lock for send queue synchornization.
@@ -129,6 +129,7 @@ namespace ControllerCNC
 
             _communicationWorker = new Thread(SERIAL_worker);
             _communicationWorker.IsBackground = true;
+            _communicationWorker.Priority = ThreadPriority.Highest;
 
             _communicationWorker.Start();
         }
@@ -190,15 +191,13 @@ namespace ControllerCNC
                         //scheduler was enabled
                         break;
                     case 'E':
-                        //throw new NotImplementedException("Incomplete message erased");
-                        break;
+                        throw new NotImplementedException("Incomplete message erased");
                     case '|':
                         _isCommentEnabled = true;
                         break;
 
                     default:
-                        //throw new NotImplementedException();
-                        break;
+                        throw new NotImplementedException();
                 }
             }
 
@@ -261,13 +260,12 @@ namespace ControllerCNC
 
         public void SEND_Transition(int stepCount, int startDeltaT, int targetDeltaT, int endDeltaT)
         {
-            if (stepCount > Int16.MaxValue || stepCount < Int16.MinValue || startDeltaT > UInt16.MaxValue || targetDeltaT > UInt16.MaxValue || endDeltaT > UInt16.MaxValue)
+            if (startDeltaT > UInt16.MaxValue || targetDeltaT > UInt16.MaxValue || endDeltaT > UInt16.MaxValue)
                 throw new NotImplementedException("split");
 
             if (startDeltaT < 1 || targetDeltaT < 1 || endDeltaT < 1)
                 throw new NotSupportedException();
 
-            var stepCountI = (Int16)stepCount;
             var startDeltaTI = (UInt16)startDeltaT;
             var targetDeltaTI = (UInt16)targetDeltaT;
             var endDeltaTI = (UInt16)endDeltaT;
@@ -291,7 +289,7 @@ namespace ControllerCNC
                 SEND(acceleration2);
         }
 
-        public Int16 GetStepSlice(long steps, Int16 maxSize = 10000)
+        public Int16 GetStepSlice(long steps, Int16 maxSize = 30000)
         {
             maxSize = Math.Abs(maxSize);
             if (steps > 0)

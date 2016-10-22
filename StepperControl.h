@@ -141,7 +141,7 @@ private:
 template<typename PlanType> class PlanScheduler2D {
 public:
 	PlanScheduler2D(byte clkPin1, byte dirPin1, byte clkPin2, byte dirPin2)
-		:_d1(clkPin1, dirPin1), _d2(clkPin2, dirPin2)
+		:_d1(clkPin1, dirPin1), _d2(clkPin2, dirPin2), _needInit(false)
 	{
 	}
 
@@ -153,6 +153,7 @@ public:
 
 		this->_d1.createNextActivation();
 		this->_d2.createNextActivation();
+		this->_needInit = true;
 	}
 
 	inline void triggerPlan(PlanType& plan, uint16_t nextActivationTime) {
@@ -161,6 +162,7 @@ public:
 			return;
 
 		plan.nextActivationTime -= nextActivationTime;
+		//TODO handle direction better
 
 		if (plan.nextActivationTime != 0)
 			//no steps for the plan now
@@ -168,8 +170,6 @@ public:
 
 		// make the appropriate pin LOW
 		CUMULATIVE_SCHEDULE_ACTIVATION &= ~(plan.clkMask);
-		//include direction information
-		CUMULATIVE_SCHEDULE_ACTIVATION |= plan.stepMask;
 
 		//compute next activation
 		plan.createNextActivation();
@@ -178,21 +178,24 @@ public:
 	// fills schedule buffer with plan data
 	// returns true when buffer is full (temporarly), false when plan is over
 	bool fillSchedule() {
-		for (;;) {
+
+		while (_d1.isActive || _d2.isActive) {
 			//find earliest plan
 			uint16_t earliestActivationTime = min(_d1.nextActivationTime, _d2.nextActivationTime);
+			if (_needInit) {
+				earliestActivationTime = PORT_CHANGE_DELAY;
+
+				CUMULATIVE_SCHEDULE_ACTIVATION = ACTIVATIONS_CLOCK_MASK;
+				CUMULATIVE_SCHEDULE_ACTIVATION |= this->_d1.stepMask;
+				CUMULATIVE_SCHEDULE_ACTIVATION |= this->_d2.stepMask;
+				_needInit = false;
+			}
 
 			CUMULATIVE_SCHEDULE_ACTIVATION |= ACTIVATIONS_CLOCK_MASK;
 
 			//subtract earliest plan other plans		
 			triggerPlan(_d1, earliestActivationTime);
 			triggerPlan(_d2, earliestActivationTime);
-
-
-
-			if (!_d1.isActive && !_d2.isActive)
-				//there is not any active plan - finish
-				break;
 
 			//schedule
 			while ((byte)(SCHEDULE_START + 1) == SCHEDULE_END) {
@@ -201,7 +204,7 @@ public:
 			}
 
 			SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestActivationTime;
-			SCHEDULE_ACTIVATIONS[SCHEDULE_START + 1] = CUMULATIVE_SCHEDULE_ACTIVATION;
+			SCHEDULE_ACTIVATIONS[(byte)(SCHEDULE_START + 1)] = CUMULATIVE_SCHEDULE_ACTIVATION;
 			//we can shift the start after activation is properly saved to array
 			++SCHEDULE_START;
 
@@ -223,6 +226,9 @@ private:
 
 	//data for the second dimension
 	PlanType _d2;
+
+	//determine whether initialization is needed
+	bool _needInit;
 };
 
 

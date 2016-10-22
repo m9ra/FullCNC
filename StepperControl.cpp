@@ -14,11 +14,15 @@ ISR(TIMER1_OVF_vect) {
 	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
 
 	//pins go LOW here (pulse start)
-	PORTB = SCHEDULE_BUFFER[SCHEDULE_END++];
+	PORTB = SCHEDULE_ACTIVATIONS[SCHEDULE_END];
 	if (SCHEDULE_START == SCHEDULE_END) {
 		//we are at schedule end
 		TIMSK1 = 0;
 	}
+	else {
+		++SCHEDULE_END;
+	}
+	delayMicroseconds(3);
 	//pins go HIGH here (pulse end)
 	PORTB |= ACTIVATIONS_CLOCK_MASK;
 }
@@ -67,11 +71,13 @@ void AccelerationPlan::loadFrom(byte * data)
 	int16_t n = READ_INT16(data, 2 + 2);
 
 	this->remainingSteps = abs(stepCount);
+	this->isActive = this->remainingSteps > 0;
 	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->nextActivationTime = 0;
 
 	this->_isDeceleration = n < 0;
 	this->_currentDeltaT = initialDeltaT;
-	this->_current2N = abs(2 * n);
+	this->_current2N = ((uint32_t)2) * abs(n);
 	this->_currentDeltaTBuffer = 0;
 
 	if (this->_isDeceleration && abs(n) < stepCount) {
@@ -84,6 +90,7 @@ void AccelerationPlan::createNextActivation()
 {
 	if (this->remainingSteps == 0) {
 		this->isActive = false;
+		this->nextActivationTime = 65535;
 		return;
 	}
 
@@ -98,7 +105,7 @@ void AccelerationPlan::createNextActivation()
 			nextDeltaT += 1;
 		}
 
-		//we increnemnt 2N by 2 to avoid multiplication
+		//we decrement 2N by 2 to avoid multiplication
 		this->_current2N -= 2;
 	}
 	else {
@@ -109,7 +116,7 @@ void AccelerationPlan::createNextActivation()
 			nextDeltaT -= 1;
 		}
 
-		//we increnemnt 2N by 2 to avoid multiplication
+		//we increment 2N by 2 to avoid multiplication
 		this->_current2N += 2;
 	}
 	this->_currentDeltaT = nextDeltaT;
@@ -121,6 +128,7 @@ void ConstantPlan::createNextActivation()
 {
 	if (this->remainingSteps == 0) {
 		this->isActive = false;
+		this->nextActivationTime = 65535;
 		return;
 	}
 
@@ -154,6 +162,8 @@ void ConstantPlan::loadFrom(byte * data)
 
 	this->remainingSteps = abs(stepCount);
 	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->isActive = this->remainingSteps > 0;
+	this->nextActivationTime = 0;
 
 	this->_baseDeltaT = _baseDeltaT;
 	this->_periodNumerator = _periodNumerator;

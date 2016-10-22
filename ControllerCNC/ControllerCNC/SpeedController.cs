@@ -29,6 +29,8 @@ namespace ControllerCNC
 
         private int _plannedTimeTotal = 0;
 
+        public volatile bool Direction;
+
 
         internal SpeedController(DriverCNC cnc)
         {
@@ -68,10 +70,10 @@ namespace ControllerCNC
                 _currentDeltaT = _desiredDeltaT;
 
             var stepCount = (Int16)(Math.Max(2, 20000 / _currentDeltaT));
-
+            var sendStepCount = Direction ? (Int16)(-stepCount) : stepCount;
             //_cnc.StepperIndex = 2;
             //_cnc.SEND_Constant((Int16)(stepCount * 2), (UInt16)(_currentDeltaT / 2), _desiredNumerator, _desiredDenominator);
-            _cnc.SEND_Constant(stepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator);
+            _cnc.SEND_Constant(sendStepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator);
 
             var plannedTime = stepCount * _currentDeltaT;
             _plannedTimeTotal += plannedTime;

@@ -54,7 +54,8 @@ void setup() {
 
 void loop() {
 	for (;;) {
-		tryToFetchNextPlans();
+		if (!enableAccelerationSchedule && !enableConstantSchedule)
+			tryToFetchNextPlans();
 
 		bool isPlanFinished = false;
 		if (enableConstantSchedule)
@@ -64,8 +65,10 @@ void loop() {
 
 		if (isPlanFinished) {
 			// executed plans were finished
+			enableConstantSchedule = false;
+			enableAccelerationSchedule = false;
+
 			Serial.print('F');
-			INSTRUCTION_BUFFER_LAST_INDEX = boundedIncrement(INSTRUCTION_BUFFER_LAST_INDEX, BUFFERED_INSTRUCTION_COUNT);
 			continue;
 		}
 
@@ -77,7 +80,7 @@ void loop() {
 		else if (Serial.available()) {
 			//new data byte arrived
 			INSTRUCTION_BUFFER[INSTRUCTION_BUFFER_ARRIVAL_OFFSET + SEGMENT_ARRIVAL_OFFSET] = (byte)Serial.read();
-			SEGMENT_ARRIVAL_OFFSET = boundedIncrement(SEGMENT_ARRIVAL_OFFSET, INSTRUCTION_SIZE);
+			SEGMENT_ARRIVAL_OFFSET = boundedIncrement(SEGMENT_ARRIVAL_OFFSET, INSTRUCTION_SIZE + 1);
 			LAST_BYTE_ARRIVAL_TIME = millis();
 		}
 		else if (SEGMENT_ARRIVAL_OFFSET > 0 && (millis() - LAST_BYTE_ARRIVAL_TIME) > 2) {
@@ -92,7 +95,6 @@ void loop() {
 inline bool processControllerInstruction() {
 	const byte* buffer = INSTRUCTION_BUFFER + INSTRUCTION_BUFFER_ARRIVAL_OFFSET;
 	SEGMENT_ARRIVAL_OFFSET = 0;
-
 
 	uint16_t checksum = 0;
 	for (int i = 0; i < INSTRUCTION_SIZE - 2; ++i) {
@@ -119,9 +121,9 @@ inline bool processControllerInstruction() {
 		}
 
 		sendPlanAccepted();
-		//shift the arrival index to the next one
-		boundedIncrement(INSTRUCTION_BUFFER_ARRIVAL_INDEX, BUFFERED_INSTRUCTION_COUNT);
-		INSTRUCTION_BUFFER_ARRIVAL_OFFSET = INSTRUCTION_BUFFER_ARRIVAL_INDEX*INSTRUCTION_SIZE;
+		//shift the arrival index to the next one		
+		INSTRUCTION_BUFFER_ARRIVAL_INDEX = boundedIncrement(INSTRUCTION_BUFFER_ARRIVAL_INDEX, BUFFERED_INSTRUCTION_COUNT);
+		INSTRUCTION_BUFFER_ARRIVAL_OFFSET = INSTRUCTION_BUFFER_ARRIVAL_INDEX * INSTRUCTION_SIZE;
 		return true;
 	case 'I':
 		//welcome message
@@ -136,7 +138,7 @@ inline bool processControllerInstruction() {
 
 bool canAddPlan() {
 	//we have to keep at least one instruction segment free for interactive instructions
-	return boundedIncrement(INSTRUCTION_BUFFER_ARRIVAL_INDEX, BUFFERED_INSTRUCTION_COUNT) == INSTRUCTION_BUFFER_LAST_INDEX;
+	return boundedIncrement(INSTRUCTION_BUFFER_ARRIVAL_INDEX, BUFFERED_INSTRUCTION_COUNT) != INSTRUCTION_BUFFER_LAST_INDEX;
 }
 
 void sendPlanOverflow() {
@@ -148,11 +150,13 @@ void sendPlanAccepted() {
 }
 
 void tryToFetchNextPlans() {
-	if (INSTRUCTION_BUFFER_LAST_INDEX != INSTRUCTION_BUFFER_ARRIVAL_INDEX)
+	if (INSTRUCTION_BUFFER_LAST_INDEX == INSTRUCTION_BUFFER_ARRIVAL_INDEX)
 		//no more plans available
 		return;
 
-	byte* buffer = 1 + INSTRUCTION_BUFFER + INSTRUCTION_BUFFER_LAST_INDEX*INSTRUCTION_SIZE;
+	byte* buffer = 1 + INSTRUCTION_BUFFER + (INSTRUCTION_BUFFER_LAST_INDEX * INSTRUCTION_SIZE);
+	INSTRUCTION_BUFFER_LAST_INDEX = boundedIncrement(INSTRUCTION_BUFFER_LAST_INDEX, BUFFERED_INSTRUCTION_COUNT);
+
 	switch (buffer[-1]) {
 	case 'A': {
 		enableAccelerationSchedule = true;
@@ -160,7 +164,7 @@ void tryToFetchNextPlans() {
 		break;
 	}
 	case 'C': {
-		enableAccelerationSchedule = true;
+		enableConstantSchedule = true;
 		CONSTANT_SCHEDULER.initFrom(buffer);
 		break;
 	}
