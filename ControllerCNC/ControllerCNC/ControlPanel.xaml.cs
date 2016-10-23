@@ -19,6 +19,9 @@ using System.Threading;
 
 using System.IO.Ports;
 
+using ControllerCNC.Planning;
+using ControllerCNC.Primitives;
+
 namespace ControllerCNC
 {
     /// <summary>
@@ -31,8 +34,7 @@ namespace ControllerCNC
         DispatcherTimer _statusTimer = new DispatcherTimer();
         SpeedController _speedController;
         PositionController _positionController;
-
-
+        Coord2DController _coord2DController;
 
         public MainWindow()
         {
@@ -50,6 +52,7 @@ namespace ControllerCNC
 
             _positionController = new PositionController(_driver);
             _speedController = new SpeedController(_driver);
+            _coord2DController = new Coord2DController(_driver);
 
             _positionTimer.Interval = new TimeSpan(1 * 10 * 1000);
             _positionTimer.Tick += _positionTimer_Tick;
@@ -59,6 +62,7 @@ namespace ControllerCNC
             _statusTimer.Tick += _statusTimer_Tick;
             _statusTimer.IsEnabled = true;
         }
+
 
         void _statusTimer_Tick(object sender, EventArgs e)
         {
@@ -127,8 +131,79 @@ C(-1,3535,0,0)
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
             _driver.StepperIndex = 2;
-            _driver.SEND_Constant(400, 1600, 0, 0);
-            _driver.SEND_Constant(800, 800, 0, 0);
+            _driver.SEND_Constant(0, 1600, 0, 0);
+            _driver.SEND_Constant(400 * 50, 800, 0, 0);
+        }
+
+        private void Button_Click_5(object sender, RoutedEventArgs e)
+        {
+            var squareSize = 30000;
+            var topSpeed = 350;
+            var diagonalDistance =300;
+
+            //do a square border
+            acceleratedLine(squareSize, 0, topSpeed);
+            acceleratedLine(0, squareSize, topSpeed);
+            acceleratedLine(-squareSize, 0, topSpeed);
+            acceleratedLine(0, -squareSize, topSpeed);
+            //left right diagonals
+            var diagonalCount = squareSize / diagonalDistance;
+            for (var i = 0; i < diagonalCount * 2; ++i)
+            {
+                var diagLength = (diagonalCount - Math.Abs(i - diagonalCount)) * diagonalDistance;
+
+                if (i % 2 == 0)
+                {
+                    acceleratedLine(-diagLength, diagLength, topSpeed);
+                    if (i < diagonalCount)
+                        acceleratedLine(0, diagonalDistance, topSpeed);
+                    else
+                        acceleratedLine(diagonalDistance, 0, topSpeed);
+                }
+                else
+                {
+                    acceleratedLine(diagLength, -diagLength, topSpeed);
+                    if (i < diagonalCount)
+                        acceleratedLine(diagonalDistance, 0, topSpeed);
+                    else
+                        acceleratedLine(0, diagonalDistance, topSpeed);
+                }
+            }
+        }
+
+        private void acceleratedLine(int x, int y, int maxSpeed)
+        {
+            var maxAccelerationDistance = Math.Max(Math.Abs(x / 2), Math.Abs(y / 2));
+
+            var accelerationX = _driver.CalculateBoundedAcceleration(_driver.StartDeltaT, (UInt16)maxSpeed, (Int16)(Math.Sign(x) * maxAccelerationDistance));
+            var accelerationY = _driver.CalculateBoundedAcceleration(_driver.StartDeltaT, (UInt16)maxSpeed, (Int16)(Math.Sign(y) * maxAccelerationDistance));
+
+            var decelX = accelerationX.Invert();
+            var decelY = accelerationY.Invert();
+
+            _driver.StepperIndex = 2;
+            _driver.SEND(accelerationX);
+            _driver.SEND(accelerationY);
+
+            var remainingX = x - decelX.StepCount - accelerationX.StepCount;
+            var remainingY = y - decelY.StepCount - accelerationY.StepCount;
+
+            while (_driver.HasSteps(remainingX) || _driver.HasSteps(remainingY))
+            {
+                var sliceX = _driver.GetStepSlice(remainingX);
+                var sliceY = _driver.GetStepSlice(remainingY);
+
+                remainingX -= sliceX;
+                remainingY -= sliceY;
+
+                _driver.StepperIndex = 2;
+                _driver.SEND_Constant(sliceX, accelerationX.EndDeltaT, 0, 0);
+                _driver.SEND_Constant(sliceY, accelerationY.EndDeltaT, 0, 0);
+            }
+
+            _driver.StepperIndex = 2;
+            _driver.SEND(decelX);
+            _driver.SEND(decelY);
         }
 
         private void IsSpeedTesterEnabled_Checked(object sender, RoutedEventArgs e)
@@ -171,6 +246,168 @@ C(-1,3535,0,0)
 
             var steps = (int)Position.Value;
             StepDisplay.Text = steps.ToString();
+        }
+
+        private void Button_Click_4(object sender, RoutedEventArgs e)
+        {
+            var trajectoryPoints = createHeart();
+            var trajectory = new Trajectory4D(trajectoryPoints);
+
+            var planner = new StraightLinePlanner2D(trajectory, new Velocity(1, 2000), null);
+            planner.Run(_driver);
+        }
+
+        private IEnumerable<Point4D> createHeart()
+        {
+            var top = new List<Point4D>();
+            var bottom = new List<Point4D>();
+
+            var smoothness = 200;
+            var scale = 5000;
+
+            for (var i = 0; i <= smoothness; ++i)
+            {
+                var x = -2 + (4.0 * i / smoothness);
+                var y1 = Math.Sqrt(1.0 - Math.Pow(Math.Abs(x) - 1, 2));
+                var y2 = -3 * Math.Sqrt(1 - (Math.Sqrt(Math.Abs(x)) / Math.Sqrt(2)));
+
+                top.Add(point2D(x, y1, scale));
+                bottom.Add(point2D(x, y2, scale));
+            }
+            top.Reverse();
+            var result = bottom.Concat(top).ToArray();
+
+            return result;
+        }
+
+        private IEnumerable<Point4D> createTriangle()
+        {
+            return new[]{
+                point2D(0,0),
+                point2D(4000,2000),
+                point2D(-4000,2000),
+                point2D(0,0)
+            };
+        }
+
+        private IEnumerable<Point4D> createCircle()
+        {
+            var circlePoints = new List<Point4D>();
+            var r = 15000;
+            for (var i = 0; i <= 360; ++i)
+            {
+                var x = Math.Sin(i * Math.PI / 180);
+                var y = Math.Cos(i * Math.PI / 180);
+                circlePoints.Add(point2D(x, y, r));
+            }
+            return circlePoints;
+        }
+
+        private Point4D point2D(int x, int y)
+        {
+            return new Point4D(0, 0, x, y);
+        }
+
+        private Point4D point2D(double x, double y, double scale)
+        {
+            return new Point4D(0, 0, (int)Math.Round(x * scale), (int)Math.Round(y * scale));
+        }
+
+        private void MaxSpeed_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_coord2DController != null)
+                _coord2DController.SetSpeed(int.Parse(MaxSpeed.Text));
+        }
+
+        private void startTransition(int dirX, int dirY)
+        {
+            _coord2DController.SetMovement(dirX, dirY);
+        }
+
+        private void stopTransition()
+        {
+            startTransition(0, 0);
+        }
+
+        private void UpB_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(0, 1);
+        }
+
+        private void UpB_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
+        }
+
+        private void LeftB_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(1, 0);
+        }
+
+        private void LeftB_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
+        }
+
+        private void RightB_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(-1, 0);
+        }
+
+        private void RightB_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
+        }
+
+        private void BottomB_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(0, -1);
+        }
+
+        private void BottomB_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
+        }
+
+
+        private void LeftUpB_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(1, 1);
+        }
+
+        private void LeftUpB_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
+        }
+
+        private void UpRightB_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(-1, 1);
+        }
+
+        private void UpRightB_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
+        }
+
+        private void LeftBottomB_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(1, -1);
+        }
+
+        private void LeftBottomB_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
+        }
+
+        private void BottomRightB_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            startTransition(-1, -1);
+        }
+
+        private void BottomRightB_PreviewMouseUp(object sender, MouseButtonEventArgs e)
+        {
+            stopTransition();
         }
 
 

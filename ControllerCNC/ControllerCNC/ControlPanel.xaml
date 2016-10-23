@@ -9,11 +9,31 @@
                 <Button Height="50" Width="100" Content="Interrupted rev." HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_1"/>
                 <Button Height="50" Width="100" Content="Back and forward" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2"/>
                 <Button Height="50" Width="100" Content="Motor 1 + 2" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_3"/>
+                <Button Height="50" Width="100" Content="Line planning" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_4"/>
+                <Button Height="50" Width="100" Content="Diagonal test" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_5"/>
                 <TextBox Height="50" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Status" TextWrapping="Wrap" />
             </StackPanel>
-            <TextBox Height="150" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Output" TextWrapping="Wrap" />
-            
-            
+            <DockPanel DockPanel.Dock="Top" LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right">
+                    <StackPanel Orientation="Horizontal">
+                        <Button Name="LeftUpB" DockPanel.Dock="Top" Content="LU" FontSize="20" Width="50" Height="50" PreviewMouseDown="LeftUpB_PreviewMouseDown" PreviewMouseUp="LeftUpB_PreviewMouseUp"/>
+                        <Button Name="UpB" DockPanel.Dock="Top" Content="U" FontSize="20" Width="50" Height="50" PreviewMouseDown="UpB_MouseDown" PreviewMouseUp="UpB_MouseUp"/>
+                        <Button Name="UpRightB" DockPanel.Dock="Top" Content="UR" FontSize="20" Width="50" Height="50" PreviewMouseDown="UpRightB_PreviewMouseDown" PreviewMouseUp="UpRightB_PreviewMouseUp"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Name="LeftB" DockPanel.Dock="Left" Content="L" FontSize="20" Width="50" Height="50" PreviewMouseDown="LeftB_MouseDown" PreviewMouseUp="LeftB_MouseUp" />
+                        <TextBox Name="MaxSpeed" Text="350" VerticalContentAlignment="Center"  TextAlignment="Center" FontSize="20" Height="50" Width="50" Background="White" TextWrapping="Wrap" TextChanged="MaxSpeed_TextChanged" />
+                        <Button Name="RightB" DockPanel.Dock="Right" Content="R" FontSize="20" Width="50" Height="50" PreviewMouseDown="RightB_MouseDown" PreviewMouseUp="RightB_MouseUp" />
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Name="LeftBottomB" DockPanel.Dock="Bottom" Content="LD" FontSize="20" Width="50" Height="50" PreviewMouseDown="LeftBottomB_PreviewMouseDown" PreviewMouseUp="LeftBottomB_PreviewMouseUp" />
+                        <Button Name="BottomB" DockPanel.Dock="Bottom" Content="D" FontSize="20" Width="50" Height="50" PreviewMouseDown="BottomB_MouseDown" PreviewMouseUp="BottomB_MouseUp" />
+                        <Button Name="BottomRightB" DockPanel.Dock="Bottom" Content="DR" FontSize="20" Width="50" Height="50" PreviewMouseDown="BottomRightB_PreviewMouseDown" PreviewMouseUp="BottomRightB_PreviewMouseUp" />
+                    </StackPanel>
+                </StackPanel>
+                <TextBox Height="150" DockPanel.Dock="Left" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Output" TextWrapping="Wrap" />
+            </DockPanel>
+
             <DockPanel>
                 <StackPanel Background="LightSkyBlue" DockPanel.Dock="Top">
 

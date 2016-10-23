@@ -14,7 +14,7 @@ namespace ControllerCNC.Primitives
         /// <summary>
         /// Velocity corresponding to no movement.
         /// </summary>
-        public static Velocity Zero = new Velocity();
+        public static Velocity Zero = new Velocity(0, 0);
 
         /// <summary>
         /// Number of steps that should be done in given time.
@@ -26,6 +26,10 @@ namespace ControllerCNC.Primitives
         /// </summary>
         public readonly uint Time;
 
-
+        public Velocity(uint stepCount, uint time)
+        {
+            StepCount = stepCount;
+            Time = time;
+        }
     }
 }

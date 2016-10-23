@@ -53,8 +53,10 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Coord2DController.cs" />
     <Compile Include="Planning\SegmentPlanBuilder1D.cs" />
     <Compile Include="Planning\SegmentPlanner.cs" />
+    <Compile Include="Planning\StraightLinePlanner2D.cs" />
     <Compile Include="PositionController.cs" />
     <Compile Include="Primitives\Acceleration.cs" />
     <Compile Include="Primitives\Point4D.cs" />

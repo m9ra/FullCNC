@@ -36,7 +36,7 @@ namespace ControllerCNC
         /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
-        internal static readonly int MaxAcceleration = 400 * StepsPerRevolution;
+        internal static readonly int MaxAcceleration = 200 * StepsPerRevolution;
 
         /// <summary>
         /// How many steppers will be commanded.
@@ -303,9 +303,6 @@ namespace ControllerCNC
             if (acceleration == null)
                 return;
 
-            if (acceleration.StepCount == 0)
-                return;
-
             SEND_Acceleration(acceleration.StepCount, acceleration.StartDeltaT, acceleration.StartN);
         }
 
@@ -314,6 +311,11 @@ namespace ControllerCNC
         {
             checked
             {
+                if (accelerationDistanceLimit == 0)
+                {
+                    return new Acceleration(0, startDeltaT, 1, startDeltaT);
+                }
+
                 var stepSign = accelerationDistanceLimit >= 0 ? 1 : -1;
                 var limit = Math.Abs(accelerationDistanceLimit);
 
@@ -462,6 +464,11 @@ namespace ControllerCNC
                 _sendQueue.Enqueue(dataBuffer);
                 Monitor.Pulse(_L_sendQueue);
             }
+        }
+
+        internal bool HasSteps(int remainingX)
+        {
+            return Math.Abs(remainingX) > 0;
         }
     }
 }
