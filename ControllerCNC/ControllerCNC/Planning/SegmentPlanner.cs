@@ -18,7 +18,7 @@ namespace ControllerCNC.Planning
         /// </summary>
         private readonly List<SegmentPlanBuilder1D[]> _segments = new List<SegmentPlanBuilder1D[]>();
 
-        public SegmentPlanner(Trajectory4D trajectory, Velocity maxVelocity4D, Acceleration maxAcceleration1D)
+        public SegmentPlanner(Trajectory4D trajectory, Velocity maxVelocity4D, AccelerationPlan maxAcceleration1D)
         {
             initializeBuilders(trajectory, maxVelocity4D);
 
@@ -30,7 +30,7 @@ namespace ControllerCNC.Planning
         /// Calculates accelerations at segment ends - counts with limit posed by following segments.
         /// </summary>
         /// <param name="maxAcceleration1D">Maximal acceleration allowed.</param>
-        private void calculateTrailingAccelerations(Acceleration maxAcceleration1D)
+        private void calculateTrailingAccelerations(AccelerationPlan maxAcceleration1D)
         {
             foreach (var segment in _segments)
             {
@@ -42,7 +42,7 @@ namespace ControllerCNC.Planning
         /// Calculates accelerations at segment starts.
         /// </summary>
         /// <param name="maxAcceleration1D">Maximal acceleration allowed.</param>
-        private void calculateLeadingAccelerations(Acceleration maxAcceleration1D)
+        private void calculateLeadingAccelerations(AccelerationPlan maxAcceleration1D)
         {
             var lastVelocities = createZeroVelocities();
             foreach (var segment in _segments)

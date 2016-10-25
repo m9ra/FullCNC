@@ -33,7 +33,7 @@ namespace TrajectorySimulator
         /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
-        internal static readonly int MaxAcceleration = 2 * StepsPerRevolution;
+        internal static readonly int MaxAcceleration = 200 * StepsPerRevolution;
 
         public MainWindow()
         {
@@ -68,7 +68,7 @@ namespace TrajectorySimulator
             var xInitialDelta = (int)Math.Round(TimeScale / initialSpeed.X);
             var xN = calculateN(xInitialDelta, (int)Math.Round(acceleration.X), MaxAcceleration);
             simulator.CalculateAcceleration(xSteps, xInitialDelta, (int)Math.Round(xN), traceX);
-           // simulator.CalculateAccelerationExact(initialSpeed.X, desiredSpeed.X, acceleration.X, traceX2);
+            simulator.CalculateAccelerationExact(initialSpeed.X, desiredSpeed.X, acceleration.X, traceX2);
 
 
 
@@ -77,7 +77,7 @@ namespace TrajectorySimulator
             var yN = calculateN(yInitialDelta, (int)Math.Round(acceleration.Y), MaxAcceleration);
 
             simulator.CalculateAcceleration(ySteps, yInitialDelta, (int)Math.Round(yN), traceY);
-        //    simulator.CalculateAccelerationExact(initialSpeed.Y, desiredSpeed.Y, acceleration.Y, traceY2);
+            simulator.CalculateAccelerationExact(initialSpeed.Y, desiredSpeed.Y, acceleration.Y, traceY2);
 
             var plotter = new ChannelPlotter();
             var data = plotter.Plot2D(traceX, traceY).ToArray();

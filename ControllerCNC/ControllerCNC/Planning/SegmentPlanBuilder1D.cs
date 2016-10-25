@@ -23,11 +23,11 @@ namespace ControllerCNC.Planning
         /// <summary>
         /// Acceleration done after entering the segment.
         /// </summary>
-        public Acceleration TrailingAcceleration { get; private set; }
+        public AccelerationPlan TrailingAcceleration { get; private set; }
 
         /// <summary>
         /// Acceleration done before leaving the segment.
         /// </summary>
-        public Acceleration LeadingAcceleration { get; private set; }
+        public AccelerationPlan LeadingAcceleration { get; private set; }
     }
 }

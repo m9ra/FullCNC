@@ -6,35 +6,13 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Primitives
 {
+    /// <summary>
+    /// Determines how many steps per second will be accelerated per second
+    /// </summary>
     class Acceleration
     {
-        public readonly Int16 StepCount;
+        public readonly int Numerator;
 
-        public readonly int StartDeltaT;
-
-        public readonly Int16 StartN;
-
-        public readonly int EndDeltaT;
-
-        public Acceleration(Int16 stepCount, int startDeltaT, Int16 startN, int endDeltaT)
-        {
-            StepCount = stepCount;
-            StartDeltaT = startDeltaT;
-            StartN = startN;
-            EndDeltaT = endDeltaT;
-
-            if (StartN == 0)
-                throw new NotSupportedException("Invalid acceleration profile");
-        }
-
-        /// <summary>
-        /// Creates inverted acceleration/deceleration profile.
-        /// After accelerating according to one, deceleration according the second can be made.
-        /// </summary>
-        /// <returns>The inverted acceleration.</returns>
-        internal Acceleration Invert()
-        {
-            return new Acceleration(StepCount, EndDeltaT, (Int16)(-StartN - Math.Abs(StepCount)), StartDeltaT);
-        }
+        public readonly int Denominator;
     }
 }

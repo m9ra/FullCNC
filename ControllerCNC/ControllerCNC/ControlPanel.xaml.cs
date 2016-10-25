@@ -128,14 +128,31 @@ C(-1,3535,0,0)
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
-            _driver.StepperIndex = 2;
-            _driver.SEND_Constant(100, 500000, 0, 0);
-            _driver.SEND_Constant(10000, 5000, 0, 0);
+           /* var tracer = new PathTracer2D();
+
+            var maxAcceleration = 5 * 400;
+            var direction1 = new Vector(400, 500);
+            var direction2 = new Vector(100, 0);
+            direction1.Normalize();
+            direction2.Normalize();
+
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.5);
+            tracer.Continue(1);
+            tracer.AppendAcceleration(direction2 * maxAcceleration, 2);
+          //  tracer.Continue(1);
+            tracer.Execute(_driver);
+
+            return;*/
+
+
+            /*_driver.StepperIndex = 2;
+            _driver.SEND_Constant(25, 1000000, 0, 0);
+            _driver.SEND_Constant(10000, 2500, 0, 0);
 
             _driver.StepperIndex = 2;
-            _driver.SEND_Constant(100, 2000, 0, 0);
-            _driver.SEND_Constant(100, 2000, 0, 0);
-            return;
+            _driver.SEND_Constant(10000, 2000, 0, 0);
+            _driver.SEND_Constant(10000, 2000, 0, 0);
+            return;*/
 
             /*/
             _driver.StepperIndex = 2;

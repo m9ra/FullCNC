@@ -55,14 +55,21 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Coord2DController.cs" />
+    <Compile Include="Planning\PathTracer2D.cs" />
     <Compile Include="Planning\SegmentPlanBuilder1D.cs" />
     <Compile Include="Planning\SegmentPlanner.cs" />
     <Compile Include="Planning\StraightLinePlanner2D.cs" />
     <Compile Include="PositionController.cs" />
     <Compile Include="Primitives\Acceleration.cs" />
+    <Compile Include="Primitives\AccelerationPlan.cs" />
+    <Compile Include="Primitives\ConstantPlan.cs" />
+    <Compile Include="Primitives\Plan.cs" />
     <Compile Include="Primitives\Point4D.cs" />
     <Compile Include="Primitives\Trajectory4D.cs" />
     <Compile Include="Primitives\Velocity.cs" />
+    <Compile Include="Simulation\ChannelPlotter.cs" />
+    <Compile Include="Simulation\ChannelTrace.cs" />
+    <Compile Include="Simulation\CncSimulator.cs" />
     <Compile Include="SpeedController.cs" />
     <Page Include="ControlPanel.xaml">
       <Generator>MSBuild:Compile</Generator>

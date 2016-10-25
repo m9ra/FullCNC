@@ -302,7 +302,7 @@ namespace ControllerCNC
                 return (Int16)Math.Max(-maxSize, steps);
         }
 
-        public void SEND(Acceleration acceleration)
+        public void SEND(AccelerationPlan acceleration)
         {
             if (acceleration == null)
                 return;
@@ -311,13 +311,21 @@ namespace ControllerCNC
         }
 
 
-        internal Acceleration CalculateBoundedAcceleration(int startDeltaT, int endDeltaT, Int16 accelerationDistanceLimit, int accelerationNumerator = 1, int accelerationDenominator = 1)
+        public void SEND(ConstantPlan constantPlan)
+        {
+            if (constantPlan == null)
+                return;
+
+            SEND_Constant(constantPlan.StepCount, constantPlan.BaseDelta, constantPlan.PeriodNumerator, constantPlan.PeriodDenominator);
+        }
+
+        internal AccelerationPlan CalculateBoundedAcceleration(int startDeltaT, int endDeltaT, Int16 accelerationDistanceLimit, int accelerationNumerator = 1, int accelerationDenominator = 1)
         {
             checked
             {
                 if (accelerationDistanceLimit == 0)
                 {
-                    return new Acceleration(0, startDeltaT, 1, startDeltaT);
+                    return new AccelerationPlan(0, startDeltaT, 1, startDeltaT);
                 }
 
                 var stepSign = accelerationDistanceLimit >= 0 ? 1 : -1;
@@ -332,14 +340,14 @@ namespace ControllerCNC
                     //acceleration
                     stepCount = (Int16)(Math.Min(endN - startN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, startN, stepCount, accelerationNumerator, accelerationDenominator);
-                    return new Acceleration((Int16)(stepCount * stepSign), startDeltaT, startN, limitedDeltaT);
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, startN, limitedDeltaT);
                 }
                 else
                 {
                     //deceleration
                     stepCount = (Int16)(Math.Min(startN - endN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, (Int16)(-startN), stepCount, accelerationNumerator, accelerationDenominator);
-                    return new Acceleration((Int16)(stepCount * stepSign), startDeltaT, (Int16)(-startN), limitedDeltaT);
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, (Int16)(-startN), limitedDeltaT);
                 }
             }
         }
@@ -362,7 +370,7 @@ namespace ControllerCNC
             }
         }
 
-        public Acceleration CreateAcceleration(int startDeltaT, int endDeltaT)
+        public AccelerationPlan CreateAcceleration(int startDeltaT, int endDeltaT)
         {
             if (startDeltaT > UInt16.MaxValue || endDeltaT > UInt16.MaxValue)
                 throw new NotSupportedException("Value out of range");

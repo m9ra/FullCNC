@@ -111,11 +111,11 @@ namespace ControllerCNC
             _cnc.SEND_Constant(stepCountY, (UInt16)Math.Abs(_velocityY), 0, 0);
         }
 
-        Acceleration[] createAcceleration(int velocity, int desiredVelocity)
+        AccelerationPlan[] createAcceleration(int velocity, int desiredVelocity)
         {
             if (velocity == desiredVelocity)
                 //no acceleration is required
-                return new Acceleration[0];
+                return new AccelerationPlan[0];
 
             if (Math.Abs(Math.Sign(velocity) - Math.Sign(desiredVelocity)) > 1)
             {
@@ -136,7 +136,7 @@ namespace ControllerCNC
 
             var acceleration = _cnc.CalculateBoundedAcceleration((UInt16)velocity, (UInt16)desiredVelocity, stepCount);
 
-            return new Acceleration[] { acceleration };
+            return new AccelerationPlan[] { acceleration };
         }
 
         private void velocityReached()
