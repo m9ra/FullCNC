@@ -42,8 +42,6 @@ namespace ControllerCNC
             System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
             myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;
 
-
-
             Output.ScrollToEnd();
 
             _driver = new DriverCNC();
@@ -130,16 +128,47 @@ C(-1,3535,0,0)
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
+            /*
             _driver.StepperIndex = 2;
-            _driver.SEND_Constant(0, 1600, 0, 0);
-            _driver.SEND_Constant(400 * 50, 800, 0, 0);
+            //_driver.SEND_Constant(0, 1600, 0, 0);
+            //_driver.SEND_Constant(400 * 50, 800, 0, 0);
+            _driver.SEND_Acceleration(6250, 2002, 9363);
+            _driver.SEND_Acceleration(310, 40050, 468);
+
+            _driver.StepperIndex = 2;
+            _driver.SEND_Constant(-6250, 310 * 6, 0, 0);
+            _driver.SEND_Constant(-310, 6250 * 6, 0, 0);
+             * */
+
+            var xDelta = 10000;
+            var yDelta = 9000;
+
+            StraightLinePlanner2D.AcceleratedTransition(xDelta, yDelta/2, _driver);
+
+            var length = 5000;
+            for (var i = 70; i < 80; ++i)
+            {
+                var radAngle = i / Math.PI / 2;
+                var point = point2D(Math.Sin(radAngle), Math.Cos(radAngle), length);
+                //StraightLinePlanner2D.AcceleratedTransition(point.X, point.Y, _driver);
+                //StraightLinePlanner2D.AcceleratedTransition(-point.X, -point.Y, _driver);
+            }
+
+
+            /*  while (_driver.IncompletePlanCount > 0)
+                  Thread.Sleep(1);
+
+              Thread.Sleep(1000);
+
+              var time = Math.Max(Math.Abs(xDelta * 2000), Math.Abs(yDelta * 2000));
+              StraightLinePlanner2D.SendTransition2(-xDelta, -yDelta, time, _driver);*/
         }
 
         private void Button_Click_5(object sender, RoutedEventArgs e)
         {
             var squareSize = 30000;
-            var topSpeed = 350;
-            var diagonalDistance =300;
+            var topSpeed = 280;
+            var diagonalDistance = 300;
 
             //do a square border
             acceleratedLine(squareSize, 0, topSpeed);
@@ -250,10 +279,10 @@ C(-1,3535,0,0)
 
         private void Button_Click_4(object sender, RoutedEventArgs e)
         {
-            var trajectoryPoints = createHeart();
+            var trajectoryPoints = createSpiral();
             var trajectory = new Trajectory4D(trajectoryPoints);
 
-            var planner = new StraightLinePlanner2D(trajectory, new Velocity(1, 2000), null);
+            var planner = new StraightLinePlanner2D(trajectory, new Velocity(1, 300), null);
             planner.Run(_driver);
         }
 
@@ -293,14 +322,46 @@ C(-1,3535,0,0)
         private IEnumerable<Point4D> createCircle()
         {
             var circlePoints = new List<Point4D>();
-            var r = 15000;
-            for (var i = 0; i <= 360; ++i)
+            var r = 5000;
+            var smoothness = 5;
+            for (var i = 0; i <= 360 * smoothness; ++i)
             {
-                var x = Math.Sin(i * Math.PI / 180);
-                var y = Math.Cos(i * Math.PI / 180);
+                var x = Math.Sin(i * Math.PI / 180 / smoothness);
+                var y = Math.Cos(i * Math.PI / 180 / smoothness);
                 circlePoints.Add(point2D(x, y, r));
             }
             return circlePoints;
+        }
+
+        private IEnumerable<Point4D> createLine()
+        {
+            var start = point2D(0, 0);
+            var end = point2D(50000, 30000);
+
+            var segmentCount = 5000;
+
+            var linePoints = new List<Point4D>();
+            for (var i = 0; i <= segmentCount; ++i)
+            {
+                var x = 1.0 * (end.X - start.X) / segmentCount * i;
+                var y = 1.0 * (end.Y - start.Y) / segmentCount * i;
+                linePoints.Add(point2D(x, y, 1));
+            }
+
+            return linePoints;
+        }
+
+        private IEnumerable<Point4D> createSpiral()
+        {
+            var spiralPoints = new List<Point4D>();
+            var r = 15000;
+            for (var i = 0; i <= r; ++i)
+            {
+                var x = Math.Sin(i * Math.PI / 180);
+                var y = Math.Cos(i * Math.PI / 180);
+                spiralPoints.Add(point2D(x, y, i));
+            }
+            return spiralPoints;
         }
 
         private Point4D point2D(int x, int y)

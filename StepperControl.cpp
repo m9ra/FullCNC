@@ -97,27 +97,24 @@ void AccelerationPlan::createNextActivation()
 	--this->remainingSteps;
 
 	uint16_t nextDeltaT = this->_currentDeltaT;
-
 	if (this->_isDeceleration) {
+		this->_current2N -= 2;
 		this->_currentDeltaTBuffer += nextDeltaT;
-		while (this->_currentDeltaTBuffer > this->_current2N) {
-			this->_currentDeltaTBuffer -= this->_current2N;
+		while (this->_currentDeltaTBuffer * 2 > this->_current2N * 2 - 1) {
+			this->_currentDeltaTBuffer -= (this->_current2N * 2 - 1) / 2;
 			nextDeltaT += 1;
 		}
 
-		//we decrement 2N by 2 to avoid multiplication
-		this->_current2N -= 2;
+		//Serial.print('|');
+		//Serial.println(nextDeltaT);
 	}
 	else {
-		//this is sligthly simplified in comparison to real taylor
+		this->_current2N += 2;
 		this->_currentDeltaTBuffer += nextDeltaT;
-		while (this->_currentDeltaTBuffer > this->_current2N) {
-			this->_currentDeltaTBuffer -= this->_current2N;
+		while (this->_currentDeltaTBuffer * 2 > this->_current2N * 2 - 1) {
+			this->_currentDeltaTBuffer -= (this->_current2N * 2 - 1) / 2;
 			nextDeltaT -= 1;
 		}
-
-		//we increment 2N by 2 to avoid multiplication
-		this->_current2N += 2;
 	}
 	this->_currentDeltaT = nextDeltaT;
 

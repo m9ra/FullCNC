@@ -3,6 +3,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ControllerCNC", "ControllerCNC\ControllerCNC.csproj", "{BDF528A3-CD7A-49F5-8CA7-F3E49EB9FD90}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TrajectorySimulator", "TrajectorySimulator\TrajectorySimulator.csproj", "{6E0886C3-05A5-475D-B00E-F1552F28148E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,6 +15,10 @@ Global
 		{BDF528A3-CD7A-49F5-8CA7-F3E49EB9FD90}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BDF528A3-CD7A-49F5-8CA7-F3E49EB9FD90}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BDF528A3-CD7A-49F5-8CA7-F3E49EB9FD90}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6E0886C3-05A5-475D-B00E-F1552F28148E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6E0886C3-05A5-475D-B00E-F1552F28148E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6E0886C3-05A5-475D-B00E-F1552F28148E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6E0886C3-05A5-475D-B00E-F1552F28148E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Primitives
 {
-    class Point4D
+    public class Point4D
     {
         /// <summary>
         /// U dimension.

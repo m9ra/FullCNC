@@ -52,7 +52,7 @@ namespace ControllerCNC
         /// <summary>
         /// Fastest DeltaT which is supported
         /// </summary>
-        public UInt16 FastestDeltaT { get { return 200; } }
+        public UInt16 FastestDeltaT { get { return 350; } }
 
         /// <summary>
         /// Port where we will communicate with the machine.
@@ -353,7 +353,7 @@ namespace ControllerCNC
         {
             checked
             {
-                var n1 = (long)TimeScale * TimeScale * accelerationNumerator / 2 / startDeltaT / startDeltaT / MaxAcceleration / accelerationDenominator;
+                var n1 = (long)TimeScale * TimeScale * accelerationDenominator / 2 / startDeltaT / startDeltaT / MaxAcceleration / accelerationNumerator;
                 return (Int16)Math.Max(1, n1);
             }
         }
@@ -380,6 +380,10 @@ namespace ControllerCNC
             //Debug.WriteLine("A({0},{1},{2})", stepCount, initialDeltaT, n);
 
             var sendBuffer = new List<byte>();
+
+            //TODO move this somewhere else (to have better precision)
+            //initialDeltaT = (UInt16)(initialDeltaT * 0.676);
+
 
             sendBuffer.Add((byte)'A');
             sendBuffer.AddRange(ToBytes(stepCount));
