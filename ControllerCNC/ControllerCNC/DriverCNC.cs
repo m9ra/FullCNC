@@ -190,6 +190,9 @@ namespace ControllerCNC
                     case 'S':
                         //scheduler was enabled
                         break;
+                    case 'M':
+                        //step time was missed
+                        break;
                     case 'E':
                         throw new NotImplementedException("Incomplete message erased");
                     case '|':
@@ -197,7 +200,8 @@ namespace ControllerCNC
                         break;
 
                     default:
-                        throw new NotImplementedException();
+                       // throw new NotImplementedException();
+                        break;
                 }
             }
 

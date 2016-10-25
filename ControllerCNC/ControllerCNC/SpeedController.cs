@@ -71,10 +71,10 @@ namespace ControllerCNC
 
             var stepCount = (Int16)(Math.Max(2, 20000 / _currentDeltaT));
             var sendStepCount = Direction ? (Int16)(-stepCount) : stepCount;
-            _cnc.StepperIndex = 2;
+            //_cnc.StepperIndex = 2;
             //_cnc.SEND_Constant((Int16)(stepCount * 2), (UInt16)(_currentDeltaT / 2), _desiredNumerator, _desiredDenominator);
             _cnc.SEND_Constant(sendStepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator);
-            _cnc.SEND_Constant(0, 0, 0, 0);
+            //_cnc.SEND_Constant(0, 0, 0, 0);
 
             var plannedTime = stepCount * _currentDeltaT;
             _plannedTimeTotal += plannedTime;

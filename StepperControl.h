@@ -22,6 +22,9 @@ Editor:	http://www.visualmicro.com
 
 #define READ_INT16(buff, position) (((int16_t)buff[(position)]) << 8) + buff[(position) + 1]
 #define READ_UINT16(buff, position) (((uint16_t)buff[(position)]) << 8) + buff[(position) + 1]
+#define UINT16_MAX 65535
+#define INT32_MAX 2147483647
+
 
 #define MAX_ACCELERATION 200 //rev/s^2
 #define START_DELTA_T 350 //us
@@ -56,16 +59,25 @@ extern byte CUMULATIVE_SCHEDULE_ACTIVATION;
 //TODO load this during initialization
 extern volatile byte ACTIVATIONS_CLOCK_MASK;
 
+//Determine whether scheduler was stopped from last flag reset (is useful for plan schedulers)
+extern volatile bool SCHEDULER_STOP_EVENT_FLAG;
+
+//Determine whether scheduler was started from last flag reset (is useful for plan schedulers)
+extern volatile bool SCHEDULER_START_EVENT_FLAG;
+
 class Plan {
 public:
 	// Time of next scheduled activation
-	uint16_t nextActivationTime;
+	int32_t nextActivationTime;
 
 	// How many steps remains to do with this plan.
 	uint16_t remainingSteps;
 
 	// Determine whether plan is still active.
 	bool isActive;
+
+	// Determine whether this plan starts with zero activation slack
+	bool isActivationBoundary;
 
 	Plan(byte clkPin, byte dirPin);
 
@@ -140,31 +152,77 @@ private:
 
 template<typename PlanType> class PlanScheduler2D {
 public:
+	int32_t lastActivationSlack1;
+	int32_t lastActivationSlack2;
+
 	PlanScheduler2D(byte clkPin1, byte dirPin1, byte clkPin2, byte dirPin2)
-		:_d1(clkPin1, dirPin1), _d2(clkPin2, dirPin2), _needInit(false)
+		:_d1(clkPin1, dirPin1), _d2(clkPin2, dirPin2), _needInit(false), lastActivationSlack1(0), lastActivationSlack2(0)
 	{
+	}
+
+	void registerLastActivationSlack(int32_t slack1, int32_t slack2) {
+		this->lastActivationSlack1 = slack1;
+		this->lastActivationSlack2 = slack2;
 	}
 
 	// loads plan from given data
 	void initFrom(byte * data)
 	{
+		if (SCHEDULER_STOP_EVENT_FLAG) {
+			//scheduler reset means slack reset
+			this->lastActivationSlack1 = 0;
+			this->lastActivationSlack2 = 0;
+			SCHEDULER_STOP_EVENT_FLAG = false;
+		}
+
 		this->_d1.loadFrom(data);
 		this->_d2.loadFrom(data + _d1.dataSize);
 
+
 		this->_d1.createNextActivation();
 		this->_d2.createNextActivation();
+
+		bool isStepTimeMissed = false;
+		if (!_d1.isActivationBoundary) {
+			this->_d1.nextActivationTime += this->lastActivationSlack1;
+			if (this->_d1.nextActivationTime < PORT_CHANGE_DELAY) {
+				//we cannot go backwards in time
+				isStepTimeMissed = true;
+				this->_d1.nextActivationTime = PORT_CHANGE_DELAY;
+			}
+		}
+
+		if (!_d2.isActivationBoundary) {
+			this->_d2.nextActivationTime += this->lastActivationSlack2;
+			if (this->_d2.nextActivationTime < PORT_CHANGE_DELAY) {
+				/*Serial.print("|2A:");
+				Serial.print(_d2.nextActivationTime);
+				Serial.print(",2S:");
+				Serial.println(lastActivationSlack2);*/
+				//we cannot go backwards in time
+				isStepTimeMissed = true;
+				this->_d2.nextActivationTime = PORT_CHANGE_DELAY;
+			}
+		}
+
+		if (isStepTimeMissed)
+			Serial.print('M');
+
 		this->_needInit = true;
 	}
 
 	inline void triggerPlan(PlanType& plan, uint16_t nextActivationTime) {
-		if (!plan.isActive)
+		if (!plan.isActive) {
+			if (!plan.isActivationBoundary)
+				// this plan is not a boundary - continue to calculate slack
+				plan.nextActivationTime -= nextActivationTime;
 			//there is nothing to do
 			return;
+		}
 
 		plan.nextActivationTime -= nextActivationTime;
-		//TODO handle direction better
 
-		if (plan.nextActivationTime != 0)
+		if (plan.nextActivationTime > 0)
 			//no steps for the plan now
 			return;
 
@@ -178,10 +236,19 @@ public:
 	// fills schedule buffer with plan data
 	// returns true when buffer is full (temporarly), false when plan is over
 	bool fillSchedule() {
-
 		while (_d1.isActive || _d2.isActive) {
 			//find earliest plan
-			uint16_t earliestActivationTime = min(_d1.nextActivationTime, _d2.nextActivationTime);
+			int32_t minActiveActivationTime = _d1.nextActivationTime;
+			if (!_d1.isActive) {
+				minActiveActivationTime = _d2.nextActivationTime;
+			}
+			else if (_d2.nextActivationTime < _d1.nextActivationTime && _d2.isActive) {
+				minActiveActivationTime = _d2.nextActivationTime;
+			}
+
+			//limit activation to timer resolution (we can output empty activation intermediate step)
+			uint16_t earliestActivationTime = min(UINT16_MAX, minActiveActivationTime);
+
 			if (_needInit) {
 				earliestActivationTime = PORT_CHANGE_DELAY;
 
@@ -203,7 +270,7 @@ public:
 				Steppers::startScheduler();
 			}
 
-			SCHEDULE_BUFFER[SCHEDULE_START] = 65535 - earliestActivationTime;
+			SCHEDULE_BUFFER[SCHEDULE_START] = UINT16_MAX - earliestActivationTime;
 			SCHEDULE_ACTIVATIONS[(byte)(SCHEDULE_START + 1)] = CUMULATIVE_SCHEDULE_ACTIVATION;
 			//we can shift the start after activation is properly saved to array
 			++SCHEDULE_START;
@@ -217,6 +284,8 @@ public:
 				//we have free time
 				return true;
 		}
+		this->lastActivationSlack1 = _d1.nextActivationTime;
+		this->lastActivationSlack2 = _d2.nextActivationTime;
 		Steppers::startScheduler();
 		return false;
 	}

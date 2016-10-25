@@ -215,9 +215,9 @@ namespace ControllerCNC.Planning
 
                 SendTransition2(remainingX, remainingY, Math.Abs((long)remainingTime), cnc);
 
-                cnc.StepperIndex = 2;
-                cnc.SEND(xAcceleration.Invert());
-                cnc.SEND(yAcceleration.Invert());
+                //cnc.StepperIndex = 2;
+               // cnc.SEND(xAcceleration.Invert());
+               // cnc.SEND(yAcceleration.Invert());
             }
         }
 

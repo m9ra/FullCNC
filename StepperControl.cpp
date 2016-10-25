@@ -8,16 +8,25 @@ volatile byte SCHEDULE_START = 0;
 volatile byte SCHEDULE_END = 0;
 
 volatile byte ACTIVATIONS_CLOCK_MASK = 1 + 4;
+volatile bool SCHEDULER_STOP_EVENT_FLAG = false;
+volatile bool SCHEDULER_START_EVENT_FLAG = false;
 
 
 ISR(TIMER1_OVF_vect) {
-	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
+	TCNT1 = 30000;//SCHEDULE_BUFFER[SCHEDULE_END];
 
 	//pins go LOW here (pulse start)
 	PORTB = SCHEDULE_ACTIVATIONS[SCHEDULE_END];
+	/*interrupts();
+	Serial.print("|T:");
+	Serial.print(UINT16_MAX - SCHEDULE_BUFFER[SCHEDULE_END]);
+	Serial.print("B:");
+	Serial.println(PORTB);*/
+
 	if (SCHEDULE_START == SCHEDULE_END) {
 		//we are at schedule end
 		TIMSK1 = 0;
+		SCHEDULER_STOP_EVENT_FLAG = true;
 	}
 	else {
 		++SCHEDULE_END;
@@ -41,6 +50,7 @@ bool Steppers::startScheduler() {
 
 	Serial.print('S'); //enabling scheduler
 
+	SCHEDULER_START_EVENT_FLAG = true;
 	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END++];
 	TIMSK1 = (1 << TOIE1); //enable scheduler
 
@@ -74,6 +84,7 @@ void AccelerationPlan::loadFrom(byte * data)
 	this->isActive = this->remainingSteps > 0;
 	this->stepMask = stepCount > 0 ? this->dirMask : 0;
 	this->nextActivationTime = 0;
+	this->isActivationBoundary = !this->isActive;
 
 	this->_isDeceleration = n < 0;
 	this->_currentDeltaT = initialDeltaT;
@@ -90,7 +101,6 @@ void AccelerationPlan::createNextActivation()
 {
 	if (this->remainingSteps == 0) {
 		this->isActive = false;
-		this->nextActivationTime = 65535;
 		return;
 	}
 
@@ -125,7 +135,6 @@ void ConstantPlan::createNextActivation()
 {
 	if (this->remainingSteps == 0) {
 		this->isActive = false;
-		this->nextActivationTime = 65535;
 		return;
 	}
 
@@ -153,23 +162,24 @@ ConstantPlan::ConstantPlan(byte clkPin, byte dirPin)
 void ConstantPlan::loadFrom(byte * data)
 {
 	int16_t stepCount = READ_INT16(data, 0);
-	uint16_t _baseDeltaT = READ_UINT16(data, 2);
-	uint16_t _periodNumerator = READ_UINT16(data, 2 + 2);
-	uint16_t _periodDenominator = READ_UINT16(data, 2 + 2 + 2);
+	uint16_t baseDeltaT = READ_UINT16(data, 2);
+	uint16_t periodNumerator = READ_UINT16(data, 2 + 2);
+	uint16_t periodDenominator = READ_UINT16(data, 2 + 2 + 2);
 
 	this->remainingSteps = abs(stepCount);
 	this->stepMask = stepCount > 0 ? this->dirMask : 0;
 	this->isActive = this->remainingSteps > 0;
 	this->nextActivationTime = 0;
+	this->isActivationBoundary = !this->isActive;
 
-	this->_baseDeltaT = _baseDeltaT;
-	this->_periodNumerator = _periodNumerator;
-	this->_periodDenominator = _periodDenominator;
+	this->_baseDeltaT = baseDeltaT;
+	this->_periodNumerator = periodNumerator;
+	this->_periodDenominator = periodDenominator;
 	this->_periodAccumulator = 0;
 }
 
 Plan::Plan(byte clkPin, byte dirPin) :
 	clkMask(PIN_TO_MASK(clkPin)), dirMask(PIN_TO_MASK(dirPin)),
-	stepMask(0), remainingSteps(0), isActive(false), nextActivationTime(0)
+	stepMask(0), remainingSteps(0), isActive(false), isActivationBoundary(false), nextActivationTime(0)
 {
 }

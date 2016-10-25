@@ -140,10 +140,10 @@ C(-1,3535,0,0)
             _driver.SEND_Constant(-310, 6250 * 6, 0, 0);
              * */
 
-            var xDelta = 10000;
-            var yDelta = 9000;
+            var xDelta = 9000;
+            var yDelta = 1000;
 
-            StraightLinePlanner2D.AcceleratedTransition(xDelta, yDelta/2, _driver);
+            StraightLinePlanner2D.AcceleratedTransition(xDelta, yDelta, _driver);
 
             var length = 5000;
             for (var i = 70; i < 80; ++i)
@@ -166,8 +166,8 @@ C(-1,3535,0,0)
 
         private void Button_Click_5(object sender, RoutedEventArgs e)
         {
-            var squareSize = 30000;
-            var topSpeed = 280;
+            var squareSize = 3000;
+            var topSpeed = 300;
             var diagonalDistance = 300;
 
             //do a square border

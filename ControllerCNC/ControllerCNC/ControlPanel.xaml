@@ -22,7 +22,7 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Button Name="LeftB" DockPanel.Dock="Left" Content="L" FontSize="20" Width="50" Height="50" PreviewMouseDown="LeftB_MouseDown" PreviewMouseUp="LeftB_MouseUp" />
-                        <TextBox Name="MaxSpeed" Text="350" VerticalContentAlignment="Center"  TextAlignment="Center" FontSize="20" Height="50" Width="50" Background="White" TextWrapping="Wrap" TextChanged="MaxSpeed_TextChanged" />
+                        <TextBox Name="MaxSpeed" Text="300" VerticalContentAlignment="Center"  TextAlignment="Center" FontSize="20" Height="50" Width="50" Background="White" TextWrapping="Wrap" TextChanged="MaxSpeed_TextChanged" />
                         <Button Name="RightB" DockPanel.Dock="Right" Content="R" FontSize="20" Width="50" Height="50" PreviewMouseDown="RightB_MouseDown" PreviewMouseUp="RightB_MouseUp" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">

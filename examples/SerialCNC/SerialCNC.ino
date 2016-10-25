@@ -27,6 +27,9 @@ byte SEGMENT_ARRIVAL_OFFSET = 0;
 //Time where last byte has arrived (is used for incomplete message recoveries).
 unsigned long LAST_BYTE_ARRIVAL_TIME = 0;
 
+int32_t lastActivationSlack1 = 0;
+int32_t lastActivationSlack2 = 0;
+
 bool enableConstantSchedule = false;
 PlanScheduler2D<ConstantPlan> CONSTANT_SCHEDULER(STEP_CLK_PIN1, STEP_DIR_PIN1, STEP_CLK_PIN2, STEP_DIR_PIN2);
 
@@ -65,8 +68,17 @@ void loop() {
 
 		if (isPlanFinished) {
 			// executed plans were finished
-			enableConstantSchedule = false;
-			enableAccelerationSchedule = false;
+			if (enableConstantSchedule) {
+				lastActivationSlack1 = CONSTANT_SCHEDULER.lastActivationSlack1;
+				lastActivationSlack2 = CONSTANT_SCHEDULER.lastActivationSlack2;
+				enableConstantSchedule = false;
+			}
+
+			if (enableAccelerationSchedule) {
+				lastActivationSlack1 = ACCELERATION_SCHEDULER.lastActivationSlack1;
+				lastActivationSlack2 = ACCELERATION_SCHEDULER.lastActivationSlack2;
+				enableAccelerationSchedule = false;
+			}
 
 			Serial.print('F');
 			continue;
@@ -160,11 +172,13 @@ void tryToFetchNextPlans() {
 	switch (buffer[-1]) {
 	case 'A': {
 		enableAccelerationSchedule = true;
+		ACCELERATION_SCHEDULER.registerLastActivationSlack(lastActivationSlack1, lastActivationSlack2);
 		ACCELERATION_SCHEDULER.initFrom(buffer);
 		break;
 	}
 	case 'C': {
 		enableConstantSchedule = true;
+		CONSTANT_SCHEDULER.registerLastActivationSlack(lastActivationSlack1, lastActivationSlack2);
 		CONSTANT_SCHEDULER.initFrom(buffer);
 		break;
 	}
