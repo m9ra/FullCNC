@@ -1,7 +1,7 @@
 #include "StepperControl.h"
 
 // how many bytes contains instruction from controller
-#define PLAN_SIZE 8 
+#define PLAN_SIZE 12 
 #define INSTRUCTION_SIZE (1+PLAN_SIZE*4+2+1) 
 #define BUFFERED_INSTRUCTION_COUNT 8
 #define STEPPER_COUNT 2
@@ -16,13 +16,13 @@ byte STEP_DIR_PIN2 = 11;
 byte INSTRUCTION_BUFFER[INSTRUCTION_SIZE*BUFFERED_INSTRUCTION_COUNT] = { 0 };
 
 //Index where next instruction segment will contain plan instruction.
-byte INSTRUCTION_BUFFER_LAST_INDEX = 0;
+uint16_t INSTRUCTION_BUFFER_LAST_INDEX = 0;
 //Index to a segment where data are actually written.
-byte INSTRUCTION_BUFFER_ARRIVAL_INDEX = 0;
+uint16_t INSTRUCTION_BUFFER_ARRIVAL_INDEX = 0;
 //Absolute offset to actually written segment.
-byte INSTRUCTION_BUFFER_ARRIVAL_OFFSET = 0;
+uint16_t INSTRUCTION_BUFFER_ARRIVAL_OFFSET = 0;
 //Offset within actually written instruction segment.
-byte SEGMENT_ARRIVAL_OFFSET = 0;
+uint16_t SEGMENT_ARRIVAL_OFFSET = 0;
 
 //Time where last byte has arrived (is used for incomplete message recoveries).
 unsigned long LAST_BYTE_ARRIVAL_TIME = 0;

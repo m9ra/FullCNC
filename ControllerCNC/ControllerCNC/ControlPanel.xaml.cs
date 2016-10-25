@@ -128,7 +128,16 @@ C(-1,3535,0,0)
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
-            /*
+            _driver.StepperIndex = 2;
+            _driver.SEND_Constant(100, 500000, 0, 0);
+            _driver.SEND_Constant(10000, 5000, 0, 0);
+
+            _driver.StepperIndex = 2;
+            _driver.SEND_Constant(100, 2000, 0, 0);
+            _driver.SEND_Constant(100, 2000, 0, 0);
+            return;
+
+            /*/
             _driver.StepperIndex = 2;
             //_driver.SEND_Constant(0, 1600, 0, 0);
             //_driver.SEND_Constant(400 * 50, 800, 0, 0);
@@ -138,7 +147,8 @@ C(-1,3535,0,0)
             _driver.StepperIndex = 2;
             _driver.SEND_Constant(-6250, 310 * 6, 0, 0);
             _driver.SEND_Constant(-310, 6250 * 6, 0, 0);
-             * */
+            return;
+             /**/
 
             var xDelta = 9000;
             var yDelta = 1000;

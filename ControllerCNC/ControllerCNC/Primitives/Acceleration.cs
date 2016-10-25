@@ -10,13 +10,13 @@ namespace ControllerCNC.Primitives
     {
         public readonly Int16 StepCount;
 
-        public readonly UInt16 StartDeltaT;
+        public readonly int StartDeltaT;
 
         public readonly Int16 StartN;
 
-        public readonly UInt16 EndDeltaT;
+        public readonly int EndDeltaT;
 
-        public Acceleration(Int16 stepCount, UInt16 startDeltaT, Int16 startN, UInt16 endDeltaT)
+        public Acceleration(Int16 stepCount, int startDeltaT, Int16 startN, int endDeltaT)
         {
             StepCount = stepCount;
             StartDeltaT = startDeltaT;

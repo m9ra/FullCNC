@@ -62,7 +62,7 @@ namespace ControllerCNC
         /// <summary>
         /// Length of the instruction sent to machine.
         /// </summary>
-        private readonly int _instructionLength = 36;
+        private readonly int _instructionLength = 52;
 
         /// <summary>
         /// Queue waiting for sending.
@@ -200,7 +200,7 @@ namespace ControllerCNC
                         break;
 
                     default:
-                       // throw new NotImplementedException();
+                        // throw new NotImplementedException();
                         break;
                 }
             }
@@ -311,7 +311,7 @@ namespace ControllerCNC
         }
 
 
-        internal Acceleration CalculateBoundedAcceleration(UInt16 startDeltaT, UInt16 endDeltaT, Int16 accelerationDistanceLimit, int accelerationNumerator = 1, int accelerationDenominator = 1)
+        internal Acceleration CalculateBoundedAcceleration(int startDeltaT, int endDeltaT, Int16 accelerationDistanceLimit, int accelerationNumerator = 1, int accelerationDenominator = 1)
         {
             checked
             {
@@ -344,7 +344,7 @@ namespace ControllerCNC
             }
         }
 
-        private UInt16 calculateDeltaT(UInt16 startDeltaT, Int16 startN, Int16 stepCount, int accelerationNumerator, int accelerationDenominator)
+        private UInt16 calculateDeltaT(int startDeltaT, Int16 startN, Int16 stepCount, int accelerationNumerator, int accelerationDenominator)
         {
             checked
             {
@@ -353,7 +353,7 @@ namespace ControllerCNC
             }
         }
 
-        private Int16 calculateN(UInt16 startDeltaT, int accelerationNumerator, int accelerationDenominator)
+        private Int16 calculateN(int startDeltaT, int accelerationNumerator, int accelerationDenominator)
         {
             checked
             {
@@ -379,7 +379,7 @@ namespace ControllerCNC
             return deltaT;
         }
 
-        internal void SEND_Acceleration(Int16 stepCount, UInt16 initialDeltaT, Int16 n)
+        internal void SEND_Acceleration(Int16 stepCount, int initialDeltaT, Int16 n)
         {
             //Debug.WriteLine("A({0},{1},{2})", stepCount, initialDeltaT, n);
 
@@ -396,7 +396,7 @@ namespace ControllerCNC
             send(sendBuffer);
         }
 
-        internal void SEND_Constant(Int16 stepCount, UInt16 baseDeltaT, UInt16 periodNumerator, UInt16 periodDenominator)
+        internal void SEND_Constant(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator, UInt16 periodDenominator)
         {
             //Debug.WriteLine("C({0},{1},{2},{3})", stepCount, baseDeltaT, periodNumerator, periodDenominator);
 
@@ -410,7 +410,7 @@ namespace ControllerCNC
             send(sendBuffer);
         }
 
-        internal void SEND_Deceleration(Int16 stepCount, UInt16 initialDeltaT, Int16 n)
+        internal void SEND_Deceleration(Int16 stepCount, int initialDeltaT, Int16 n)
         {
             SEND_Acceleration(stepCount, initialDeltaT, (Int16)(-n));
         }
@@ -427,6 +427,16 @@ namespace ControllerCNC
         {
             return new byte[]{
                 (byte)(value>>8),
+                (byte)(value & 255)
+            };
+        }
+
+        internal byte[] ToBytes(int value)
+        {
+            return new byte[]{
+                (byte)((value>>24) & 255),
+                (byte)((value>>16) & 255),
+                (byte)((value>>8) & 255),
                 (byte)(value & 255)
             };
         }

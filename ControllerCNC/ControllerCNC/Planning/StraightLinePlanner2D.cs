@@ -216,8 +216,8 @@ namespace ControllerCNC.Planning
                 SendTransition2(remainingX, remainingY, Math.Abs((long)remainingTime), cnc);
 
                 //cnc.StepperIndex = 2;
-               // cnc.SEND(xAcceleration.Invert());
-               // cnc.SEND(yAcceleration.Invert());
+                // cnc.SEND(xAcceleration.Invert());
+                // cnc.SEND(yAcceleration.Invert());
             }
         }
 
@@ -247,7 +247,7 @@ namespace ControllerCNC.Planning
             checked
             {
                 var initialDeltaT = (UInt16)Math.Round(DriverCNC.TimeScale / Math.Abs(initialSpeed));
-                var endDeltaT = (UInt16)Math.Round(DriverCNC.TimeScale  / Math.Abs(endSpeed));
+                var endDeltaT = (UInt16)Math.Round(DriverCNC.TimeScale / Math.Abs(endSpeed));
                 var boundedAcceleration = cnc.CalculateBoundedAcceleration(initialDeltaT, endDeltaT, (Int16)(distanceLimit / 2), (int)Math.Round(acceleration), DriverCNC.MaxAcceleration);
                 return boundedAcceleration;
             }
@@ -266,12 +266,11 @@ namespace ControllerCNC.Planning
         {
             checked
             {
-                var chunkTimeLimit = 60000;
-
                 var remainingStepsX = distanceX;
                 var remainingStepsY = distanceY;
 
-                var chunkCount = 1.0 * transitionTime / chunkTimeLimit;
+                var chunkLengthLimit = 65500;
+                var chunkCount = 1.0 * Math.Max(Math.Abs(distanceX), Math.Abs(distanceY)) / chunkLengthLimit;
                 chunkCount = Math.Max(1, chunkCount);
 
 
@@ -296,8 +295,8 @@ namespace ControllerCNC.Planning
                     doneDistanceX += stepCountX;
                     doneDistanceY += stepCountY;
 
-                    var stepTimeX = stepCountX == 0 ? (UInt16)0 : (UInt16)(stepsTime / Math.Abs(stepCountX));
-                    var stepTimeY = stepCountY == 0 ? (UInt16)0 : (UInt16)(stepsTime / Math.Abs(stepCountY));
+                    var stepTimeX = stepCountX == 0 ? 0 : (int)Math.Round(stepsTime / Math.Abs(stepCountX));
+                    var stepTimeY = stepCountY == 0 ? 0 : (int)Math.Round(stepsTime / Math.Abs(stepCountY));
 
                     var remainderX = Math.Abs(stepCountXD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountXD));
                     var remainderY = Math.Abs(stepCountYD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountYD));
@@ -312,9 +311,9 @@ namespace ControllerCNC.Planning
                     doneTime += stepsTime;//Math.Max(Math.Abs(stepTimeX * stepCountX), Math.Abs(stepTimeY * stepCountY));
 
                     cnc.StepperIndex = 2;
-                    cnc.SEND_Constant(stepCountX, stepTimeX, 0, 0);//remainderX, (UInt16)Math.Abs(stepCountXD));
-                    cnc.SEND_Constant(stepCountY, stepTimeY, 0, 0);//remainderY, (UInt16)Math.Abs(stepCountYD));
-                    Debug.WriteLine("{0}|{1}  {2}|{3}", stepTimeX, stepTimeY, remainderX, remainderY);
+                    cnc.SEND_Constant(stepCountX, stepTimeX, remainderX, (UInt16)Math.Abs(stepCountXD));
+                    cnc.SEND_Constant(stepCountY, stepTimeY, remainderY, (UInt16)Math.Abs(stepCountYD));
+                    //Debug.WriteLine("{0}|{1}  {2}|{3}", stepTimeX, stepTimeY, remainderX, remainderY);
                     i = i + 1 > chunkCount ? chunkCount : i + 1;
                 }
             }

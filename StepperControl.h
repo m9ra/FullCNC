@@ -20,8 +20,10 @@ Editor:	http://www.visualmicro.com
 #endif
 
 
-#define READ_INT16(buff, position) (((int16_t)buff[(position)]) << 8) + buff[(position) + 1]
-#define READ_UINT16(buff, position) (((uint16_t)buff[(position)]) << 8) + buff[(position) + 1]
+#define READ_INT16(buff, position) ((((int16_t)buff[(position)]) << 8) + buff[(position) + 1])
+#define READ_INT32(buff, position) ((((int32_t)buff[(position)]) << 24)+(((int32_t)buff[(position) + 1]) << 16)+(((int32_t)buff[(position) + 2]) << 8) + buff[(position) + 3])
+//#define READ_INT32(buff, position) *(((int32_t*)(buff+(position))))
+#define READ_UINT16(buff, position) ((((uint16_t)buff[(position)]) << 8) + buff[(position) + 1])
 #define UINT16_MAX 65535
 #define INT32_MAX 2147483647
 
@@ -93,7 +95,7 @@ public:
 class ConstantPlan : public Plan {
 public:
 	// How much data is required for load
-	static const byte dataSize = 8;
+	static const byte dataSize = 10;
 
 	ConstantPlan(byte clkPin, byte dirPin);
 
@@ -105,7 +107,7 @@ public:
 
 private:
 	// Base deltaT for step rate.
-	uint16_t _baseDeltaT;
+	int32_t _baseDeltaT;
 	// Period numerator for delay remainder displacement.
 	uint16_t _periodNumerator;
 	//Period denominator for delay remainder displacement.
@@ -117,7 +119,7 @@ private:
 class AccelerationPlan : public Plan {
 public:
 	// How much data is required for load.
-	static const byte dataSize = 6;
+	static const byte dataSize = 8;
 
 	AccelerationPlan(byte clkPin, byte dirPin);
 
@@ -134,7 +136,7 @@ protected:
 	// buffer for remainder accumulation
 	uint32_t _currentDeltaTBuffer;
 	// current deltaT which is used
-	uint16_t _currentDeltaT;
+	int32_t _currentDeltaT;
 };
 
 class Steppers {

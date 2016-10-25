@@ -13,7 +13,7 @@ volatile bool SCHEDULER_START_EVENT_FLAG = false;
 
 
 ISR(TIMER1_OVF_vect) {
-	TCNT1 = 30000;//SCHEDULE_BUFFER[SCHEDULE_END];
+	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
 
 	//pins go LOW here (pulse start)
 	PORTB = SCHEDULE_ACTIVATIONS[SCHEDULE_END];
@@ -77,8 +77,8 @@ AccelerationPlan::AccelerationPlan(byte clkPin, byte dirPin)
 void AccelerationPlan::loadFrom(byte * data)
 {
 	int16_t stepCount = READ_INT16(data, 0);
-	uint16_t initialDeltaT = READ_UINT16(data, 2);
-	int16_t n = READ_INT16(data, 2 + 2);
+	int32_t initialDeltaT = READ_INT32(data, 2);
+	int16_t n = READ_INT16(data, 2 + 4);
 
 	this->remainingSteps = abs(stepCount);
 	this->isActive = this->remainingSteps > 0;
@@ -106,7 +106,7 @@ void AccelerationPlan::createNextActivation()
 
 	--this->remainingSteps;
 
-	uint16_t nextDeltaT = this->_currentDeltaT;
+	int32_t nextDeltaT = this->_currentDeltaT;
 	if (this->_isDeceleration) {
 		this->_current2N -= 2;
 		this->_currentDeltaTBuffer += nextDeltaT;
@@ -140,7 +140,7 @@ void ConstantPlan::createNextActivation()
 
 	--this->remainingSteps;
 
-	uint16_t currentDeltaT = this->_baseDeltaT;
+	int32_t currentDeltaT = this->_baseDeltaT;
 
 	if (this->_periodNumerator > 0) {
 		this->_periodAccumulator += this->_periodNumerator;
@@ -162,9 +162,9 @@ ConstantPlan::ConstantPlan(byte clkPin, byte dirPin)
 void ConstantPlan::loadFrom(byte * data)
 {
 	int16_t stepCount = READ_INT16(data, 0);
-	uint16_t baseDeltaT = READ_UINT16(data, 2);
-	uint16_t periodNumerator = READ_UINT16(data, 2 + 2);
-	uint16_t periodDenominator = READ_UINT16(data, 2 + 2 + 2);
+	int32_t baseDeltaT = READ_INT32(data, 2);
+	uint16_t periodNumerator = READ_UINT16(data, 2 + 4);
+	uint16_t periodDenominator = READ_UINT16(data, 2 + 4 + 2);
 
 	this->remainingSteps = abs(stepCount);
 	this->stepMask = stepCount > 0 ? this->dirMask : 0;
