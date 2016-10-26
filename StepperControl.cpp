@@ -70,7 +70,7 @@ void Steppers::initialize()
 
 
 AccelerationPlan::AccelerationPlan(byte clkPin, byte dirPin)
-	: Plan(clkPin, dirPin), _currentDeltaT(0), _current2N(0), _currentDeltaTBuffer(0), _isDeceleration(false)
+	: Plan(clkPin, dirPin), _currentDeltaT(0), _current4N(0), _currentDeltaTBuffer2(0), _isDeceleration(false)
 {
 }
 
@@ -78,7 +78,7 @@ void AccelerationPlan::loadFrom(byte * data)
 {
 	int16_t stepCount = READ_INT16(data, 0);
 	int32_t initialDeltaT = READ_INT32(data, 2);
-	int16_t n = READ_INT16(data, 2 + 4);
+	int32_t n = READ_INT32(data, 2 + 4);
 
 	this->remainingSteps = abs(stepCount);
 	this->isActive = this->remainingSteps > 0;
@@ -88,13 +88,8 @@ void AccelerationPlan::loadFrom(byte * data)
 
 	this->_isDeceleration = n < 0;
 	this->_currentDeltaT = initialDeltaT;
-	this->_current2N = ((uint32_t)2) * abs(n);
-	this->_currentDeltaTBuffer = 0;
-
-	if (this->_isDeceleration && abs(n) < stepCount) {
-		Serial.print('X');
-		this->remainingSteps = 0;
-	}
+	this->_current4N = ((uint32_t)4) * abs(n);
+	this->_currentDeltaTBuffer2 = 0;
 }
 
 void AccelerationPlan::createNextActivation()
@@ -108,25 +103,25 @@ void AccelerationPlan::createNextActivation()
 
 	int32_t nextDeltaT = this->_currentDeltaT;
 	if (this->_isDeceleration) {
-		this->_current2N -= 2;
-		this->_currentDeltaTBuffer += nextDeltaT;
-		while (this->_currentDeltaTBuffer * 2 > this->_current2N * 2 - 1) {
-			this->_currentDeltaTBuffer -= (this->_current2N * 2 - 1) / 2;
+		this->_current4N -= 4;
+		this->_currentDeltaTBuffer2 += nextDeltaT * 2;
+		while (this->_currentDeltaTBuffer2 >= this->_current4N + 1) {
+			this->_currentDeltaTBuffer2 -= this->_current4N + 1;
 			nextDeltaT += 1;
 		}
-
-		//Serial.print('|');
-		//Serial.println(nextDeltaT);
 	}
 	else {
-		this->_current2N += 2;
-		this->_currentDeltaTBuffer += nextDeltaT;
-		while (this->_currentDeltaTBuffer * 2 > this->_current2N * 2 - 1) {
-			this->_currentDeltaTBuffer -= (this->_current2N * 2 - 1) / 2;
+		this->_current4N += 4;
+		this->_currentDeltaTBuffer2 += nextDeltaT * 2;
+		while (this->_currentDeltaTBuffer2 >= this->_current4N + 1) {
+			this->_currentDeltaTBuffer2 -= this->_current4N + 1;
 			nextDeltaT -= 1;
 		}
 	}
 	this->_currentDeltaT = nextDeltaT;
+
+	/*Serial.print("|d:");
+	Serial.println(nextDeltaT);*/
 
 	this->nextActivationTime = this->_currentDeltaT;
 }

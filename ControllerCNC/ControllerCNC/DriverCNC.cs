@@ -387,7 +387,7 @@ namespace ControllerCNC
             return deltaT;
         }
 
-        internal void SEND_Acceleration(Int16 stepCount, int initialDeltaT, Int16 n)
+        internal void SEND_Acceleration(Int16 stepCount, int initialDeltaT, int n)
         {
             //Debug.WriteLine("A({0},{1},{2})", stepCount, initialDeltaT, n);
 

@@ -119,7 +119,7 @@ private:
 class AccelerationPlan : public Plan {
 public:
 	// How much data is required for load.
-	static const byte dataSize = 8;
+	static const byte dataSize = 10;
 
 	AccelerationPlan(byte clkPin, byte dirPin);
 
@@ -132,9 +132,9 @@ protected:
 	// determine whether plan corresponds to deceleration
 	bool _isDeceleration;
 	// current n parameter of Taylor incremental acceleration formula
-	uint32_t _current2N;
+	uint32_t _current4N;
 	// buffer for remainder accumulation
-	uint32_t _currentDeltaTBuffer;
+	uint32_t _currentDeltaTBuffer2;
 	// current deltaT which is used
 	int32_t _currentDeltaT;
 };

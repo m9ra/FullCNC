@@ -12,19 +12,16 @@ namespace ControllerCNC.Primitives
 
         public readonly int StartDeltaT;
 
-        public readonly Int16 StartN;
+        public readonly int StartN;
 
         public readonly int EndDeltaT;
 
-        public AccelerationPlan(Int16 stepCount, int startDeltaT, Int16 startN, int endDeltaT)
+        public AccelerationPlan(Int16 stepCount, int startDeltaT, int startN, int endDeltaT)
         {
             StepCount = stepCount;
             StartDeltaT = startDeltaT;
             StartN = startN;
-            EndDeltaT = endDeltaT;
-
-            if (StartN == 0)
-                throw new NotSupportedException("Invalid acceleration profile");
+            EndDeltaT = endDeltaT;           
         }
 
         /// <summary>
