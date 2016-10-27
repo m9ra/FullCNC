@@ -1,8 +1,8 @@
 #include "StepperControl.h"
 
 // how many bytes contains instruction from controller
-#define PLAN_SIZE 12 
-#define INSTRUCTION_SIZE (1+PLAN_SIZE*4+2+1) 
+
+#define INSTRUCTION_SIZE 52
 #define BUFFERED_INSTRUCTION_COUNT 8
 #define STEPPER_COUNT 2
 

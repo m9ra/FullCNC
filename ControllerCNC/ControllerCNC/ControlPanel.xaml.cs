@@ -118,31 +118,31 @@ namespace ControllerCNC
             var tracer = new PathTracer2D();
             var maxAcceleration = 2 * 400;
 
-
-            /* var smoothness = 20;
-             var duration = 25.0;
-             for (var i = 5; i < smoothness; ++i)
-             {
-                 var rad = 33*i * Math.PI / 180;
-                 var direction = new Vector(Math.Abs(Math.Sin(rad)), Math.Abs(Math.Cos(rad)));
-                 direction.Normalize();
-                 tracer.AppendAcceleration(direction * maxAcceleration, duration / smoothness);
-             }
-             tracer.Execute(_driver);
-             return;*/
+            /*/
+            var smoothness = 20;
+            var duration = 25.0;
+            for (var i = 5; i < smoothness; ++i)
+            {
+                var rad = 33 * i * Math.PI / 180;
+                var direction = new Vector(Math.Abs(Math.Sin(rad)), Math.Abs(Math.Cos(rad)));
+                direction.Normalize();
+                tracer.AppendAcceleration(direction * maxAcceleration, duration / smoothness);
+            }
+            tracer.Execute(_driver);
+            return;/**/
 
             var direction1 = new Vector(-400, -2);
             var direction2 = new Vector(-20, -400);
             direction1.Normalize();
             direction2.Normalize();
             tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+           /* tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
             //tracer.Continue(2);
             tracer.AppendAcceleration(direction2 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
             tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
-            /*tracer.Continue(2);
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            //tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
             tracer.Continue(2);*/
             tracer.Execute(_driver);
 

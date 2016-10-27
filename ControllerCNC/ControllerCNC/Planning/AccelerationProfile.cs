@@ -91,14 +91,18 @@ namespace ControllerCNC.Planning
                     continue;
                 }
 
-                if (window.Peek() < minimalStartDelta)
+                if (window.Peek() <= minimalStartDelta)
+                    break;
+
+               if (currentDelta > maximalEndDelta)
+                    //boundary must be met
                     break;
 
                 //now we have to decide if it is better to add next delta instead of last delta
                 var popSum = windowSum - window.Peek() + currentDelta;
                 var popDiff = Math.Abs(popSum - desiredTickCount);
                 var stopDiff = Math.Abs(windowSum - desiredTickCount);
-                if (stopDiff < popDiff)
+                if (stopDiff < popDiff && window.Peek() <= minimalStartDelta)
                     //there is no point for continuation
                     //NOTE: we allow equal continuation - after constant segment better value might occur
                     break;
@@ -107,9 +111,7 @@ namespace ControllerCNC.Planning
                 windowSum += currentDelta;
                 window.Enqueue(currentDelta);
 
-                if (currentDelta > maximalEndDelta)
-                    //boundary must be met
-                    break;
+
             }
             windowStart = currentN - window.Count;
             if (window.Count != StepCount)
@@ -147,6 +149,13 @@ namespace ControllerCNC.Planning
                 change *= -1;
 
             currentDelta = currentDelta - change;
+        }
+
+        public override string ToString()
+        {
+            var prefix = IsDeceleration ? "PD" : "PA";
+
+            return string.Format(prefix + "({0},{1},{2}:{3},{4}:{5})", StepCount, Duration, StartN, EndN, StartDelta, EndDelta);
         }
     }
 }
