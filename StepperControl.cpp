@@ -102,26 +102,34 @@ void AccelerationPlan::createNextActivation()
 	--this->remainingSteps;
 
 	int32_t nextDeltaT = this->_currentDeltaT;
+	int32_t nextDeltaTChange = 0;
+	this->_currentDeltaTBuffer2 += nextDeltaT * 2;
+
 	if (this->_isDeceleration) {
 		this->_current4N -= 4;
-		this->_currentDeltaTBuffer2 += nextDeltaT * 2;
-		while (this->_currentDeltaTBuffer2 >= this->_current4N + 1) {
-			this->_currentDeltaTBuffer2 -= this->_current4N + 1;
-			nextDeltaT += 1;
-		}
 	}
 	else {
 		this->_current4N += 4;
-		this->_currentDeltaTBuffer2 += nextDeltaT * 2;
+	}
+
+	if (nextDeltaT > 5000) {
+		//TODO find optimal boundary - we don't want to do zillion subtractions here
+		nextDeltaTChange = this->_currentDeltaTBuffer2 / (this->_current4N + 1);
+		this->_currentDeltaTBuffer2 = this->_currentDeltaTBuffer2 % (this->_current4N + 1);
+	}
+	else {
+		//for small numbers we will do better with subtraction
 		while (this->_currentDeltaTBuffer2 >= this->_current4N + 1) {
 			this->_currentDeltaTBuffer2 -= this->_current4N + 1;
-			nextDeltaT -= 1;
+			nextDeltaTChange += 1;
 		}
 	}
+	nextDeltaT = this->_isDeceleration ? nextDeltaT + nextDeltaTChange : nextDeltaT - nextDeltaTChange;
 	this->_currentDeltaT = nextDeltaT;
 
-	/*Serial.print("|d:");
-	Serial.println(nextDeltaT);*/
+	//Serial.print("|d:");
+	//Serial.println(nextDeltaT);
+
 
 	this->nextActivationTime = this->_currentDeltaT;
 }

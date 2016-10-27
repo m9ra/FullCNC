@@ -104,94 +104,49 @@ namespace ControllerCNC
 
         private void Button_Click_2(object sender, RoutedEventArgs e)
         {
-            /*
-A(2,15000,1)
-A(2,4082,-3)
-A(-3,15000,1)
-C(-1,3535,0,0)
-             */
-
-
-            // _driver.SEND_Constant(2, 65000, 0, 1);
-            // _driver.SEND_Constant(-2, 65000, 0, 1);
-
             var overShoot = 100;
             var segmentation = 4;
             for (var i = 0; i < 400 / segmentation; ++i)
             {
                 _driver.SEND_TransitionRPM(-overShoot, 0, 1500, 0);
                 _driver.SEND_TransitionRPM(segmentation + overShoot, 0, 1500, 0);
-                //_positionController.SetPosition(i * segmentation - overShoot);
-                //_positionController.SetPosition(i * segmentation + overShoot + segmentation);
             }
         }
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
-
             var tracer = new PathTracer2D();
+            var maxAcceleration = 2 * 400;
 
-            var maxAcceleration = 20 * 400;
-            var direction1 = new Vector(400, 2);
-            var direction2 = new Vector(20, 400);
+
+            /* var smoothness = 20;
+             var duration = 25.0;
+             for (var i = 5; i < smoothness; ++i)
+             {
+                 var rad = 33*i * Math.PI / 180;
+                 var direction = new Vector(Math.Abs(Math.Sin(rad)), Math.Abs(Math.Cos(rad)));
+                 direction.Normalize();
+                 tracer.AppendAcceleration(direction * maxAcceleration, duration / smoothness);
+             }
+             tracer.Execute(_driver);
+             return;*/
+
+            var direction1 = new Vector(-400, -2);
+            var direction2 = new Vector(-20, -400);
             direction1.Normalize();
             direction2.Normalize();
-
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.2);
-            tracer.Continue(2);
-            tracer.AppendAcceleration(direction2 * maxAcceleration, 0.2);
-            tracer.Continue(2);
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.2);
-            tracer.Continue(2);
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
+            //tracer.Continue(2);
+            tracer.AppendAcceleration(direction2 * maxAcceleration, 2);
+            tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
+            tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
+            /*tracer.Continue(2);
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            tracer.Continue(2);*/
             tracer.Execute(_driver);
 
             return;
-
-
-            /*_driver.StepperIndex = 2;
-            _driver.SEND_Constant(25, 1000000, 0, 0);
-            _driver.SEND_Constant(10000, 2500, 0, 0);
-
-            _driver.StepperIndex = 2;
-            _driver.SEND_Constant(10000, 2000, 0, 0);
-            _driver.SEND_Constant(10000, 2000, 0, 0);
-            return;*/
-
-            /*/
-            _driver.StepperIndex = 2;
-            //_driver.SEND_Constant(0, 1600, 0, 0);
-            //_driver.SEND_Constant(400 * 50, 800, 0, 0);
-            _driver.SEND_Acceleration(6250, 2002, 9363);
-            _driver.SEND_Acceleration(310, 40050, 468);
-
-            _driver.StepperIndex = 2;
-            _driver.SEND_Constant(-6250, 310 * 6, 0, 0);
-            _driver.SEND_Constant(-310, 6250 * 6, 0, 0);
-            return;
-             /**/
-
-            var xDelta = 9000;
-            var yDelta = 1000;
-
-            StraightLinePlanner2D.AcceleratedTransition(xDelta, yDelta, _driver);
-
-            var length = 5000;
-            for (var i = 70; i < 80; ++i)
-            {
-                var radAngle = i / Math.PI / 2;
-                var point = point2D(Math.Sin(radAngle), Math.Cos(radAngle), length);
-                //StraightLinePlanner2D.AcceleratedTransition(point.X, point.Y, _driver);
-                //StraightLinePlanner2D.AcceleratedTransition(-point.X, -point.Y, _driver);
-            }
-
-
-            /*  while (_driver.IncompletePlanCount > 0)
-                  Thread.Sleep(1);
-
-              Thread.Sleep(1000);
-
-              var time = Math.Max(Math.Abs(xDelta * 2000), Math.Abs(yDelta * 2000));
-              StraightLinePlanner2D.SendTransition2(-xDelta, -yDelta, time, _driver);*/
         }
 
         private void Button_Click_5(object sender, RoutedEventArgs e)
@@ -256,8 +211,9 @@ C(-1,3535,0,0)
                 remainingY -= sliceY;
 
                 _driver.StepperIndex = 2;
-                _driver.SEND_Constant(sliceX, accelerationX.EndDeltaT, 0, 0);
-                _driver.SEND_Constant(sliceY, accelerationY.EndDeltaT, 0, 0);
+                // _driver.SEND_Constant(sliceX, accelerationX.EndDeltaT, 0, 0);
+                // _driver.SEND_Constant(sliceY, accelerationY.EndDeltaT, 0, 0);
+                throw new NotImplementedException("Refactoring");
             }
 
             _driver.StepperIndex = 2;

@@ -259,39 +259,9 @@ namespace ControllerCNC
             var targetDeltaT = DeltaTFromRPM(targetRPM);
             var endDeltaT = DeltaTFromRPM(endRPM);
 
-            SEND_Transition(stepCount, startDeltaT, targetDeltaT, endDeltaT);
-        }
-
-        public void SEND_Transition(int stepCount, int startDeltaT, int targetDeltaT, int endDeltaT)
-        {
-            if (startDeltaT > UInt16.MaxValue || targetDeltaT > UInt16.MaxValue || endDeltaT > UInt16.MaxValue)
-                throw new NotImplementedException("split");
-
-            if (startDeltaT < 1 || targetDeltaT < 1 || endDeltaT < 1)
-                throw new NotSupportedException();
-
-            var startDeltaTI = (UInt16)startDeltaT;
-            var targetDeltaTI = (UInt16)targetDeltaT;
-            var endDeltaTI = (UInt16)endDeltaT;
-
-            var maxAccelerationDistance = GetStepSlice(stepCount / 2);
-            var acceleration1 = CalculateBoundedAcceleration(startDeltaTI, targetDeltaTI, maxAccelerationDistance);
-            var acceleration2 = CalculateBoundedAcceleration(acceleration1.EndDeltaT, endDeltaTI, maxAccelerationDistance);
-
-            var constantTrackSteps = stepCount - acceleration1.StepCount - acceleration2.StepCount;
-            SEND(acceleration1);
-
-            while (Math.Abs(constantTrackSteps) > 0)
-            {
-                var nextSteps = GetStepSlice(constantTrackSteps);
-                constantTrackSteps -= nextSteps;
-
-                SEND_Constant(nextSteps, acceleration1.EndDeltaT, 0, 0);
-            }
-
-            if (Math.Abs(stepCount) > 1)
-                SEND(acceleration2);
-        }
+            //SEND_Transition(stepCount, startDeltaT, targetDeltaT, endDeltaT);
+            throw new NotImplementedException("Refactoring");
+        }     
 
         public Int16 GetStepSlice(long steps, Int16 maxSize = 30000)
         {
@@ -325,7 +295,7 @@ namespace ControllerCNC
             {
                 if (accelerationDistanceLimit == 0)
                 {
-                    return new AccelerationPlan(0, startDeltaT, 1, startDeltaT);
+                    return new AccelerationPlan(0, 0, 0);
                 }
 
                 var stepSign = accelerationDistanceLimit >= 0 ? 1 : -1;
@@ -340,14 +310,14 @@ namespace ControllerCNC
                     //acceleration
                     stepCount = (Int16)(Math.Min(endN - startN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, startN, stepCount, accelerationNumerator, accelerationDenominator);
-                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, startN, limitedDeltaT);
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, startN);
                 }
                 else
                 {
                     //deceleration
                     stepCount = (Int16)(Math.Min(startN - endN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, (Int16)(-startN), stepCount, accelerationNumerator, accelerationDenominator);
-                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, (Int16)(-startN), limitedDeltaT);
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, (Int16)(-startN));
                 }
             }
         }

@@ -14,14 +14,17 @@ namespace ControllerCNC.Primitives
 
         public readonly int StartN;
 
-        public readonly int EndDeltaT;
-
-        public AccelerationPlan(Int16 stepCount, int startDeltaT, int startN, int endDeltaT)
+        public AccelerationPlan(Int16 stepCount, int startDeltaT, int startN)
         {
             StepCount = stepCount;
             StartDeltaT = startDeltaT;
             StartN = startN;
-            EndDeltaT = endDeltaT;           
+
+            if (startDeltaT < 0)
+                throw new NotSupportedException("Negative delta");
+
+            if (StartN < 0 && Math.Abs(stepCount) > -StartN)
+                throw new NotSupportedException("Invalid StartN value");
         }
 
         /// <summary>
@@ -31,7 +34,12 @@ namespace ControllerCNC.Primitives
         /// <returns>The inverted acceleration.</returns>
         internal AccelerationPlan Invert()
         {
-            return new AccelerationPlan(StepCount, EndDeltaT, (Int16)(-StartN - Math.Abs(StepCount)), StartDeltaT);
+            throw new NotImplementedException("No more acceleration is reversible");
+        }
+
+        public override string ToString()
+        {
+            return string.Format("A({0},{1},{2})", StepCount, StartDeltaT, StartN);
         }
     }
 }

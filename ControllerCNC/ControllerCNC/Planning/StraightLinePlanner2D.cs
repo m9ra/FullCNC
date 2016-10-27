@@ -180,87 +180,8 @@ namespace ControllerCNC.Planning
                 //AcceleratedTransition(distanceX, distanceY, cnc);
                 lastPoint = point;
             }
-        }
-
-        public static void AcceleratedTransition(int distanceX, int distanceY, DriverCNC cnc)
-        {
-            checked
-            {
-                var direction = new Vector(distanceX, distanceY);
-                direction.Normalize();
-                var acceleration = direction * DriverCNC.MaxAcceleration / 10;
-                var initialSpeed = direction * 0;
-                var topSpeed = direction * DriverCNC.TimeScale / 300;
-
-                var xAcceleration = calculateBoundedAcceleration(initialSpeed.X, topSpeed.X, acceleration.X, distanceX / 2, cnc);
-                var yAcceleration = calculateBoundedAcceleration(initialSpeed.Y, topSpeed.Y, acceleration.Y, distanceY / 2, cnc);
-
-                cnc.StepperIndex = 2;
-                cnc.SEND(xAcceleration);
-                cnc.SEND(yAcceleration);
-
-                var remainingX = distanceX - 2 * xAcceleration.StepCount;
-                var remainingY = distanceY - 2 * yAcceleration.StepCount;
-                var realSpeedX = 1.0 * DriverCNC.TimeScale / xAcceleration.EndDeltaT;
-                var realSpeedY = 1.0 * DriverCNC.TimeScale / yAcceleration.EndDeltaT;
-                double remainingTime;
-                if (realSpeedX > realSpeedY)
-                {
-                    remainingTime = remainingX / realSpeedX * DriverCNC.TimeScale;
-                }
-                else
-                {
-                    remainingTime = remainingY / realSpeedY * DriverCNC.TimeScale;
-                }
-
-                SendTransition2(remainingX, remainingY, Math.Abs((long)remainingTime), cnc);
-
-                //cnc.StepperIndex = 2;
-                // cnc.SEND(xAcceleration.Invert());
-                // cnc.SEND(yAcceleration.Invert());
-            }
-        }
-
-
-        private static double calculateSteps(double startDeltaT, double endDeltaT, int accelerationNumerator, int accelerationDenominator)
-        {
-            var n1 = calculateN(startDeltaT, accelerationNumerator, accelerationDenominator);
-            var n2 = calculateN(endDeltaT, accelerationNumerator, accelerationDenominator);
-
-            return n2 - n1;
-        }
-
-        private static double calculateN(double startDeltaT, int accelerationNumerator, int accelerationDenominator)
-        {
-            checked
-            {
-                var n1 = (double)DriverCNC.TimeScale * DriverCNC.TimeScale * accelerationDenominator / 2 / startDeltaT / startDeltaT / DriverCNC.MaxAcceleration / accelerationNumerator;
-
-                return n1;
-            }
-        }
-
-        private static AccelerationPlan calculateBoundedAcceleration(double initialSpeed, double endSpeed, double acceleration, int distanceLimit, DriverCNC cnc)
-        {
-            if (distanceLimit == 0)
-                return new AccelerationPlan(0, 0, 1, 0);
-            checked
-            {
-                var initialDeltaT = (int)Math.Round(DriverCNC.TimeScale * 0.676 * Math.Sqrt(1 / acceleration)); //(int)Math.Round(DriverCNC.TimeScale / Math.Abs(initialSpeed));
-                var endDeltaT = (int)Math.Round(DriverCNC.TimeScale / Math.Abs(endSpeed));
-                var boundedAcceleration = cnc.CalculateBoundedAcceleration(initialDeltaT, endDeltaT, (Int16)(distanceLimit / 2), (int)Math.Round(acceleration), DriverCNC.MaxAcceleration);
-                return boundedAcceleration;
-            }
-        }
-
-        private void sendTransition3(int distanceX, int distanceY, double acceleration, DriverCNC cnc)
-        {
-            checked
-            {
-                var accelerationVect = new Vector(distanceX, distanceY);
-                throw new NotImplementedException();
-            }
-        }
+        }             
+                  
 
         public static void SendTransition2(int distanceX, int distanceY, long transitionTime, DriverCNC cnc)
         {

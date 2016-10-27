@@ -55,6 +55,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Coord2DController.cs" />
+    <Compile Include="Planning\AccelerationProfile.cs" />
     <Compile Include="Planning\PathTracer2D.cs" />
     <Compile Include="Planning\SegmentPlanBuilder1D.cs" />
     <Compile Include="Planning\SegmentPlanner.cs" />

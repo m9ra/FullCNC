@@ -23,5 +23,10 @@ namespace ControllerCNC.Primitives
             PeriodNumerator = periodNumerator;
             PeriodDenominator = periodDenominator;
         }
+
+        public override string ToString()
+        {
+            return string.Format("C({0},{1},{2},{3}", StepCount, BaseDelta, PeriodNumerator, PeriodDenominator);
+        }
     }
 }
