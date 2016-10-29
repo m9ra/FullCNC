@@ -102,6 +102,12 @@ void AccelerationPlan::createNextActivation()
 	}
 
 	--this->remainingSteps;
+	this->nextActivationTime = this->_currentDeltaT + this->_baseDeltaT;
+
+	if (this->_current4N == 0) {
+		//compensate for error at c0
+		this->_currentDeltaT = this->_currentDeltaT * 676 / 1000;
+	}
 
 	int32_t nextDeltaT = this->_currentDeltaT;
 	int32_t nextDeltaTChange = 0;
@@ -132,7 +138,7 @@ void AccelerationPlan::createNextActivation()
 	//Serial.print("|d:");
 	//Serial.println(nextDeltaT);
 
-	this->nextActivationTime = this->_currentDeltaT + this->_baseDeltaT;
+
 }
 
 void ConstantPlan::createNextActivation()

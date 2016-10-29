@@ -27,14 +27,12 @@ namespace ControllerCNC.Planning
             var initialVelocity = _actualVelocity;
 
             var startPosition = _actualPosition;
-            _actualPosition = _actualPosition + _actualVelocity * time + 0.5 * acceleration * time * time;
-            _actualVelocity = _actualVelocity + acceleration * time;
-            var endPosition = _actualPosition;
+            var newPosition= _actualPosition + _actualVelocity * time + 0.5 * acceleration * time * time;
+            var newVelocity = _actualVelocity + acceleration * time;
 
-            var distance = endPosition - startPosition;
-            var endVelocity = _actualVelocity;
+            var distance = newPosition - startPosition;
 
-            if (Math.Sign(initialVelocity.X) * Math.Sign(endVelocity.X) < 0)
+            if (Math.Sign(initialVelocity.X) * Math.Sign(newVelocity.X) < 0)
             {
                 var stopTime = Math.Abs(initialVelocity.X / acceleration.X);
                 AppendAcceleration(acceleration, stopTime);
@@ -42,7 +40,7 @@ namespace ControllerCNC.Planning
                 return;
             }
 
-            if (Math.Sign(initialVelocity.Y) * Math.Sign(endVelocity.Y) < 0)
+            if (Math.Sign(initialVelocity.Y) * Math.Sign(newVelocity.Y) < 0)
             {
                 var stopTime = Math.Abs(initialVelocity.Y / acceleration.Y);
                 AppendAcceleration(acceleration, stopTime);
@@ -50,11 +48,14 @@ namespace ControllerCNC.Planning
                 return;
             }
 
+            _actualPosition = newPosition;
+            _actualVelocity = newVelocity;
+
             if ((int)time > 0)
             {
-                //TODO increase precision with integer cliping
-                addRampPlan(initialVelocity.X, endVelocity.X, time, distance.X, _pathPlansX);
-                addRampPlan(initialVelocity.Y, endVelocity.Y, time, distance.Y, _pathPlansY);
+                //TODO increase precision with integer clipping
+                addRampPlan(initialVelocity.X, newVelocity.X, time, distance.X, _pathPlansX);
+                addRampPlan(initialVelocity.Y, newVelocity.Y, time, distance.Y, _pathPlansY);
             }
         }
 
@@ -141,11 +142,14 @@ namespace ControllerCNC.Planning
             var tickCount = (int)(exactDuration * DriverCNC.TimeScale);
 
             var acceleration = Math.Abs(absoluteEndSpeed - absoluteInitialSpeed) / exactDuration;
-            var rawC0 = DriverCNC.TimeScale * Math.Sqrt(2 / Math.Abs(acceleration));
+            var rawC0 = DriverCNC.TimeScale * Math.Sqrt(2 / acceleration);
 
             var isDeceleration = absoluteInitialSpeed > absoluteEndSpeed;
 
             var targetDelta = (int)Math.Abs(Math.Round(DriverCNC.TimeScale / endSpeed));
+            if (targetDelta < 0)
+                //overflow when decelerating to stand still
+                targetDelta = int.MaxValue; 
 
             if (isDeceleration)
                 rawC0 = -rawC0;

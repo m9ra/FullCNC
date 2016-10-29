@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.Windows;
+
 using System.IO.Ports;
 using System.Threading;
 
@@ -124,7 +126,8 @@ namespace ControllerCNC
         {
             //1250,625,4799,4000000
             //var plan = new AccelerationProfile(1250, 625, 4799, 4000000);
-
+            //var acc=new AccelerationProfile(105737.12634405641, 1398, 1431, 4000000);
+            //var dec=new AccelerationProfile(-105737.12634405641,int.MaxValue,1431,4000000);
 
             _port = new SerialPort("COM27");
             _port.BaudRate = 128000;
