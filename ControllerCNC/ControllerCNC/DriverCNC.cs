@@ -9,6 +9,7 @@ using System.Threading;
 
 using System.Diagnostics;
 
+using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
 
 namespace ControllerCNC
@@ -121,6 +122,10 @@ namespace ControllerCNC
 
         public DriverCNC()
         {
+            //1250,625,4799,4000000
+            //var plan = new AccelerationProfile(1250, 625, 4799, 4000000);
+
+
             _port = new SerialPort("COM27");
             _port.BaudRate = 128000;
             _port.Open();
@@ -261,7 +266,7 @@ namespace ControllerCNC
 
             //SEND_Transition(stepCount, startDeltaT, targetDeltaT, endDeltaT);
             throw new NotImplementedException("Refactoring");
-        }     
+        }
 
         public Int16 GetStepSlice(long steps, Int16 maxSize = 30000)
         {
@@ -277,7 +282,7 @@ namespace ControllerCNC
             if (acceleration == null)
                 return;
 
-            SEND_Acceleration(acceleration.StepCount, acceleration.StartDeltaT, acceleration.StartN);
+            SEND_Acceleration(acceleration.StepCount, acceleration.StartDeltaT, acceleration.BaseDelta, acceleration.StartN);
         }
 
 
@@ -295,7 +300,7 @@ namespace ControllerCNC
             {
                 if (accelerationDistanceLimit == 0)
                 {
-                    return new AccelerationPlan(0, 0, 0);
+                    return new AccelerationPlan(0, 0, 0, 0);
                 }
 
                 var stepSign = accelerationDistanceLimit >= 0 ? 1 : -1;
@@ -310,14 +315,14 @@ namespace ControllerCNC
                     //acceleration
                     stepCount = (Int16)(Math.Min(endN - startN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, startN, stepCount, accelerationNumerator, accelerationDenominator);
-                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, startN);
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, 0, startN);
                 }
                 else
                 {
                     //deceleration
                     stepCount = (Int16)(Math.Min(startN - endN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, (Int16)(-startN), stepCount, accelerationNumerator, accelerationDenominator);
-                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, (Int16)(-startN));
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, 0, (Int16)(-startN));
                 }
             }
         }
@@ -357,7 +362,7 @@ namespace ControllerCNC
             return deltaT;
         }
 
-        internal void SEND_Acceleration(Int16 stepCount, int initialDeltaT, int n)
+        internal void SEND_Acceleration(Int16 stepCount, int initialDeltaT, Int16 baseDelta, int n)
         {
             //Debug.WriteLine("A({0},{1},{2})", stepCount, initialDeltaT, n);
 
@@ -371,6 +376,7 @@ namespace ControllerCNC
             sendBuffer.AddRange(ToBytes(stepCount));
             sendBuffer.AddRange(ToBytes(initialDeltaT));
             sendBuffer.AddRange(ToBytes(n));
+            sendBuffer.AddRange(ToBytes(baseDelta));
             send(sendBuffer);
         }
 
@@ -388,9 +394,10 @@ namespace ControllerCNC
             send(sendBuffer);
         }
 
-        internal void SEND_Deceleration(Int16 stepCount, int initialDeltaT, Int16 n)
+        internal void SEND_Deceleration(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 n)
         {
-            SEND_Acceleration(stepCount, initialDeltaT, (Int16)(-n));
+            //TODO deceleration is not inversed acceleration (due to integer approx errors)
+            SEND_Acceleration(stepCount, initialDeltaT, baseDelta, (Int16)(-n));
         }
 
         internal byte[] ToBytes(Int16 value)

@@ -131,19 +131,21 @@ namespace ControllerCNC
             tracer.Execute(_driver);
             return;/**/
 
-            var direction1 = new Vector(-400, -2);
+            var direction1 = new Vector(-400, -200);
             var direction2 = new Vector(-20, -400);
             direction1.Normalize();
             direction2.Normalize();
             tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-           /* tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
+            // tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            // tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            /**/
+            tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
             //tracer.Continue(2);
             tracer.AppendAcceleration(direction2 * maxAcceleration, 2);
             tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
-            //tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
-            tracer.Continue(2);*/
+            tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
+
+            tracer.Continue(2);/**/
             tracer.Execute(_driver);
 
             return;
@@ -265,7 +267,7 @@ namespace ControllerCNC
 
         private void Button_Click_4(object sender, RoutedEventArgs e)
         {
-            var trajectoryPoints = createSpiral();
+            var trajectoryPoints = createSpiral();//createSpiral();
             var trajectory = new Trajectory4D(trajectoryPoints);
 
             var planner = new StraightLinePlanner2D(trajectory, new Velocity(1, 300), null);

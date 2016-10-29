@@ -43,7 +43,12 @@ namespace ControllerCNC.Planning
             }
 
             if (Math.Sign(initialVelocity.Y) * Math.Sign(endVelocity.Y) < 0)
-                throw new NotImplementedException();
+            {
+                var stopTime = Math.Abs(initialVelocity.Y / acceleration.Y);
+                AppendAcceleration(acceleration, stopTime);
+                AppendAcceleration(acceleration, time - stopTime);
+                return;
+            }
 
             if ((int)time > 0)
             {
@@ -115,79 +120,38 @@ namespace ControllerCNC.Planning
 
         private void addRampPlan(double initialSpeed, double endSpeed, double exactDuration, double distance, List<Plan> pathPlans)
         {
-            var isDeceleration = Math.Abs(initialSpeed) > Math.Abs(endSpeed);
             checked
             {
-                var distanceStepsAbs = (int)Math.Abs(distance);
-                var profile = findAccelerationProfile(initialSpeed, endSpeed, distance, exactDuration, isDeceleration);
+                var profile = findAccelerationProfile(initialSpeed, endSpeed, Math.Abs(distance), exactDuration);
 
-                var startN = isDeceleration ? -profile.StartN : profile.StartN;
-                var accelerationPlan = new AccelerationPlan((Int16)distance, profile.StartDelta, startN);
-                var timeDiff = Math.Abs(profile.Duration - exactDuration * DriverCNC.TimeScale);
+                var startN = profile.IsDeceleration ? -profile.InitialN : profile.InitialN;
+                var accelerationPlan = new AccelerationPlan((Int16)distance, profile.StartDeltaT, profile.BaseDelta, startN);
+                var timeDiff = Math.Abs(profile.TotalTickCount - exactDuration * DriverCNC.TimeScale);
                 System.Diagnostics.Debug.WriteLine("Acceleration time diff: " + timeDiff);
                 System.Diagnostics.Debug.WriteLine("\t" + profile);
                 pathPlans.Add(accelerationPlan);
             }
         }
 
-        private AccelerationProfile findAccelerationProfile(double initialSpeed, double endSpeed, double distance, double exactDuration, bool isDeceleration)
+        private AccelerationProfile findAccelerationProfile(double initialSpeed, double endSpeed, double distance, double exactDuration)
         {
-            var constantSpeedPart = isDeceleration ? endSpeed : initialSpeed;
-            var accelerationDistance = Math.Abs(distance - exactDuration * constantSpeedPart);
-            var acceleration = accelerationDistance * 2 / exactDuration / exactDuration;
-            if ((int)accelerationDistance == 0)
-                throw new NotImplementedException("there is no need for acceleration - just keep speed");
+            var absoluteInitialSpeed = Math.Abs(initialSpeed);
+            var absoluteEndSpeed = Math.Abs(endSpeed);
+            var absoluteStepCount = (int)Math.Abs(distance);
+            var tickCount = (int)(exactDuration * DriverCNC.TimeScale);
 
-            var rawC0 = DriverCNC.TimeScale * Math.Sqrt(1 / Math.Abs(acceleration));
-            var c0 = 0.676 * rawC0;
+            var acceleration = Math.Abs(absoluteEndSpeed - absoluteInitialSpeed) / exactDuration;
+            var rawC0 = DriverCNC.TimeScale * Math.Sqrt(2 / Math.Abs(acceleration));
 
-            var distanceSteps = (int)distance;
-            var durationTicks = (long)(exactDuration * DriverCNC.TimeScale);
-            var minimalSpeed = isDeceleration ? endSpeed : initialSpeed;
-            var deltaBoundary = 10;
-            var minimalStartDeltaT = (int)(DriverCNC.TimeScale / Math.Abs(minimalSpeed));
-            if (minimalStartDeltaT < 0)
-                //overflow occured
-                minimalStartDeltaT = int.MaxValue;
-            else
-                minimalStartDeltaT += deltaBoundary;
+            var isDeceleration = absoluteInitialSpeed > absoluteEndSpeed;
 
-            var maximalSpeed = isDeceleration ? initialSpeed : endSpeed;
-            var maximalEndDeltaT = (int)(DriverCNC.TimeScale / Math.Abs(maximalSpeed)) - deltaBoundary;
+            var targetDelta = (int)Math.Abs(Math.Round(DriverCNC.TimeScale / endSpeed));
 
-            var exactEndDelta = DriverCNC.TimeScale / endSpeed;
+            if (isDeceleration)
+                rawC0 = -rawC0;
+            var plan = new AccelerationProfile(rawC0, targetDelta, absoluteStepCount, tickCount);
 
-            var optimizationStep = 1.0;
-            for (var i = 0; i < 1050; ++i)
-            {
-                optimizationStep = optimizationStep * 0.950;
-                var factor = 1.0 - optimizationStep;
-                c0 = optimizeC0(c0, minimalStartDeltaT, maximalEndDeltaT, factor, distanceSteps, durationTicks, isDeceleration);
-                var factor2 = 1.0 + optimizationStep;
-                c0 = optimizeC0(c0, minimalStartDeltaT, maximalEndDeltaT, factor2, distanceSteps, durationTicks, isDeceleration);
-            }
-
-
-            var plan = new AccelerationProfile((int)Math.Round(c0), minimalStartDeltaT, maximalEndDeltaT, distanceSteps, durationTicks, isDeceleration);
             return plan;
-        }
-
-
-        private double optimizeC0(double c0, int minimalStartDeltaT, int maximalStartDeltaT, double factor, int distanceSteps, long exactDuration, bool isDeceleration)
-        {
-            if (distanceSteps == 0)
-                return 0;
-
-            var profile = new AccelerationProfile((int)Math.Round(c0), minimalStartDeltaT, maximalStartDeltaT, distanceSteps, exactDuration, isDeceleration);
-            AccelerationProfile lastProfile = null;
-            while (lastProfile == null || Math.Abs(lastProfile.Duration - exactDuration) > Math.Abs(profile.Duration - exactDuration))
-            {
-                lastProfile = profile;
-                c0 = c0 * factor;
-                profile = new AccelerationProfile((int)Math.Round(c0), minimalStartDeltaT, maximalStartDeltaT, distanceSteps, exactDuration, isDeceleration);
-            }
-
-            return lastProfile.C0;
         }
     }
 }

@@ -174,14 +174,15 @@ namespace ControllerCNC.Planning
                 var distanceY = point.Y - lastPoint.Y;
 
                 var transitionTime = (long)(Math.Sqrt(distanceX * distanceX + distanceY * distanceY) * DriverCNC.TimeScale / velocities[point]);
+                //var transitionTime = (long)(Math.Sqrt(distanceX * distanceX + distanceY * distanceY) * DriverCNC.TimeScale *_maxVelocity2D.StepCount / _maxVelocity2D.Time);
                 var acceleration = velocities[point] - velocities[lastPoint];
 
                 SendTransition2(distanceX, distanceY, transitionTime, cnc);
                 //AcceleratedTransition(distanceX, distanceY, cnc);
                 lastPoint = point;
             }
-        }             
-                  
+        }
+
 
         public static void SendTransition2(int distanceX, int distanceY, long transitionTime, DriverCNC cnc)
         {
@@ -190,7 +191,7 @@ namespace ControllerCNC.Planning
                 var remainingStepsX = distanceX;
                 var remainingStepsY = distanceY;
 
-                var chunkLengthLimit = 65500;
+                var chunkLengthLimit = 35500;
                 var chunkCount = 1.0 * Math.Max(Math.Abs(distanceX), Math.Abs(distanceY)) / chunkLengthLimit;
                 chunkCount = Math.Max(1, chunkCount);
 

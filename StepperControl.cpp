@@ -79,6 +79,7 @@ void AccelerationPlan::loadFrom(byte * data)
 	int16_t stepCount = READ_INT16(data, 0);
 	int32_t initialDeltaT = READ_INT32(data, 2);
 	int32_t n = READ_INT32(data, 2 + 4);
+	int16_t baseDelta = READ_INT16(data, 2 + 4 + 4);
 
 	this->remainingSteps = abs(stepCount);
 	this->isActive = this->remainingSteps > 0;
@@ -87,6 +88,7 @@ void AccelerationPlan::loadFrom(byte * data)
 	this->isActivationBoundary = !this->isActive;
 
 	this->_isDeceleration = n < 0;
+	this->_baseDeltaT = baseDelta;
 	this->_currentDeltaT = initialDeltaT;
 	this->_current4N = ((uint32_t)4) * abs(n);
 	this->_currentDeltaTBuffer2 = 0;
@@ -130,8 +132,7 @@ void AccelerationPlan::createNextActivation()
 	//Serial.print("|d:");
 	//Serial.println(nextDeltaT);
 
-
-	this->nextActivationTime = this->_currentDeltaT;
+	this->nextActivationTime = this->_currentDeltaT + this->_baseDeltaT;
 }
 
 void ConstantPlan::createNextActivation()

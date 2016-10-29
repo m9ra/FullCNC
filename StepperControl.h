@@ -119,7 +119,7 @@ private:
 class AccelerationPlan : public Plan {
 public:
 	// How much data is required for load.
-	static const byte dataSize = 10;
+	static const byte dataSize = 12;
 
 	AccelerationPlan(byte clkPin, byte dirPin);
 
@@ -137,6 +137,8 @@ protected:
 	uint32_t _currentDeltaTBuffer2;
 	// current deltaT which is used
 	int32_t _currentDeltaT;
+	// base delta for each step
+	int32_t _baseDeltaT;
 };
 
 class Steppers {
