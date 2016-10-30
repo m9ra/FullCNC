@@ -65,7 +65,7 @@ namespace ControllerCNC
         /// <summary>
         /// Length of the instruction sent to machine.
         /// </summary>
-        private readonly int _instructionLength = 52;
+        private readonly int _instructionLength = 59;
 
         /// <summary>
         /// Queue waiting for sending.
@@ -285,7 +285,7 @@ namespace ControllerCNC
             if (acceleration == null)
                 return;
 
-            SEND_Acceleration(acceleration.StepCount, acceleration.StartDeltaT, acceleration.BaseDelta, acceleration.StartN);
+            SEND_Acceleration(acceleration.StepCount, acceleration.StartDeltaT, acceleration.BaseDelta, acceleration.BaseRemainder, acceleration.StartN);
         }
 
 
@@ -303,7 +303,7 @@ namespace ControllerCNC
             {
                 if (accelerationDistanceLimit == 0)
                 {
-                    return new AccelerationPlan(0, 0, 0, 0);
+                    return new AccelerationPlan(0, 0, 0, 0, 0);
                 }
 
                 var stepSign = accelerationDistanceLimit >= 0 ? 1 : -1;
@@ -318,14 +318,14 @@ namespace ControllerCNC
                     //acceleration
                     stepCount = (Int16)(Math.Min(endN - startN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, startN, stepCount, accelerationNumerator, accelerationDenominator);
-                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, 0, startN);
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, 0, 0, startN);
                 }
                 else
                 {
                     //deceleration
                     stepCount = (Int16)(Math.Min(startN - endN, limit));
                     var limitedDeltaT = calculateDeltaT(startDeltaT, (Int16)(-startN), stepCount, accelerationNumerator, accelerationDenominator);
-                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, 0, (Int16)(-startN));
+                    return new AccelerationPlan((Int16)(stepCount * stepSign), startDeltaT, 0, 0, (Int16)(-startN));
                 }
             }
         }
@@ -365,7 +365,7 @@ namespace ControllerCNC
             return deltaT;
         }
 
-        internal void SEND_Acceleration(Int16 stepCount, int initialDeltaT, Int16 baseDelta, int n)
+        internal void SEND_Acceleration(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 baseRemainder, int n)
         {
             //Debug.WriteLine("A({0},{1},{2})", stepCount, initialDeltaT, n);
 
@@ -380,6 +380,7 @@ namespace ControllerCNC
             sendBuffer.AddRange(ToBytes(initialDeltaT));
             sendBuffer.AddRange(ToBytes(n));
             sendBuffer.AddRange(ToBytes(baseDelta));
+            sendBuffer.AddRange(ToBytes(baseRemainder));
             send(sendBuffer);
         }
 
@@ -397,10 +398,10 @@ namespace ControllerCNC
             send(sendBuffer);
         }
 
-        internal void SEND_Deceleration(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 n)
+        internal void SEND_Deceleration(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 baseRemainder, Int16 n)
         {
             //TODO deceleration is not inversed acceleration (due to integer approx errors)
-            SEND_Acceleration(stepCount, initialDeltaT, baseDelta, (Int16)(-n));
+            SEND_Acceleration(stepCount, initialDeltaT, baseDelta, baseRemainder, (Int16)(-n));
         }
 
         internal byte[] ToBytes(Int16 value)

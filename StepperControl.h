@@ -72,6 +72,9 @@ public:
 	// Time of next scheduled activation
 	int32_t nextActivationTime;
 
+	// How many steps was planned by this plan.
+	uint16_t stepCount;
+
 	// How many steps remains to do with this plan.
 	uint16_t remainingSteps;
 
@@ -119,7 +122,7 @@ private:
 class AccelerationPlan : public Plan {
 public:
 	// How much data is required for load.
-	static const byte dataSize = 12;
+	static const byte dataSize = 14;
 
 	AccelerationPlan(byte clkPin, byte dirPin);
 
@@ -139,6 +142,10 @@ protected:
 	int32_t _currentDeltaT;
 	// base delta for each step
 	int32_t _baseDeltaT;
+	// remainder of base delta which will be distributed throughout all steps
+	int16_t _baseRemainder;
+	// buffer for base remainder distribution counting
+	int32_t _baseRemainderBuffer;
 };
 
 class Steppers {
@@ -199,10 +206,6 @@ public:
 		if (!_d2.isActivationBoundary) {
 			this->_d2.nextActivationTime += this->lastActivationSlack2;
 			if (this->_d2.nextActivationTime < PORT_CHANGE_DELAY) {
-				/*Serial.print("|2A:");
-				Serial.print(_d2.nextActivationTime);
-				Serial.print(",2S:");
-				Serial.println(lastActivationSlack2);*/
 				//we cannot go backwards in time
 				isStepTimeMissed = true;
 				this->_d2.nextActivationTime = PORT_CHANGE_DELAY;

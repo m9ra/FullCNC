@@ -16,12 +16,15 @@ namespace ControllerCNC.Primitives
 
         public readonly Int16 BaseDelta;
 
-        public AccelerationPlan(Int16 stepCount, int startDeltaT, Int16 baseDelta, int startN)
+        public readonly Int16 BaseRemainder;
+
+        public AccelerationPlan(Int16 stepCount, int startDeltaT, Int16 baseDelta, Int16 baseRemainder, int startN)
         {
             StepCount = stepCount;
             StartDeltaT = startDeltaT;
             StartN = startN;
             BaseDelta = baseDelta;
+            BaseRemainder = baseRemainder;
 
             if (startDeltaT < 0)
                 throw new NotSupportedException("Negative delta");

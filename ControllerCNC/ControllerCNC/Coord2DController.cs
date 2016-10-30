@@ -83,13 +83,13 @@ namespace ControllerCNC
                 {
                     _cnc.StepperIndex = 2;
                     _cnc.SEND(acceleration);
-                    _cnc.SEND_Acceleration(0, 0, 0, 1);
+                    _cnc.SEND_Acceleration(0, 0, 0, 0, 1);
                 }
 
                 foreach (var acceleration in accelerationY)
                 {
                     _cnc.StepperIndex = 2;
-                    _cnc.SEND_Acceleration(0, 0, 0, 1);
+                    _cnc.SEND_Acceleration(0, 0, 0, 0, 1);
                     _cnc.SEND(acceleration);
                 }
 

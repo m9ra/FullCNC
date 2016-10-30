@@ -116,7 +116,7 @@ namespace ControllerCNC
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
             var tracer = new PathTracer2D();
-            var maxAcceleration = 100 * 400;
+            var maxAcceleration = 10 * 400;
 
             /*/
             var smoothness = 20;
@@ -135,9 +135,10 @@ namespace ControllerCNC
             var direction2 = new Vector(-20, -400);
             direction1.Normalize();
             direction2.Normalize();
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.1);
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.5);
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.5);
             tracer.Continue(2);
-            tracer.AppendAcceleration(-direction1 * maxAcceleration, 0.1);
+            tracer.AppendAcceleration(-direction1 * maxAcceleration, 1);
             /*tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
             tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
             tracer.AppendAcceleration(-3 * direction1 * maxAcceleration, 2);*/

@@ -2,7 +2,7 @@
 
 // how many bytes contains instruction from controller
 
-#define INSTRUCTION_SIZE 52
+#define INSTRUCTION_SIZE 59
 #define BUFFERED_INSTRUCTION_COUNT 8
 #define STEPPER_COUNT 2
 

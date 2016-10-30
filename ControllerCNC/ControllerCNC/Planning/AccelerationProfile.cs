@@ -24,6 +24,11 @@ namespace ControllerCNC.Planning
         public readonly Int16 BaseDelta;
 
         /// <summary>
+        /// Delta which is used to compensate acceleration duration
+        /// </summary>
+        public readonly Int16 BaseRemainder;
+
+        /// <summary>
         /// How many steps will be with the acceleration.
         /// </summary>
         public readonly int StepCount;
@@ -64,20 +69,22 @@ namespace ControllerCNC.Planning
             checked
             {
                 var sequence = calculateRealSequence();
+
                 var accelerationTickCount = sequence.Sum();
                 var tickCountDifference = tickCount - accelerationTickCount;
                 var desiredBaseDelta = tickCountDifference / StepCount;
                 if (desiredBaseDelta > Int16.MaxValue)
-                    //TODO - this has to be repaired !!!
-                    desiredBaseDelta = Int16.MaxValue;
+                    throw new NotSupportedException("Acceleration error is out of bounds");
                 if (desiredBaseDelta < Int16.MinValue)
-                    //TODO - this has to be repaired !!!
-                    desiredBaseDelta = Int16.MinValue;
+                    throw new NotSupportedException("Acceleration error is out of bounds");
 
                 BaseDelta = (Int16)(desiredBaseDelta);
                 if (tickCountDifference < 0)
                     BaseDelta -= 1;
+
                 TotalTickCount = BaseDelta * StepCount + accelerationTickCount;
+                BaseRemainder = (Int16)(tickCount - TotalTickCount);
+                TotalTickCount += BaseRemainder;
             }
         }
 
@@ -130,14 +137,11 @@ namespace ControllerCNC.Planning
             var window = new List<long>();
             for (var i = 0; i < StepCount; ++i)
             {
-                if (!IsDeceleration)
-                    window.Add(currentDelta);
+                window.Add(currentDelta);
                 nextStep_RealDirection(ref currentDelta, ref currentN, ref remainderBuffer2);
                 if (currentDelta < 0)
                     throw new NotSupportedException("Invalid setup");
 
-                if (IsDeceleration)
-                    window.Add(currentDelta);
             }
             return window.ToArray();
         }

@@ -80,8 +80,10 @@ void AccelerationPlan::loadFrom(byte * data)
 	int32_t initialDeltaT = READ_INT32(data, 2);
 	int32_t n = READ_INT32(data, 2 + 4);
 	int16_t baseDelta = READ_INT16(data, 2 + 4 + 4);
+	int16_t baseRemainder = READ_INT16(data, 2 + 4 + 4 + 2);
 
-	this->remainingSteps = abs(stepCount);
+	this->stepCount = abs(stepCount);
+	this->remainingSteps = this->stepCount;
 	this->isActive = this->remainingSteps > 0;
 	this->stepMask = stepCount > 0 ? this->dirMask : 0;
 	this->nextActivationTime = 0;
@@ -89,6 +91,8 @@ void AccelerationPlan::loadFrom(byte * data)
 
 	this->_isDeceleration = n < 0;
 	this->_baseDeltaT = baseDelta;
+	this->_baseRemainder = abs(baseRemainder);
+	this->_baseRemainderBuffer = this->_baseRemainder / 2;
 	this->_currentDeltaT = initialDeltaT;
 	this->_current4N = ((uint32_t)4) * abs(n);
 	this->_currentDeltaTBuffer2 = 0;
@@ -103,6 +107,14 @@ void AccelerationPlan::createNextActivation()
 
 	--this->remainingSteps;
 	this->nextActivationTime = this->_currentDeltaT + this->_baseDeltaT;
+
+	if (this->_baseRemainder > 0) {
+		this->_baseRemainderBuffer += this->_baseRemainder;
+		if (this->_baseRemainderBuffer > this->stepCount) {
+			this->_baseRemainderBuffer -= this->stepCount;
+			this->nextActivationTime += 1;
+		}
+	}
 
 	if (this->_current4N == 0) {
 		//compensate for error at c0
@@ -176,7 +188,8 @@ void ConstantPlan::loadFrom(byte * data)
 	uint16_t periodNumerator = READ_UINT16(data, 2 + 4);
 	uint16_t periodDenominator = READ_UINT16(data, 2 + 4 + 2);
 
-	this->remainingSteps = abs(stepCount);
+	this->stepCount = abs(stepCount);
+	this->remainingSteps = this->stepCount;
 	this->stepMask = stepCount > 0 ? this->dirMask : 0;
 	this->isActive = this->remainingSteps > 0;
 	this->nextActivationTime = 0;
@@ -190,6 +203,6 @@ void ConstantPlan::loadFrom(byte * data)
 
 Plan::Plan(byte clkPin, byte dirPin) :
 	clkMask(PIN_TO_MASK(clkPin)), dirMask(PIN_TO_MASK(dirPin)),
-	stepMask(0), remainingSteps(0), isActive(false), isActivationBoundary(false), nextActivationTime(0)
+	stepMask(0), stepCount(0), remainingSteps(0), isActive(false), isActivationBoundary(false), nextActivationTime(0)
 {
 }

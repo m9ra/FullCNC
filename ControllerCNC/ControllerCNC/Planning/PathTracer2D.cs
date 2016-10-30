@@ -27,7 +27,7 @@ namespace ControllerCNC.Planning
             var initialVelocity = _actualVelocity;
 
             var startPosition = _actualPosition;
-            var newPosition= _actualPosition + _actualVelocity * time + 0.5 * acceleration * time * time;
+            var newPosition = _actualPosition + _actualVelocity * time + 0.5 * acceleration * time * time;
             var newVelocity = _actualVelocity + acceleration * time;
 
             var distance = newPosition - startPosition;
@@ -50,13 +50,9 @@ namespace ControllerCNC.Planning
 
             _actualPosition = newPosition;
             _actualVelocity = newVelocity;
-
-            if ((int)time > 0)
-            {
-                //TODO increase precision with integer clipping
-                addRampPlan(initialVelocity.X, newVelocity.X, time, distance.X, _pathPlansX);
-                addRampPlan(initialVelocity.Y, newVelocity.Y, time, distance.Y, _pathPlansY);
-            }
+            //TODO increase precision with integer clipping
+            addRampPlan(initialVelocity.X, newVelocity.X, time, distance.X, _pathPlansX);
+            addRampPlan(initialVelocity.Y, newVelocity.Y, time, distance.Y, _pathPlansY);
         }
 
 
@@ -67,9 +63,9 @@ namespace ControllerCNC.Planning
 
             var endPosition = _actualPosition;
             var distance = endPosition - startPosition;
-
-            addConstantPlan(_actualVelocity.X, distance.X, _pathPlansX);
-            addConstantPlan(_actualVelocity.Y, distance.Y, _pathPlansY);
+            var tickCount = (int)(DriverCNC.TimeScale * time);
+            addConstantPlan(_actualVelocity.X, tickCount, distance.X, _pathPlansX);
+            addConstantPlan(_actualVelocity.Y, tickCount, distance.Y, _pathPlansY);
         }
 
         internal void Execute(DriverCNC cnc)
@@ -98,35 +94,41 @@ namespace ControllerCNC.Planning
             }
         }
 
-        private void addConstantPlan(double velocity, double distance, List<Plan> pathPlans)
+        private void addConstantPlan(double velocity, int tickCount, double distance, List<Plan> pathPlans)
         {
             checked
             {
                 //fraction is clipped because period can be used for remainder
-                var distanceSteps = (Int16)distance;
-                if (distanceSteps == 0)
+                var stepCount = (Int16)distance;
+                if (stepCount == 0)
                 {
                     pathPlans.Add(new ConstantPlan(0, 0, 0, 0));
                     return;
                 }
-
-                var baseDeltaExact = Math.Abs(DriverCNC.TimeScale / velocity);
-                var baseDelta = Math.Abs((int)(baseDeltaExact));
-                var periodDenominator = (UInt16)Math.Abs(distanceSteps);
-                UInt16 periodNumerator = (UInt16)((baseDeltaExact - baseDelta) * periodDenominator);
-                var constantPlan = new ConstantPlan(distanceSteps, baseDelta, periodNumerator, periodDenominator);
-                pathPlans.Add(constantPlan);
+                checked
+                {
+                    var baseDeltaExact = Math.Abs(DriverCNC.TimeScale / velocity);
+                    var baseDelta = Math.Abs((int)(baseDeltaExact));
+                    var periodDenominator = (UInt16)Math.Abs(stepCount);
+                    var tickRemainder = (UInt16)(tickCount - periodDenominator * baseDelta);
+                    var constantPlan = new ConstantPlan(stepCount, baseDelta, tickRemainder, periodDenominator);
+                    pathPlans.Add(constantPlan);
+                }
             }
         }
 
         private void addRampPlan(double initialSpeed, double endSpeed, double exactDuration, double distance, List<Plan> pathPlans)
         {
+            var tickCount = exactDuration * DriverCNC.TimeScale;
+            if ((int)tickCount <= 0)
+                //nothing to add here
+                return;
             checked
             {
                 var profile = findAccelerationProfile(initialSpeed, endSpeed, Math.Abs(distance), exactDuration);
 
                 var startN = profile.IsDeceleration ? -profile.InitialN : profile.InitialN;
-                var accelerationPlan = new AccelerationPlan((Int16)distance, profile.StartDeltaT, profile.BaseDelta, startN);
+                var accelerationPlan = new AccelerationPlan((Int16)distance, profile.StartDeltaT, profile.BaseDelta, profile.BaseRemainder, startN);
                 var timeDiff = Math.Abs(profile.TotalTickCount - exactDuration * DriverCNC.TimeScale);
                 System.Diagnostics.Debug.WriteLine("Acceleration time diff: " + timeDiff);
                 System.Diagnostics.Debug.WriteLine("\t" + profile);
@@ -149,7 +151,7 @@ namespace ControllerCNC.Planning
             var targetDelta = (int)Math.Abs(Math.Round(DriverCNC.TimeScale / endSpeed));
             if (targetDelta < 0)
                 //overflow when decelerating to stand still
-                targetDelta = int.MaxValue; 
+                targetDelta = int.MaxValue;
 
             if (isDeceleration)
                 rawC0 = -rawC0;
