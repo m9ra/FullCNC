@@ -9,160 +9,33 @@ using System.Windows;
 using System.Numerics;
 using System.Diagnostics;
 
+using ControllerCNC.Machine;
 using ControllerCNC.Primitives;
 
 namespace ControllerCNC.Planning
 {
-    class StraightLinePlanner2D
+    /// <summary>
+    /// Simple planner for constant speed transitions between 2D coordinates.
+    /// </summary>
+    class ConstantSpeedLinePlanner2D
     {
-        private readonly Trajectory4D _trajectory;
+        private readonly Speed _transitionSpeed;
 
-        private readonly Dictionary<Point4D, double> _pointSpeed = new Dictionary<Point4D, double>();
-
-        private readonly Velocity _maxVelocity2D;
-
-        private readonly AccelerationPlan _maxAcceleration1D;
-
-        public StraightLinePlanner2D(Trajectory4D trajectory, Velocity maxVelocity2D, AccelerationPlan maxAcceleration1D)
+        public ConstantSpeedLinePlanner2D(Speed transitionSpeed)
         {
-            _trajectory = trajectory;
-            _maxVelocity2D = maxVelocity2D;
-            _maxAcceleration1D = maxAcceleration1D;
-
-            //   var smoothedPoints = smooth(_trajectory.Points);
+            _transitionSpeed = transitionSpeed;
         }
 
-        private IEnumerable<Point4D> smooth(IEnumerable<Point4D> points)
+        /// <summary>
+        /// Creates the plan.
+        /// </summary>
+        /// <param name="trajectory">Trajectory which plan will be created.</param>
+        /// <returns>The created plan.</returns>
+        public IEnumerable<InstructionCNC> CreatePlan(Trajectory4D trajectory)
         {
+            var planBuilder = new PlanBuilder();
             Point4D lastPoint = null;
-            foreach (var point in points)
-            {
-                if (lastPoint == null)
-                {
-                    lastPoint = point;
-                    continue;
-                }
-
-
-            }
-
-            throw new NotImplementedException();
-        }
-
-        private Dictionary<Point4D, double> createPointVelocities(IEnumerable<Point4D> points, DriverCNC cnc)
-        {
-            var junctionLimits = createJunctionLimits(points, cnc);
-
-            var velocityLimits = new Dictionary<Point4D, double>();
-            var currentVelocity = 1.0 * DriverCNC.TimeScale / cnc.StartDeltaT;
-            var stepAcceleration = 1;
-            foreach (var point in points.Reverse())
-            {
-                var junctionLimit = junctionLimits[point];
-
-                var newVelocity = currentVelocity + stepAcceleration;
-                currentVelocity = Math.Min(newVelocity, junctionLimit);
-
-                if (double.IsNaN(currentVelocity))
-                    throw new NotSupportedException("invalid computation");
-                velocityLimits[point] = currentVelocity;
-            }
-
-            currentVelocity = 1.0 * DriverCNC.TimeScale / cnc.StartDeltaT;
-            foreach (var point in points)
-            {
-                var velocityLimit = velocityLimits[point];
-                var newVelocity = currentVelocity + stepAcceleration;
-                currentVelocity = Math.Min(newVelocity, velocityLimit);
-
-                velocityLimits[point] = currentVelocity;
-
-                //Debug.WriteLine(currentVelocity);
-            }
-
-            return velocityLimits;
-        }
-
-        private Dictionary<Point4D, double> createJunctionLimits(IEnumerable<Point4D> points, DriverCNC cnc)
-        {
-            var startVelocity = 1.0 * DriverCNC.TimeScale / cnc.StartDeltaT;
-            var maxVelocity = 1.0 * DriverCNC.TimeScale / cnc.FastestDeltaT;
-            var aMax = 1.0 * DriverCNC.MaxAcceleration / DriverCNC.TimeScale / DriverCNC.TimeScale;
-
-            var junctionLimits = new Dictionary<Point4D, double>();
-            var pointsArrayRev = points.Reverse().ToArray();
-            junctionLimits[pointsArrayRev.First()] = startVelocity;
-            junctionLimits[pointsArrayRev.Last()] = startVelocity;
-
-            for (var i = 1; i < pointsArrayRev.Length - 1; ++i)
-            {
-                var previousPoint = pointsArrayRev[i - 1];
-                var currentPoint = pointsArrayRev[i];
-                var nextPoint = pointsArrayRev[i + 1];
-
-                /*   previousPoint = new Point4D(0, 0, 10, -100);
-                   currentPoint = new Point4D(0, 0, 0, 0);
-                   nextPoint = new Point4D(0, 0, 0, 100);*/
-
-                /*    var delta = 50;
-                    var theta = 2 * Math.PI - getTheta(previousPoint, currentPoint, nextPoint);
-                    var thetaAngl = theta * 180 / Math.PI;
-                    var cosTheta = Math.Cos(theta);
-                    var sinThetaHalf = Math.Sqrt((1 - cosTheta) / 2);
-                    var R = delta * (sinThetaHalf / (1 - sinThetaHalf));
-
-                    var vJunction = Math.Sqrt(aMax * R);
-                    var vDesired = 1.0 * _maxVelocity2D.StepCount / _maxVelocity2D.Time;
-
-                    if (double.IsNaN(vJunction))
-                        vJunction = startVelocity;
-
-                    vJunction = Math.Max(vJunction, startVelocity);
-                    vJunction = Math.Min(vDesired, vJunction);*/
-
-                //my angle based vJunction
-                var angle = getTheta(previousPoint, currentPoint, nextPoint);
-                while (angle < 0)
-                    angle += 360;
-
-                while (angle > 360)
-                    angle -= 360;
-
-                if (angle > 180)
-                    angle = 360 - angle;
-
-                if (angle < 0 || angle > 180)
-                    throw new NotSupportedException("Normalize");
-                var velocityDiff = maxVelocity - startVelocity;
-                var vJunction = (Math.Max(90, angle) / 180 - 0.5) * 2 * velocityDiff + startVelocity;
-
-                if (double.IsNaN(vJunction))
-                    throw new NotSupportedException("invalid computation");
-
-                junctionLimits[currentPoint] = vJunction;
-            }
-            return junctionLimits;
-        }
-
-        private double getTheta(Point4D point1, Point4D point2, Point4D point3)
-        {
-            var Ax = 1.0 * point2.X - point1.X;
-            var Ay = 1.0 * point2.Y - point1.Y;
-            var A = new Vector(Ax, Ay);
-
-            var Bx = 1.0 * point2.X - point3.X;
-            var By = 1.0 * point2.Y - point3.Y;
-            var B = new Vector(Bx, By);
-
-            return Vector.AngleBetween(A, B);
-        }
-
-        public void Run(DriverCNC cnc)
-        {
-            var velocities = createPointVelocities(_trajectory.Points, cnc);
-
-            Point4D lastPoint = null;
-            foreach (var point in _trajectory.Points)
+            foreach (var point in trajectory.Points)
             {
                 if (lastPoint == null)
                 {
@@ -172,115 +45,12 @@ namespace ControllerCNC.Planning
 
                 var distanceX = point.X - lastPoint.X;
                 var distanceY = point.Y - lastPoint.Y;
-
-                var transitionTime = (long)(Math.Sqrt(distanceX * distanceX + distanceY * distanceY) * DriverCNC.TimeScale / velocities[point]);
-                //var transitionTime = (long)(Math.Sqrt(distanceX * distanceX + distanceY * distanceY) * DriverCNC.TimeScale *_maxVelocity2D.StepCount / _maxVelocity2D.Time);
-                var acceleration = velocities[point] - velocities[lastPoint];
-
-                SendTransition2(distanceX, distanceY, transitionTime, cnc);
-                //AcceleratedTransition(distanceX, distanceY, cnc);
+              
+                planBuilder.AddConstantSpeedTransition2D(distanceX, distanceY, _transitionSpeed);                
                 lastPoint = point;
             }
-        }
 
-
-        public static void SendTransition2(int distanceX, int distanceY, long transitionTime, DriverCNC cnc)
-        {
-            checked
-            {
-                var remainingStepsX = distanceX;
-                var remainingStepsY = distanceY;
-
-                var chunkLengthLimit = 35500;
-                var chunkCount = 1.0 * Math.Max(Math.Abs(distanceX), Math.Abs(distanceY)) / chunkLengthLimit;
-                chunkCount = Math.Max(1, chunkCount);
-
-
-                var doneDistanceX = 0L;
-                var doneDistanceY = 0L;
-                var doneTime = 0.0;
-
-                var i = Math.Min(1.0, chunkCount);
-                while (Math.Abs(remainingStepsX) > 0 || Math.Abs(remainingStepsY) > 0)
-                {
-                    var chunkDistanceX = distanceX * i / chunkCount;
-                    var chunkDistanceY = distanceY * i / chunkCount;
-                    var chunkTime = transitionTime * i / chunkCount;
-
-                    var stepCountXD = chunkDistanceX - doneDistanceX;
-                    var stepCountYD = chunkDistanceY - doneDistanceY;
-                    var stepsTime = chunkTime - doneTime;
-
-                    var stepCountX = (Int16)Math.Round(stepCountXD);
-                    var stepCountY = (Int16)Math.Round(stepCountYD);
-
-                    doneDistanceX += stepCountX;
-                    doneDistanceY += stepCountY;
-
-                    //we DON'T want to round here - the time has to be distributed evenly
-                    var stepTimeX = stepCountX == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountX));
-                    var stepTimeY = stepCountY == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountY));
-
-                    var remainderX = Math.Abs(stepCountXD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountXD));
-                    var remainderY = Math.Abs(stepCountYD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountYD));
-
-                    if (stepTimeX == 0 && stepTimeY == 0)
-                    {
-                        if (doneDistanceX == distanceX && doneDistanceY == distanceY)
-                            break;
-                        throw new NotImplementedException("Send wait signal");
-                    }
-
-                    doneTime += stepsTime;//Math.Max(Math.Abs(stepTimeX * stepCountX), Math.Abs(stepTimeY * stepCountY));
-
-                    cnc.StepperIndex = 2;
-
-                    var periodNumeratorX = stepCountXD == 0 ? (UInt16)0 : (UInt16)Math.Round(1.0 * UInt16.MaxValue * remainderX / Math.Abs(stepCountXD));
-                    var periodNumeratorY = stepCountYD == 0 ? (UInt16)0 : (UInt16)Math.Round(1.0 * UInt16.MaxValue * remainderY / Math.Abs(stepCountYD));
-                    cnc.SEND_Constant(stepCountX, stepTimeX, periodNumeratorX, UInt16.MaxValue);
-                    cnc.SEND_Constant(stepCountY, stepTimeY, periodNumeratorY, UInt16.MaxValue);
-                    //Debug.WriteLine("{0}|{1}  {2}|{3}", stepTimeX, stepTimeY, remainderX, remainderY);
-                    i = i + 1 > chunkCount ? chunkCount : i + 1;
-                }
-            }
-        }
-
-        private void sendTransition(int distanceX, int distanceY, long transitionTime, DriverCNC cnc)
-        {
-            checked
-            {
-                var stepTimeX = distanceX == 0 ? (UInt16)30000 : (UInt16)(transitionTime / Math.Abs(distanceX));
-                var stepTimeY = distanceY == 0 ? (UInt16)30000 : (UInt16)(transitionTime / Math.Abs(distanceY));
-
-
-                var remainingDistanceX = distanceX;
-                var remainingDistanceY = distanceY;
-
-                while (Math.Abs(remainingDistanceX) > 0 || Math.Abs(remainingDistanceY) > 0)
-                {
-                    Int16 stepXCount = 0;
-                    Int16 stepYCount = 0;
-
-                    if (stepTimeX < stepTimeY)
-                    {
-                        stepXCount = cnc.GetStepSlice(remainingDistanceX);
-                        remainingDistanceX -= stepXCount;
-                        stepYCount = (Int16)(distanceY * ((distanceX - remainingDistanceX) / distanceX) - (distanceY - remainingDistanceY));
-                        remainingDistanceY -= stepYCount;
-                    }
-                    else
-                    {
-                        stepYCount = cnc.GetStepSlice(remainingDistanceY);
-                        remainingDistanceY -= stepYCount;
-                        stepXCount = (Int16)(distanceX * ((distanceY - remainingDistanceY) / distanceY) - (distanceX - remainingDistanceX));
-                        remainingDistanceX -= stepXCount;
-                    }
-
-                    cnc.StepperIndex = 2;
-                    cnc.SEND_Constant(stepXCount, stepTimeX, 0, 0);
-                    cnc.SEND_Constant(stepYCount, stepTimeY, 0, 0);
-                }
-            }
+            return planBuilder.Build();
         }
     }
 }

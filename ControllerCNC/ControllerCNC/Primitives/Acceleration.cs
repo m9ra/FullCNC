@@ -11,8 +11,20 @@ namespace ControllerCNC.Primitives
     /// </summary>
     class Acceleration
     {
-        public readonly int Numerator;
+        /// <summary>
+        /// Speed that will be accelerated in <see cref="Ticks"/>.
+        /// </summary>
+        public readonly Speed Speed;
 
-        public readonly int Denominator;
+        /// <summary>
+        /// How long it take to accelerate to <see cref="Speed"/> (in CNC timer tick count).
+        /// </summary>
+        public readonly uint Ticks;
+
+        public Acceleration(Speed speed, uint ticks)
+        {
+            Speed = speed;
+            Ticks = ticks;
+        }
     }
 }

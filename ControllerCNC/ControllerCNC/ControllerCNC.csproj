@@ -55,19 +55,23 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Coord2DController.cs" />
+    <Compile Include="Demos\MachineTesting.cs" />
+    <Compile Include="Demos\ShapeDrawing.cs" />
+    <Compile Include="Machine\AxesInstruction.cs" />
+    <Compile Include="Machine\InitializationInstruction.cs" />
+    <Compile Include="Planning\PlanBuilder.cs" />
     <Compile Include="Planning\AccelerationProfile.cs" />
     <Compile Include="Planning\PathTracer2D.cs" />
-    <Compile Include="Planning\SegmentPlanBuilder1D.cs" />
-    <Compile Include="Planning\SegmentPlanner.cs" />
     <Compile Include="Planning\StraightLinePlanner2D.cs" />
     <Compile Include="PositionController.cs" />
     <Compile Include="Primitives\Acceleration.cs" />
-    <Compile Include="Primitives\AccelerationPlan.cs" />
-    <Compile Include="Primitives\ConstantPlan.cs" />
-    <Compile Include="Primitives\Plan.cs" />
+    <Compile Include="Machine\AccelerationInstruction.cs" />
+    <Compile Include="Machine\ConstantInstruction.cs" />
+    <Compile Include="Machine\Constants.cs" />
+    <Compile Include="Machine\InstructionCNC.cs" />
     <Compile Include="Primitives\Point4D.cs" />
     <Compile Include="Primitives\Trajectory4D.cs" />
-    <Compile Include="Primitives\Velocity.cs" />
+    <Compile Include="Primitives\Speed.cs" />
     <Compile Include="Simulation\ChannelPlotter.cs" />
     <Compile Include="Simulation\ChannelTrace.cs" />
     <Compile Include="Simulation\CncSimulator.cs" />
@@ -80,7 +84,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="DriverCNC.cs" />
+    <Compile Include="Machine\DriverCNC.cs" />
     <Compile Include="ControlPanel.xaml.cs">
       <DependentUpon>ControlPanel.xaml</DependentUpon>
       <SubType>Code</SubType>

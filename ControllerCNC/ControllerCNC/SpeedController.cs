@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 using System.Threading;
 
+using ControllerCNC.Machine;
+
 namespace ControllerCNC
 {
     class SpeedController
@@ -14,13 +16,13 @@ namespace ControllerCNC
 
         private readonly Thread _speedWorker;
 
-        private volatile UInt16 _desiredDeltaT;
+        private volatile int _desiredDeltaT;
 
         private volatile UInt16 _desiredNumerator;
 
         private volatile UInt16 _desiredDenominator;
 
-        private volatile UInt16 _currentDeltaT;
+        private volatile int _currentDeltaT;
 
         private volatile bool _stop;
 
@@ -35,7 +37,7 @@ namespace ControllerCNC
         internal SpeedController(DriverCNC cnc)
         {
             _cnc = cnc;
-            _desiredDeltaT = cnc.StartDeltaT;
+            _desiredDeltaT = Constants.StartDeltaT;
             _currentDeltaT = _desiredDeltaT;
             _speedWorker = new Thread(worker);
             _speedWorker.IsBackground = true;
@@ -66,15 +68,11 @@ namespace ControllerCNC
         private void sendNewPlan()
         {
             if (_currentDeltaT != _desiredDeltaT)
-                //TODO send acceleration
                 _currentDeltaT = _desiredDeltaT;
 
             var stepCount = (Int16)(Math.Max(2, 20000 / _currentDeltaT));
             var sendStepCount = Direction ? (Int16)(-stepCount) : stepCount;
-            //_cnc.StepperIndex = 2;
-            //_cnc.SEND_Constant((Int16)(stepCount * 2), (UInt16)(_currentDeltaT / 2), _desiredNumerator, _desiredDenominator);
-            _cnc.SEND_Constant(sendStepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator);
-            //_cnc.SEND_Constant(0, 0, 0, 0);
+            _cnc.SEND(new ConstantInstruction(sendStepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator));
 
             var plannedTime = stepCount * _currentDeltaT;
             _plannedTimeTotal += plannedTime;

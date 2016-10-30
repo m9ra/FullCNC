@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 
 using System.Threading;
 
+using ControllerCNC.Machine;
+using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
 
 namespace ControllerCNC
@@ -67,9 +69,7 @@ namespace ControllerCNC
             {
                 for (var i = 0; i < accelerationX.Length; ++i)
                 {
-                    _cnc.StepperIndex = 2;
-                    _cnc.SEND(accelerationX[i]);
-                    _cnc.SEND(accelerationY[i]);
+                    _cnc.SEND(AxesInstruction.XY(accelerationX[i], accelerationY[i]));
                 }
 
                 velocityReached();
@@ -81,16 +81,12 @@ namespace ControllerCNC
             {
                 foreach (var acceleration in accelerationX)
                 {
-                    _cnc.StepperIndex = 2;
-                    _cnc.SEND(acceleration);
-                    _cnc.SEND_Acceleration(0, 0, 0, 0, 1);
+                    _cnc.SEND(AxesInstruction.X(acceleration));
                 }
 
                 foreach (var acceleration in accelerationY)
                 {
-                    _cnc.StepperIndex = 2;
-                    _cnc.SEND_Acceleration(0, 0, 0, 0, 1);
-                    _cnc.SEND(acceleration);
+                    _cnc.SEND(AxesInstruction.Y(acceleration));
                 }
 
                 velocityReached();
@@ -106,16 +102,17 @@ namespace ControllerCNC
 
             var stepCountX = (Int16)(200 * 1 * Math.Sign(_velocityX));
             var stepCountY = (Int16)(200 * 1 * Math.Sign(_velocityY));
-            _cnc.StepperIndex = 2;
-            _cnc.SEND_Constant(stepCountX, (UInt16)Math.Abs(_velocityX), 0, 0);
-            _cnc.SEND_Constant(stepCountY, (UInt16)Math.Abs(_velocityY), 0, 0);
+
+            var xInstruction = new ConstantInstruction(stepCountX, (UInt16)Math.Abs(_velocityX), 0, 0);
+            var yInstruction = new ConstantInstruction(stepCountY, (UInt16)Math.Abs(_velocityY), 0, 0);
+            _cnc.SEND(AxesInstruction.XY(xInstruction, yInstruction));
         }
 
-        AccelerationPlan[] createAcceleration(int velocity, int desiredVelocity)
+        AccelerationInstruction[] createAcceleration(int velocity, int desiredVelocity)
         {
             if (velocity == desiredVelocity)
                 //no acceleration is required
-                return new AccelerationPlan[0];
+                return new AccelerationInstruction[0];
 
             if (Math.Abs(Math.Sign(velocity) - Math.Sign(desiredVelocity)) > 1)
             {
@@ -129,14 +126,14 @@ namespace ControllerCNC
             velocity = Math.Abs(velocity);
             desiredVelocity = Math.Abs(desiredVelocity);
             if (velocity == 0)
-                velocity = _cnc.StartDeltaT;
+                velocity = Constants.StartDeltaT;
 
             if (desiredVelocity == 0)
-                desiredVelocity = _cnc.StartDeltaT;
+                desiredVelocity = Constants.StartDeltaT;
 
-            var acceleration = _cnc.CalculateBoundedAcceleration((UInt16)velocity, (UInt16)desiredVelocity, stepCount);
+            var acceleration = PlanBuilder.CalculateBoundedAcceleration((UInt16)velocity, (UInt16)desiredVelocity, stepCount);
 
-            return new AccelerationPlan[] { acceleration };
+            return new AccelerationInstruction[] { acceleration };
         }
 
         private void velocityReached()

@@ -19,8 +19,11 @@ using System.Threading;
 
 using System.IO.Ports;
 
+using ControllerCNC.Machine;
 using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
+
+using ControllerCNC.Demos;
 
 namespace ControllerCNC
 {
@@ -61,18 +64,11 @@ namespace ControllerCNC
             _statusTimer.IsEnabled = true;
         }
 
+        #region Machine status handling
 
         void _statusTimer_Tick(object sender, EventArgs e)
         {
             Status.Text = "Incomplete: " + _driver.IncompletePlanCount;
-        }
-
-        void _positionTimer_Tick(object sender, EventArgs e)
-        {
-            _positionTimer.Stop();
-
-            var steps = (int)Position.Value - 200;
-            _positionController.SetPosition(steps);
         }
 
         void _driver_OnDataReceived(string data)
@@ -84,148 +80,69 @@ namespace ControllerCNC
             })));
         }
 
+        #endregion
+
+        #region Demo buttons handling.
+
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            //_driver.SEND_Transition(0, 1500, 400 * 1500, 0);
-
-            _driver.SEND_TransitionRPM(-400 * 10, 0, 1000, 500);
-            _driver.SEND_TransitionRPM(-400 * 10, 500, 500, 500);
-            _driver.SEND_TransitionRPM(-400 * 20, 500, 1500, 0);
+            Execute(MachineTesting.Ramping());
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
-            var segmentation = 100;
-            for (var i = 0; i < 400 / segmentation; ++i)
-            {
-                _driver.SEND_TransitionRPM(segmentation, 0, 1500, 0);
-            }
+            Execute(MachineTesting.InterruptedRevolution());
         }
 
         private void Button_Click_2(object sender, RoutedEventArgs e)
-        {
-            var overShoot = 100;
-            var segmentation = 4;
-            for (var i = 0; i < 400 / segmentation; ++i)
-            {
-                _driver.SEND_TransitionRPM(-overShoot, 0, 1500, 0);
-                _driver.SEND_TransitionRPM(segmentation + overShoot, 0, 1500, 0);
-            }
+        {            
+            Execute(MachineTesting.BackAndForwardRevolution());
         }
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
             var tracer = new PathTracer2D();
-            var maxAcceleration = 10 * 400;
-
-            /*/
-            var smoothness = 20;
-            var duration = 25.0;
-            for (var i = 5; i < smoothness; ++i)
-            {
-                var rad = 33 * i * Math.PI / 180;
-                var direction = new Vector(Math.Abs(Math.Sin(rad)), Math.Abs(Math.Cos(rad)));
-                direction.Normalize();
-                tracer.AppendAcceleration(direction * maxAcceleration, duration / smoothness);
-            }
-            tracer.Execute(_driver);
-            return;/**/
+            var maxAcceleration = 1 * 400;
 
             var direction1 = new Vector(-400, -200);
             var direction2 = new Vector(-20, -400);
             direction1.Normalize();
             direction2.Normalize();
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.5);
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 0.5);
-            tracer.Continue(2);
-            tracer.AppendAcceleration(-direction1 * maxAcceleration, 1);
-            /*tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-3 * direction1 * maxAcceleration, 2);*/
-            /*/
-            tracer.AppendAcceleration(-direction1 * maxAcceleration / 2, 2);
-            //tracer.Continue(2);
-            tracer.AppendAcceleration(direction2 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
 
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
+            tracer.AppendAcceleration(-direction1 * maxAcceleration, 2);
+            tracer.Continue(2);
+            tracer.AppendAcceleration(direction2 * maxAcceleration, 2);
+            tracer.AppendAcceleration(-2 * direction1 * maxAcceleration, 2);
+            tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
             tracer.Continue(2);/**/
             tracer.Execute(_driver);
+        }
 
-            return;
+        private void Button_Click_4(object sender, RoutedEventArgs e)
+        {
+            Execute(ShapeDrawing.DrawByConstantSpeed(ShapeDrawing.HeartCoordinates));
         }
 
         private void Button_Click_5(object sender, RoutedEventArgs e)
         {
-            var squareSize = 3000;
-            var topSpeed = 300;
-            var diagonalDistance = 300;
-
-            //do a square border
-            acceleratedLine(squareSize, 0, topSpeed);
-            acceleratedLine(0, squareSize, topSpeed);
-            acceleratedLine(-squareSize, 0, topSpeed);
-            acceleratedLine(0, -squareSize, topSpeed);
-            //left right diagonals
-            var diagonalCount = squareSize / diagonalDistance;
-            for (var i = 0; i < diagonalCount * 2; ++i)
-            {
-                var diagLength = (diagonalCount - Math.Abs(i - diagonalCount)) * diagonalDistance;
-
-                if (i % 2 == 0)
-                {
-                    acceleratedLine(-diagLength, diagLength, topSpeed);
-                    if (i < diagonalCount)
-                        acceleratedLine(0, diagonalDistance, topSpeed);
-                    else
-                        acceleratedLine(diagonalDistance, 0, topSpeed);
-                }
-                else
-                {
-                    acceleratedLine(diagLength, -diagLength, topSpeed);
-                    if (i < diagonalCount)
-                        acceleratedLine(diagonalDistance, 0, topSpeed);
-                    else
-                        acceleratedLine(0, diagonalDistance, topSpeed);
-                }
-            }
+            Execute(ShapeDrawing.DrawSquareWithDiagonals());
         }
 
-        private void acceleratedLine(int x, int y, int maxSpeed)
+        private void Execute(PlanBuilder plan)
         {
-            var maxAccelerationDistance = Math.Max(Math.Abs(x / 2), Math.Abs(y / 2));
-
-            var accelerationX = _driver.CalculateBoundedAcceleration(_driver.StartDeltaT, (UInt16)maxSpeed, (Int16)(Math.Sign(x) * maxAccelerationDistance));
-            var accelerationY = _driver.CalculateBoundedAcceleration(_driver.StartDeltaT, (UInt16)maxSpeed, (Int16)(Math.Sign(y) * maxAccelerationDistance));
-
-            var decelX = accelerationX.Invert();
-            var decelY = accelerationY.Invert();
-
-            _driver.StepperIndex = 2;
-            _driver.SEND(accelerationX);
-            _driver.SEND(accelerationY);
-
-            var remainingX = x - decelX.StepCount - accelerationX.StepCount;
-            var remainingY = y - decelY.StepCount - accelerationY.StepCount;
-
-            while (_driver.HasSteps(remainingX) || _driver.HasSteps(remainingY))
-            {
-                var sliceX = _driver.GetStepSlice(remainingX);
-                var sliceY = _driver.GetStepSlice(remainingY);
-
-                remainingX -= sliceX;
-                remainingY -= sliceY;
-
-                _driver.StepperIndex = 2;
-                // _driver.SEND_Constant(sliceX, accelerationX.EndDeltaT, 0, 0);
-                // _driver.SEND_Constant(sliceY, accelerationY.EndDeltaT, 0, 0);
-                throw new NotImplementedException("Refactoring");
-            }
-
-            _driver.StepperIndex = 2;
-            _driver.SEND(decelX);
-            _driver.SEND(decelY);
+            Execute(plan.Build());
         }
+
+        private void Execute(IEnumerable<InstructionCNC> plan)
+        {
+            _driver.SEND(plan);
+        }
+
+        #endregion
+
+        #region Speed commands handling.
 
         private void IsSpeedTesterEnabled_Checked(object sender, RoutedEventArgs e)
         {
@@ -241,6 +158,19 @@ namespace ControllerCNC
         {
             _speedController.Direction = !_speedController.Direction;
         }
+
+        #endregion
+
+        #region Position commands handling.
+
+        void _positionTimer_Tick(object sender, EventArgs e)
+        {
+            _positionTimer.Stop();
+
+            var steps = (int)Position.Value - 200;
+            _positionController.SetPosition(steps);
+        }
+
         private void Slider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (_speedController == null)
@@ -269,102 +199,9 @@ namespace ControllerCNC
             StepDisplay.Text = steps.ToString();
         }
 
-        private void Button_Click_4(object sender, RoutedEventArgs e)
-        {
-            var trajectoryPoints = createSpiral();//createSpiral();
-            var trajectory = new Trajectory4D(trajectoryPoints);
-
-            var planner = new StraightLinePlanner2D(trajectory, new Velocity(1, 300), null);
-            planner.Run(_driver);
-        }
-
-        private IEnumerable<Point4D> createHeart()
-        {
-            var top = new List<Point4D>();
-            var bottom = new List<Point4D>();
-
-            var smoothness = 200;
-            var scale = 5000;
-
-            for (var i = 0; i <= smoothness; ++i)
-            {
-                var x = -2 + (4.0 * i / smoothness);
-                var y1 = Math.Sqrt(1.0 - Math.Pow(Math.Abs(x) - 1, 2));
-                var y2 = -3 * Math.Sqrt(1 - (Math.Sqrt(Math.Abs(x)) / Math.Sqrt(2)));
-
-                top.Add(point2D(x, y1, scale));
-                bottom.Add(point2D(x, y2, scale));
-            }
-            top.Reverse();
-            var result = bottom.Concat(top).ToArray();
-
-            return result;
-        }
-
-        private IEnumerable<Point4D> createTriangle()
-        {
-            return new[]{
-                point2D(0,0),
-                point2D(4000,2000),
-                point2D(-4000,2000),
-                point2D(0,0)
-            };
-        }
-
-        private IEnumerable<Point4D> createCircle()
-        {
-            var circlePoints = new List<Point4D>();
-            var r = 5000;
-            var smoothness = 5;
-            for (var i = 0; i <= 360 * smoothness; ++i)
-            {
-                var x = Math.Sin(i * Math.PI / 180 / smoothness);
-                var y = Math.Cos(i * Math.PI / 180 / smoothness);
-                circlePoints.Add(point2D(x, y, r));
-            }
-            return circlePoints;
-        }
-
-        private IEnumerable<Point4D> createLine()
-        {
-            var start = point2D(0, 0);
-            var end = point2D(50000, 30000);
-
-            var segmentCount = 5000;
-
-            var linePoints = new List<Point4D>();
-            for (var i = 0; i <= segmentCount; ++i)
-            {
-                var x = 1.0 * (end.X - start.X) / segmentCount * i;
-                var y = 1.0 * (end.Y - start.Y) / segmentCount * i;
-                linePoints.Add(point2D(x, y, 1));
-            }
-
-            return linePoints;
-        }
-
-        private IEnumerable<Point4D> createSpiral()
-        {
-            var spiralPoints = new List<Point4D>();
-            var r = 15000;
-            for (var i = 0; i <= r; ++i)
-            {
-                var x = Math.Sin(i * Math.PI / 180);
-                var y = Math.Cos(i * Math.PI / 180);
-                spiralPoints.Add(point2D(x, y, i));
-            }
-            return spiralPoints;
-        }
-
-        private Point4D point2D(int x, int y)
-        {
-            return new Point4D(0, 0, x, y);
-        }
-
-        private Point4D point2D(double x, double y, double scale)
-        {
-            return new Point4D(0, 0, (int)Math.Round(x * scale), (int)Math.Round(y * scale));
-        }
+        #endregion
+        
+        #region Transition commands handling.
 
         private void MaxSpeed_TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -381,6 +218,7 @@ namespace ControllerCNC
         {
             startTransition(0, 0);
         }
+
 
         private void UpB_MouseDown(object sender, MouseButtonEventArgs e)
         {
@@ -422,7 +260,6 @@ namespace ControllerCNC
             stopTransition();
         }
 
-
         private void LeftUpB_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
             startTransition(1, 1);
@@ -462,7 +299,6 @@ namespace ControllerCNC
         {
             stopTransition();
         }
-
-
+        #endregion
     }
 }
