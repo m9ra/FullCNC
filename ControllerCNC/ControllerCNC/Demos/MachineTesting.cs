@@ -46,7 +46,6 @@ namespace ControllerCNC.Demos
             var traverseDelta = 450;
             var builder = new PlanBuilder();
 
-
             for (var i = 0; i < 30; ++i)
             {
                 var distance = (int)(450 / (1.25 / 400));

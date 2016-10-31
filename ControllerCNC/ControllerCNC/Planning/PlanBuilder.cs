@@ -152,8 +152,8 @@ namespace ControllerCNC.Planning
 
             var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, speedLimitX, accelerationX, xSteps / 2);
             var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, speedLimitY, accelerationY, ySteps / 2);
-            var reachedSpeedX = Speed.FromDelta(accelerationProfileX.EndDelta);
-            var reachedSpeedY = Speed.FromDelta(accelerationProfileY.EndDelta);
+            var reachedSpeedX = Speed.FromDelta(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
+            var reachedSpeedY = Speed.FromDelta(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
             var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
 
             var decelerationProfileX = AccelerationProfile.FromTo(reachedSpeedX, Speed.Zero, accelerationX, xSteps / 2);

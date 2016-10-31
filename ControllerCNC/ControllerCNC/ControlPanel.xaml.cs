@@ -41,6 +41,7 @@ namespace ControllerCNC
 
         public MainWindow()
         {
+          //  Demos.ShapeDrawing.DrawSquareWithDiagonals();
             InitializeComponent();
             System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
             myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;

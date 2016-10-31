@@ -45,8 +45,9 @@ namespace ControllerCNC.Planning
 
                 var distanceX = point.X - lastPoint.X;
                 var distanceY = point.Y - lastPoint.Y;
-              
-                planBuilder.AddConstantSpeedTransitionXY(distanceX, distanceY, _transitionSpeed);                
+
+                planBuilder.AddConstantSpeedTransitionXY(distanceX, distanceY, _transitionSpeed);
+                //planBuilder.AddRampedLineXY(distanceX, distanceY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
                 lastPoint = point;
             }
 

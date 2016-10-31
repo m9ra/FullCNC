@@ -80,8 +80,8 @@ namespace ControllerCNC.Planning
 
 
 
-            c0 = Math.Abs(Math.Round(c0));
-            findInitialDeltaT((int)c0, targetDelta, out InitialDeltaT, out InitialN);
+            c0 = Math.Abs(c0);
+            findInitialDeltaT(c0, targetDelta, out InitialDeltaT, out InitialN);
             StartDeltaT = InitialDeltaT;
 
             checked
@@ -122,17 +122,17 @@ namespace ControllerCNC.Planning
                 var accelerationF = 1.0 * acceleration.Speed.StepCount / acceleration.Speed.Ticks / acceleration.Ticks * timeScale * timeScale;
                 var desiredAccelerationTime = Math.Abs(desiredSpeedF - initialSpeedF) / accelerationF;
                 var isDeceleration = initialSpeedF > desiredSpeedF;
+                var decelerationCoefficient = isDeceleration ? -1 : 1;
 
                 var a = 0.5 * accelerationF;
-                var b = initialSpeedF;
-                if (isDeceleration)
-                    b = -b;
+                var b = initialSpeedF * decelerationCoefficient;
                 var c = -absStepCountLimit;
                 var availableAccelerationTime = (-b + Math.Sqrt(b * b - 4 * a * c)) / 2 / a;
 
                 var accelerationTime = Math.Min(desiredAccelerationTime, availableAccelerationTime);
-                var accelerationDistanceF = (initialSpeedF * accelerationTime + 0.5 * accelerationF * accelerationTime * accelerationTime);
-                var plan = findAccelerationProfile(initialSpeedF, desiredSpeedF, (int)Math.Round(accelerationDistanceF) * Math.Sign(stepCountLimit), accelerationTime);
+                var reachedSpeed = initialSpeedF + decelerationCoefficient * accelerationF * accelerationTime;
+                var accelerationDistanceF = (initialSpeedF * accelerationTime + 0.5 * decelerationCoefficient * accelerationF * accelerationTime * accelerationTime);
+                var plan = findAccelerationProfile(initialSpeedF, reachedSpeed, (int)Math.Round(accelerationDistanceF) * Math.Sign(stepCountLimit), accelerationTime);
 
                 return plan;
             }
@@ -142,7 +142,7 @@ namespace ControllerCNC.Planning
         {
             var absoluteInitialSpeed = Math.Abs(initialSpeed);
             var absoluteEndSpeed = Math.Abs(endSpeed);
-            var absoluteStepCount = (int)Math.Abs(distance);
+            var stepCount = (int)distance;
             var tickCount = (int)(exactDuration * Constants.TimerFrequency);
 
             var acceleration = Math.Abs(absoluteEndSpeed - absoluteInitialSpeed) / exactDuration;
@@ -158,7 +158,7 @@ namespace ControllerCNC.Planning
             if (isDeceleration)
                 rawC0 = -rawC0;
 
-            var plan = new AccelerationProfile(rawC0, targetDelta, absoluteStepCount, tickCount);
+            var plan = new AccelerationProfile(rawC0, targetDelta, stepCount, tickCount);
             return plan;
         }
 
@@ -171,10 +171,15 @@ namespace ControllerCNC.Planning
             }
         }
 
-        private void findInitialDeltaT(int c0, int targetDelta, out int globalInitialDeltaT, out int globalInitialN)
+        private void findInitialDeltaT(double c0, int targetDelta, out int globalInitialDeltaT, out int globalInitialN)
         {
+            var exactInitialN = targetDelta == int.MaxValue ? 0 : (int)Math.Round(Math.Pow(c0 * c0 - targetDelta * targetDelta, 2) / 4 / c0 / c0 / targetDelta / targetDelta);
             var minimalInitialN = IsDeceleration ? StepCountAbsolute : 0;
-            globalInitialDeltaT = c0;
+
+            exactInitialN = IsDeceleration ? Math.Max(StepCount, exactInitialN) : exactInitialN - StepCount;
+            exactInitialN = Math.Max(0, exactInitialN);
+
+            globalInitialDeltaT = (int)Math.Round(c0);
             globalInitialN = 0;
             var globalRemainderBuffer2 = 0;
             while (true)
@@ -235,20 +240,23 @@ namespace ControllerCNC.Planning
         /// </summary>
         private void nextStep_SpeedUpDirection(ref int currentDelta, ref int currentN, ref int remainderBuffer2)
         {
-            if (currentN == 0) checked
-                {
-                    //compensate for initial error (TODO include deceleration properly)
-                    currentDelta = currentDelta * 676 / 1000;
-                }
+            checked
+            {
+                if (currentN == 0) checked
+                    {
+                        //compensate for initial error (TODO include deceleration properly)
+                        currentDelta = currentDelta * 676 / 1000;
+                    }
 
-            ++currentN;
-            remainderBuffer2 += 2 * currentDelta;
-            var change = remainderBuffer2 / (4 * currentN + 1);
-            remainderBuffer2 = remainderBuffer2 % (4 * currentN + 1);
+                ++currentN;
+                remainderBuffer2 += 2 * currentDelta;
+                var change = remainderBuffer2 / (4 * currentN + 1);
+                remainderBuffer2 = remainderBuffer2 % (4 * currentN + 1);
 
-            currentDelta = currentDelta - change;
+                currentDelta = currentDelta - change;
 
-            //System.Diagnostics.Debug.WriteLine(currentDelta + " " + currentN + " " + remainderBuffer2);
+                //System.Diagnostics.Debug.WriteLine(currentDelta + " " + currentN + " " + remainderBuffer2);
+            }
         }
 
         /// <summary>

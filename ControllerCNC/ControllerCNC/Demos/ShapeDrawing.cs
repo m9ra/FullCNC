@@ -48,8 +48,10 @@ namespace ControllerCNC.Demos
 
 
             var builder = new PlanBuilder();
-            builder.AddRampedLineXY(5000, 5000, acceleration, speed);
-            return builder;
+            //builder.AddRampedLineXY(squareSize, 0, acceleration, speed);
+            //builder.AddRampedLineXY(0, squareSize, acceleration, speed);
+            //builder.AddRampedLineXY(-squareSize, -squareSize, acceleration, speed);
+            //return builder;
 
 
             //do a square border
