@@ -18,19 +18,25 @@ namespace ControllerCNC.Machine
 
         public readonly Int16 BaseRemainder;
 
-        public AccelerationInstruction(Int16 stepCount, int startDeltaT, Int16 baseDelta, Int16 baseRemainder, int startN)
+        public AccelerationInstruction(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 baseRemainder, int startN)
         {
             StepCount = stepCount;
-            InitialDeltaT = startDeltaT;
+            InitialDeltaT = initialDeltaT;
             StartN = startN;
             BaseDelta = baseDelta;
             BaseRemainder = baseRemainder;
 
-            if (startDeltaT < 0)
+            if (initialDeltaT < 0)
                 throw new NotSupportedException("Negative delta");
 
             if (StartN < 0 && Math.Abs(stepCount) > -StartN)
                 throw new NotSupportedException("Invalid StartN value");
+        }
+
+
+        internal AccelerationInstruction WithReversedDirection()
+        {
+            return new AccelerationInstruction((Int16)(-StepCount), InitialDeltaT, BaseDelta, BaseRemainder, StartN);
         }
 
         /// </inheritdoc>

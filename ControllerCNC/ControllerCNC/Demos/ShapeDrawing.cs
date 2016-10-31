@@ -38,7 +38,7 @@ namespace ControllerCNC.Demos
         /// <summary>
         /// Draws a square filled with diagonals - uses 45 degree acceleration methods 
         /// </summary>
-        public static IEnumerable<InstructionCNC> DrawSquareWithDiagonals()
+        public static PlanBuilder DrawSquareWithDiagonals()
         {
             var speed = Constants.MaxPlaneSpeed;
             var acceleration = Constants.MaxPlaneAcceleration;
@@ -46,12 +46,17 @@ namespace ControllerCNC.Demos
             var diagonalDistance = 300;
 
 
+
             var builder = new PlanBuilder();
+            builder.AddRampedLineXY(5000, 5000, acceleration, speed);
+            return builder;
+
+
             //do a square border
-            builder.AddRampedLine2D(squareSize, 0, acceleration, speed);
-            builder.AddRampedLine2D(0, squareSize, acceleration, speed);
-            builder.AddRampedLine2D(-squareSize, 0, acceleration, speed);
-            builder.AddRampedLine2D(0, -squareSize, acceleration, speed);
+            builder.AddRampedLineXY(squareSize, 0, acceleration, speed);
+            builder.AddRampedLineXY(0, squareSize, acceleration, speed);
+            builder.AddRampedLineXY(-squareSize, 0, acceleration, speed);
+            builder.AddRampedLineXY(0, -squareSize, acceleration, speed);
             //left right diagonals
             var diagonalCount = squareSize / diagonalDistance;
             for (var i = 0; i < diagonalCount * 2; ++i)
@@ -60,23 +65,23 @@ namespace ControllerCNC.Demos
 
                 if (i % 2 == 0)
                 {
-                    builder.AddRampedLine2D(-diagLength, diagLength, acceleration, speed);
+                    builder.AddRampedLineXY(-diagLength, diagLength, acceleration, speed);
                     if (i < diagonalCount)
-                        builder.AddRampedLine2D(0, diagonalDistance, acceleration, speed);
+                        builder.AddRampedLineXY(0, diagonalDistance, acceleration, speed);
                     else
-                        builder.AddRampedLine2D(diagonalDistance, 0, acceleration, speed);
+                        builder.AddRampedLineXY(diagonalDistance, 0, acceleration, speed);
                 }
                 else
                 {
-                    builder.AddRampedLine2D(diagLength, -diagLength, acceleration, speed);
+                    builder.AddRampedLineXY(diagLength, -diagLength, acceleration, speed);
                     if (i < diagonalCount)
-                        builder.AddRampedLine2D(diagonalDistance, 0, acceleration, speed);
+                        builder.AddRampedLineXY(diagonalDistance, 0, acceleration, speed);
                     else
-                        builder.AddRampedLine2D(0, diagonalDistance, acceleration, speed);
+                        builder.AddRampedLineXY(0, diagonalDistance, acceleration, speed);
                 }
             }
 
-            return builder.Build();
+            return builder;
         }
 
         #endregion

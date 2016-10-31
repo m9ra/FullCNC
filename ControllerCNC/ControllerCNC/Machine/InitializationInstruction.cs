@@ -11,7 +11,7 @@ namespace ControllerCNC.Machine
         /// </inheritdoc>
         internal override byte[] GetInstructionBytes()
         {
-            throw new NotImplementedException();
+            return new byte[] { (byte)'I' };
         }
     }
 }

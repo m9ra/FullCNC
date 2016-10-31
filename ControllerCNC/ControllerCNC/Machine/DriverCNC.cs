@@ -42,11 +42,6 @@ namespace ControllerCNC.Machine
         private readonly Queue<byte[]> _sendQueue = new Queue<byte[]>();
 
         /// <summary>
-        /// Buffer for instruction which is currently construted.
-        /// </summary>
-        private readonly List<byte> _constructedInstruction = new List<byte>();
-
-        /// <summary>
         /// Lock for send queue synchornization.
         /// </summary>
         private readonly object _L_sendQueue = new object();
@@ -140,10 +135,10 @@ namespace ControllerCNC.Machine
         /// <param name="part">Part to send.</param>
         public void SEND(InstructionCNC part)
         {
-            throw new NotImplementedException();
+            send(part);
         }
 
-        #region Sending utilities
+        #region Communication utilities
 
         private void _port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
@@ -258,6 +253,9 @@ namespace ControllerCNC.Machine
             var data = new List<byte>(instruction.GetInstructionBytes());
             while (data.Count < _instructionLength - 2)
                 data.Add(0);
+
+            if (data.Count != _instructionLength-2)
+                throw new NotSupportedException("Invalid instruction length detected.");
 
             //checksum is used for error detection
             Int16 checksum = 0;

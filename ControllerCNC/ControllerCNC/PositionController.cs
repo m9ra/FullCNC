@@ -25,10 +25,11 @@ namespace ControllerCNC
         {
             var steps = newPosition - _currentPosition;
 
-            throw new NotImplementedException("Refactoring");
+            var builder = new Planning.PlanBuilder();
+            //builder.AddRampedSteps(steps, Constants.FastestDeltaT);
+            builder.AddConstantSpeedTransitionXY(steps, steps, Constants.ReverseSafeSpeed);
+            _cnc.SEND(builder.Build());
 
-            //if (_cnc.IncompletePlanCount == 0)
-            //  throw new NotSupportedException("Race condition.");
             //position setting is blocking for now
             while (_cnc.IncompletePlanCount > 0)
                 System.Threading.Thread.Sleep(1);

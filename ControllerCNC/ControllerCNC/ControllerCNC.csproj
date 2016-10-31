@@ -57,7 +57,7 @@
     <Compile Include="Coord2DController.cs" />
     <Compile Include="Demos\MachineTesting.cs" />
     <Compile Include="Demos\ShapeDrawing.cs" />
-    <Compile Include="Machine\AxesInstruction.cs" />
+    <Compile Include="Machine\Axes.cs" />
     <Compile Include="Machine\InitializationInstruction.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />
     <Compile Include="Planning\AccelerationProfile.cs" />

@@ -32,7 +32,7 @@ namespace ControllerCNC
     /// </summary>
     public partial class MainWindow : Window
     {
-        DriverCNC _driver;
+        DriverCNC _cnc;
         DispatcherTimer _positionTimer = new DispatcherTimer();
         DispatcherTimer _statusTimer = new DispatcherTimer();
         SpeedController _speedController;
@@ -47,13 +47,13 @@ namespace ControllerCNC
 
             Output.ScrollToEnd();
 
-            _driver = new DriverCNC();
-            _driver.OnDataReceived += _driver_OnDataReceived;
-            _driver.Initialize();
+            _cnc = new DriverCNC();
+            _cnc.OnDataReceived += _driver_OnDataReceived;
+            _cnc.Initialize();
 
-            _positionController = new PositionController(_driver);
-            _speedController = new SpeedController(_driver);
-            _coord2DController = new Coord2DController(_driver);
+            _positionController = new PositionController(_cnc);
+            _speedController = new SpeedController(_cnc);
+            _coord2DController = new Coord2DController(_cnc);
 
             _positionTimer.Interval = new TimeSpan(1 * 10 * 1000);
             _positionTimer.Tick += _positionTimer_Tick;
@@ -68,7 +68,7 @@ namespace ControllerCNC
 
         void _statusTimer_Tick(object sender, EventArgs e)
         {
-            Status.Text = "Incomplete: " + _driver.IncompletePlanCount;
+            Status.Text = "Incomplete: " + _cnc.IncompletePlanCount;
         }
 
         void _driver_OnDataReceived(string data)
@@ -86,38 +86,22 @@ namespace ControllerCNC
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            Execute(MachineTesting.Ramping());
+            Execute(MachineTesting.Ramping);
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
         {
-            Execute(MachineTesting.InterruptedRevolution());
+            Execute(MachineTesting.InterruptedRevolution);
         }
 
         private void Button_Click_2(object sender, RoutedEventArgs e)
-        {            
-            Execute(MachineTesting.BackAndForwardRevolution());
+        {
+            Execute(MachineTesting.BackAndForwardRevolution);
         }
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
-            var tracer = new PathTracer2D();
-            var maxAcceleration = 1 * 400;
-
-            var direction1 = new Vector(-400, -200);
-            var direction2 = new Vector(-20, -400);
-            direction1.Normalize();
-            direction2.Normalize();
-
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-direction1 * maxAcceleration, 2);
-            tracer.Continue(2);
-            tracer.AppendAcceleration(direction2 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-2 * direction1 * maxAcceleration, 2);
-            tracer.AppendAcceleration(-direction2 * maxAcceleration, 2);
-            tracer.Continue(2);/**/
-            tracer.Execute(_driver);
+            Execute(MachineTesting.AccelerationTest);
         }
 
         private void Button_Click_4(object sender, RoutedEventArgs e)
@@ -127,7 +111,12 @@ namespace ControllerCNC
 
         private void Button_Click_5(object sender, RoutedEventArgs e)
         {
-            Execute(ShapeDrawing.DrawSquareWithDiagonals());
+            Execute(ShapeDrawing.DrawSquareWithDiagonals);
+        }
+
+        private void Execute(Func<PlanBuilder> planProvider)
+        {
+            Execute(planProvider());
         }
 
         private void Execute(PlanBuilder plan)
@@ -137,7 +126,7 @@ namespace ControllerCNC
 
         private void Execute(IEnumerable<InstructionCNC> plan)
         {
-            _driver.SEND(plan);
+            _cnc.SEND(plan);
         }
 
         #endregion
@@ -200,7 +189,7 @@ namespace ControllerCNC
         }
 
         #endregion
-        
+
         #region Transition commands handling.
 
         private void MaxSpeed_TextChanged(object sender, TextChangedEventArgs e)

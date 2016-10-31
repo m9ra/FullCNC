@@ -72,7 +72,7 @@ namespace ControllerCNC
 
             var stepCount = (Int16)(Math.Max(2, 20000 / _currentDeltaT));
             var sendStepCount = Direction ? (Int16)(-stepCount) : stepCount;
-            _cnc.SEND(new ConstantInstruction(sendStepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator));
+            _cnc.SEND(Axes.Y(new ConstantInstruction(sendStepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator)));
 
             var plannedTime = stepCount * _currentDeltaT;
             _plannedTimeTotal += plannedTime;

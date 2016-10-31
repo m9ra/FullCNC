@@ -14,19 +14,19 @@ namespace ControllerCNC.Primitives
         /// <summary>
         /// Velocity corresponding to no movement.
         /// </summary>
-        public static Speed Zero = new Speed(0, 0);
+        public static Speed Zero = new Speed(0, 1);
 
         /// <summary>
         /// Number of steps that should be done in given time.
         /// </summary>
-        public readonly uint StepCount;
+        public readonly long StepCount;
 
         /// <summary>
         /// Time available for doing steps in CNC timer ticks.
         /// </summary>
-        public readonly uint Ticks;
+        public readonly long Ticks;
 
-        public Speed(uint stepCount, uint ticks)
+        public Speed(long stepCount, long ticks)
         {
             StepCount = stepCount;
             Ticks = ticks;
@@ -41,6 +41,9 @@ namespace ControllerCNC.Primitives
         {
             if (deltaT < 0)
                 throw new NotSupportedException("DeltaT has to be positive");
+            if (deltaT == 0)
+                //infinity speed is not supported
+                return Speed.Zero;
 
             return new Speed(1, (uint)deltaT);
         }

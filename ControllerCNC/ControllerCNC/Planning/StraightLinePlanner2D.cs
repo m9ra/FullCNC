@@ -46,7 +46,7 @@ namespace ControllerCNC.Planning
                 var distanceX = point.X - lastPoint.X;
                 var distanceY = point.Y - lastPoint.Y;
               
-                planBuilder.AddConstantSpeedTransition2D(distanceX, distanceY, _transitionSpeed);                
+                planBuilder.AddConstantSpeedTransitionXY(distanceX, distanceY, _transitionSpeed);                
                 lastPoint = point;
             }
 

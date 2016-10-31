@@ -9,7 +9,7 @@ namespace ControllerCNC.Primitives
     /// <summary>
     /// Determines how many steps per second will be accelerated per second
     /// </summary>
-    class Acceleration
+    public class Acceleration
     {
         /// <summary>
         /// Speed that will be accelerated in <see cref="Ticks"/>.
@@ -19,9 +19,9 @@ namespace ControllerCNC.Primitives
         /// <summary>
         /// How long it take to accelerate to <see cref="Speed"/> (in CNC timer tick count).
         /// </summary>
-        public readonly uint Ticks;
+        public readonly long Ticks;
 
-        public Acceleration(Speed speed, uint ticks)
+        public Acceleration(Speed speed, long ticks)
         {
             Speed = speed;
             Ticks = ticks;

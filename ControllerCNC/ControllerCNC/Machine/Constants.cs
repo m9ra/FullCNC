@@ -27,7 +27,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
-        internal static readonly uint MaxAcceleration = 200 * StepsPerRevolution;
+        internal static readonly uint MaxAcceleration = 20 * StepsPerRevolution;
 
         /// <summary>
         /// DeltaT which can be safely used after stand still.

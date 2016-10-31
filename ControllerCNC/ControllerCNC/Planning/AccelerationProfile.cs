@@ -4,9 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using ControllerCNC.Machine;
+using ControllerCNC.Primitives;
+
 namespace ControllerCNC.Planning
 {
-    class AccelerationProfile
+    public class AccelerationProfile
     {
         /// <summary>
         /// Initial N which is a parameter of acceleration
@@ -21,7 +24,7 @@ namespace ControllerCNC.Planning
         /// <summary>
         /// Delta which is used to compensate acceleration duration
         /// </summary>
-        public readonly Int16 BaseDelta;
+        public readonly Int16 BaseDeltaT;
 
         /// <summary>
         /// Delta which is used to compensate acceleration duration
@@ -29,9 +32,14 @@ namespace ControllerCNC.Planning
         public readonly Int16 BaseRemainder;
 
         /// <summary>
-        /// How many steps will be with the acceleration.
+        /// How many steps will be taken with the acceleration with direction sign.
         /// </summary>
         public readonly int StepCount;
+
+        /// <summary>
+        /// How many steps will be taken with the acceleration - without direction information.
+        /// </summary>
+        public readonly int StepCountAbsolute;
 
         /// <summary>
         /// Determines whether acceleration speeds up or slows down the movement.
@@ -53,14 +61,24 @@ namespace ControllerCNC.Planning
         /// </summary>
         public readonly long TotalTickCount;
 
+
         internal AccelerationProfile(double c0, int targetDelta, int stepCount, long tickCount)
         {
             if (targetDelta < 0)
                 throw new NotSupportedException("Target delta has to be positive");
 
-            StepCount = Math.Abs(stepCount);
+            if (stepCount == 0)
+            {
+                //keep everything at zero
+                return;
+            }
+
+            StepCount = stepCount;
+            StepCountAbsolute = Math.Abs(stepCount);
             IsDeceleration = c0 < 0;
             EndDelta = targetDelta;
+
+
 
             c0 = Math.Abs(Math.Round(c0));
             findInitialDeltaT((int)c0, targetDelta, out InitialDeltaT, out InitialN);
@@ -72,25 +90,90 @@ namespace ControllerCNC.Planning
 
                 var accelerationTickCount = sequence.Sum();
                 var tickCountDifference = tickCount - accelerationTickCount;
-                var desiredBaseDelta = tickCountDifference / StepCount;
+                var desiredBaseDelta = tickCountDifference / StepCountAbsolute;
                 if (desiredBaseDelta > Int16.MaxValue)
                     throw new NotSupportedException("Acceleration error is out of bounds");
                 if (desiredBaseDelta < Int16.MinValue)
                     throw new NotSupportedException("Acceleration error is out of bounds");
 
-                BaseDelta = (Int16)(desiredBaseDelta);
+                BaseDeltaT = (Int16)(desiredBaseDelta);
                 if (tickCountDifference < 0)
-                    BaseDelta -= 1;
+                    BaseDeltaT -= 1;
 
-                TotalTickCount = BaseDelta * StepCount + accelerationTickCount;
+                TotalTickCount = BaseDeltaT * StepCountAbsolute + accelerationTickCount;
                 BaseRemainder = (Int16)(tickCount - TotalTickCount);
                 TotalTickCount += BaseRemainder;
             }
         }
 
+
+        internal static AccelerationProfile FromTo(Speed initialSpeed, Speed desiredTargetSpeed, Acceleration acceleration, int stepCountLimit)
+        {
+            checked
+            {
+                if (stepCountLimit == 0)
+                    return new AccelerationProfile(0, 0, 0, 0);
+
+                var absStepCountLimit = Math.Abs(stepCountLimit);
+                //TODO verify/improve precision
+                var timeScale = Constants.TimerFrequency;
+                var initialSpeedF = initialSpeed.Ticks == 0 ? 0.0 : 1.0 * initialSpeed.StepCount / initialSpeed.Ticks * timeScale;
+                var desiredSpeedF = desiredTargetSpeed.Ticks == 0 ? 0.0 : 1.0 * desiredTargetSpeed.StepCount / desiredTargetSpeed.Ticks * timeScale;
+                var accelerationF = 1.0 * acceleration.Speed.StepCount / acceleration.Speed.Ticks / acceleration.Ticks * timeScale * timeScale;
+                var desiredAccelerationTime = Math.Abs(desiredSpeedF - initialSpeedF) / accelerationF;
+                var isDeceleration = initialSpeedF > desiredSpeedF;
+
+                var a = 0.5 * accelerationF;
+                var b = initialSpeedF;
+                if (isDeceleration)
+                    b = -b;
+                var c = -absStepCountLimit;
+                var availableAccelerationTime = (-b + Math.Sqrt(b * b - 4 * a * c)) / 2 / a;
+
+                var accelerationTime = Math.Min(desiredAccelerationTime, availableAccelerationTime);
+                var accelerationDistanceF = (initialSpeedF * accelerationTime + 0.5 * accelerationF * accelerationTime * accelerationTime);
+                var plan = findAccelerationProfile(initialSpeedF, desiredSpeedF, (int)Math.Round(accelerationDistanceF) * Math.Sign(stepCountLimit), accelerationTime);
+
+                return plan;
+            }
+        }
+
+        private static AccelerationProfile findAccelerationProfile(double initialSpeed, double endSpeed, double distance, double exactDuration)
+        {
+            var absoluteInitialSpeed = Math.Abs(initialSpeed);
+            var absoluteEndSpeed = Math.Abs(endSpeed);
+            var absoluteStepCount = (int)Math.Abs(distance);
+            var tickCount = (int)(exactDuration * Constants.TimerFrequency);
+
+            var acceleration = Math.Abs(absoluteEndSpeed - absoluteInitialSpeed) / exactDuration;
+            var rawC0 = Constants.TimerFrequency * Math.Sqrt(2 / acceleration);
+
+            var isDeceleration = absoluteInitialSpeed > absoluteEndSpeed;
+
+            var targetDelta = (int)Math.Abs(Math.Round(Constants.TimerFrequency / endSpeed));
+            if (targetDelta < 0)
+                //overflow when decelerating to stand still
+                targetDelta = int.MaxValue;
+
+            if (isDeceleration)
+                rawC0 = -rawC0;
+
+            var plan = new AccelerationProfile(rawC0, targetDelta, absoluteStepCount, tickCount);
+            return plan;
+        }
+
+        internal AccelerationInstruction ToInstruction()
+        {
+            checked
+            {
+                var initialN = IsDeceleration ? -InitialN : InitialN;
+                return new AccelerationInstruction((Int16)StepCount, InitialDeltaT, BaseDeltaT, BaseRemainder, initialN);
+            }
+        }
+
         private void findInitialDeltaT(int c0, int targetDelta, out int globalInitialDeltaT, out int globalInitialN)
         {
-            var minimalInitialN = IsDeceleration ? StepCount : 0;
+            var minimalInitialN = IsDeceleration ? StepCountAbsolute : 0;
             globalInitialDeltaT = c0;
             globalInitialN = 0;
             var globalRemainderBuffer2 = 0;
@@ -111,14 +194,15 @@ namespace ControllerCNC.Planning
         private int getEndDelta(int initialDeltaT, int initialN)
         {
             var remainderBuffer2 = 0;
-            for (var i = 0; i < StepCount; ++i)
+            for (var i = 0; i < StepCountAbsolute; ++i)
             {
-                nextStep_RealDirection(ref initialDeltaT, ref initialN, ref remainderBuffer2);
                 if (initialN < 0 || initialDeltaT < 0)
                     throw new NotSupportedException("Invalid values");
+
+                nextStep_RealDirection(ref initialDeltaT, ref initialN, ref remainderBuffer2);
             }
 
-            if (IsDeceleration && initialN == 0)
+            if (IsDeceleration && initialN <= 0)
                 //deceleration to standstill
                 return int.MaxValue;
 
@@ -135,7 +219,7 @@ namespace ControllerCNC.Planning
             var remainderBuffer2 = 0;
 
             var window = new List<long>();
-            for (var i = 0; i < StepCount; ++i)
+            for (var i = 0; i < StepCountAbsolute; ++i)
             {
                 window.Add(currentDelta);
                 nextStep_RealDirection(ref currentDelta, ref currentN, ref remainderBuffer2);
@@ -194,7 +278,7 @@ namespace ControllerCNC.Planning
         {
             var prefix = IsDeceleration ? "PD" : "PA";
 
-            return string.Format(prefix + "({0}, {1}, {2}, {3}:{4})", StepCount, TotalTickCount, InitialN, StartDeltaT + BaseDelta, EndDelta + BaseDelta);
+            return string.Format(prefix + "({0}, {1}, {2}, {3}:{4})", StepCountAbsolute, TotalTickCount, InitialN, StartDeltaT + BaseDeltaT, EndDelta + BaseDeltaT);
         }
     }
 }

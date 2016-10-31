@@ -80,8 +80,9 @@ namespace ControllerCNC.Planning
             addConstantPlan(_actualVelocity.Y, tickCount, distance.Y, _pathPlansY);
         }
 
-        internal void Execute(DriverCNC cnc)
+        internal PlanBuilder FillBuilder()
         {
+            var builder = new PlanBuilder();
             for (var i = 0; i < _pathPlansX.Count; ++i)
             {
                 var planX = _pathPlansX[i];
@@ -91,8 +92,10 @@ namespace ControllerCNC.Planning
                 System.Diagnostics.Debug.WriteLine("\tX: " + planX);
                 System.Diagnostics.Debug.WriteLine("\tY: " + planY);
 
-                cnc.SEND(AxesInstruction.XY(planX, planY));
+                builder.AddXY(planX, planY);
             }
+
+            return builder;
         }
 
         private void addConstantPlan(double velocity, int tickCount, double distance, List<InstructionCNC> pathPlans)
@@ -125,7 +128,7 @@ namespace ControllerCNC.Planning
                 var profile = findAccelerationProfile(initialSpeed, endSpeed, Math.Abs(distance), exactDuration);
 
                 var startN = profile.IsDeceleration ? -profile.InitialN : profile.InitialN;
-                var accelerationPlan = new AccelerationInstruction((Int16)distance, profile.StartDeltaT, profile.BaseDelta, profile.BaseRemainder, startN);
+                var accelerationPlan = new AccelerationInstruction((Int16)distance, profile.StartDeltaT, profile.BaseDeltaT, profile.BaseRemainder, startN);
                 var timeDiff = Math.Abs(profile.TotalTickCount - exactDuration * Constants.TimerFrequency);
                 System.Diagnostics.Debug.WriteLine("Acceleration time diff: " + timeDiff);
                 System.Diagnostics.Debug.WriteLine("\t" + profile);

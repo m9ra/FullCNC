@@ -59,8 +59,8 @@ namespace ControllerCNC
 
         private void sendNextPlan()
         {
-            var accelerationX = createAcceleration(_velocityX, _desiredVelocity * _desiredDirectionX);
-            var accelerationY = createAcceleration(_velocityY, _desiredVelocity * _desiredDirectionY);
+            var accelerationX = CreateAcceleration(_velocityX, _desiredVelocity * _desiredDirectionX);
+            var accelerationY = CreateAcceleration(_velocityY, _desiredVelocity * _desiredDirectionY);
 
             if (accelerationX.Concat(accelerationY).Count() > 2 && accelerationX.Length != accelerationY.Length)
                 throw new NotImplementedException("We have to handle reverting one axis and starting the other");
@@ -69,7 +69,7 @@ namespace ControllerCNC
             {
                 for (var i = 0; i < accelerationX.Length; ++i)
                 {
-                    _cnc.SEND(AxesInstruction.XY(accelerationX[i], accelerationY[i]));
+                    _cnc.SEND(Axes.XY(accelerationX[i], accelerationY[i]));
                 }
 
                 velocityReached();
@@ -81,12 +81,12 @@ namespace ControllerCNC
             {
                 foreach (var acceleration in accelerationX)
                 {
-                    _cnc.SEND(AxesInstruction.X(acceleration));
+                    _cnc.SEND(Axes.X(acceleration));
                 }
 
                 foreach (var acceleration in accelerationY)
                 {
-                    _cnc.SEND(AxesInstruction.Y(acceleration));
+                    _cnc.SEND(Axes.Y(acceleration));
                 }
 
                 velocityReached();
@@ -105,33 +105,33 @@ namespace ControllerCNC
 
             var xInstruction = new ConstantInstruction(stepCountX, (UInt16)Math.Abs(_velocityX), 0, 0);
             var yInstruction = new ConstantInstruction(stepCountY, (UInt16)Math.Abs(_velocityY), 0, 0);
-            _cnc.SEND(AxesInstruction.XY(xInstruction, yInstruction));
+            _cnc.SEND(Axes.XY(xInstruction, yInstruction));
         }
 
-        AccelerationInstruction[] createAcceleration(int velocity, int desiredVelocity)
+        internal static AccelerationInstruction[] CreateAcceleration(int speed, int desiredSpeed)
         {
-            if (velocity == desiredVelocity)
+            if (speed == desiredSpeed)
                 //no acceleration is required
                 return new AccelerationInstruction[0];
 
-            if (Math.Abs(Math.Sign(velocity) - Math.Sign(desiredVelocity)) > 1)
+            if (Math.Abs(Math.Sign(speed) - Math.Sign(desiredSpeed)) > 1)
             {
                 throw new NotImplementedException("Stop and run in other direction");
             }
 
-            var stepCount = desiredVelocity > 0 ? (Int16)5000 : (Int16)(-5000);
-            if (desiredVelocity == 0)
-                stepCount = velocity > 0 ? (Int16)5000 : (Int16)(-5000);
+            var stepCount = desiredSpeed > 0 ? (Int16)5000 : (Int16)(-5000);
+            if (desiredSpeed == 0)
+                stepCount = speed > 0 ? (Int16)5000 : (Int16)(-5000);
 
-            velocity = Math.Abs(velocity);
-            desiredVelocity = Math.Abs(desiredVelocity);
-            if (velocity == 0)
-                velocity = Constants.StartDeltaT;
+            speed = Math.Abs(speed);
+            desiredSpeed = Math.Abs(desiredSpeed);
+            if (speed == 0)
+                speed = Constants.StartDeltaT;
 
-            if (desiredVelocity == 0)
-                desiredVelocity = Constants.StartDeltaT;
+            if (desiredSpeed == 0)
+                desiredSpeed = Constants.StartDeltaT;
 
-            var acceleration = PlanBuilder.CalculateBoundedAcceleration((UInt16)velocity, (UInt16)desiredVelocity, stepCount);
+            var acceleration = PlanBuilder.CalculateBoundedAcceleration((UInt16)speed, (UInt16)desiredSpeed, stepCount);
 
             return new AccelerationInstruction[] { acceleration };
         }

@@ -4,43 +4,19 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.Windows;
+
 using ControllerCNC.Machine;
 using ControllerCNC.Primitives;
 
 namespace ControllerCNC.Planning
 {
-    class PlanBuilder
+    public class PlanBuilder
     {
         /// <summary>
         /// Plan which is built.
         /// </summary>
         private readonly List<InstructionCNC> _plan = new List<InstructionCNC>();
-
-
-        #region Planning related calculation utilities
-
-        public Int16 GetStepSlice(long steps, Int16 maxSize = 30000)
-        {
-            maxSize = Math.Abs(maxSize);
-            if (steps > 0)
-                return (Int16)Math.Min(maxSize, steps);
-            else
-                return (Int16)Math.Max(-maxSize, steps);
-        }
-
-
-        public int DeltaTFromRPM(int rpm)
-        {
-            if (rpm == 0)
-                return Constants.StartDeltaT;
-
-            checked
-            {
-                var deltaT = Constants.TimerFrequency * 60 / 400 / rpm;
-                return (int)deltaT;
-            }
-        }
-        #endregion
 
         /// <summary>
         /// Builds the plan.
@@ -52,21 +28,34 @@ namespace ControllerCNC.Planning
         }
 
         /// <summary>
-        /// Adds a plan part for simultaneous controll of two axes.
-        /// The part type has to be same for the axes.
+        /// Adds a plan instruction for simultaneous controll of two axes.
+        /// The instruction type has to be same for the axes.
         /// </summary>
-        /// <param name="partX">Part for the x axis.</param>
-        /// <param name="partY">Part for the y axis.</param>
-        public void Add2D(InstructionCNC partX, InstructionCNC partY)
+        /// <param name="instructionX">instruction for the x axis.</param>
+        /// <param name="instructionY">instruction for the y axis.</param>
+        public void AddXY(InstructionCNC instructionX, InstructionCNC instructionY)
         {
-            if (partX.GetType() != partY.GetType())
-                throw new NotSupportedException("Part types has to be the same");
-
-            throw new NotImplementedException("Join the parts together.");
+            _plan.Add(Axes.XY(instructionX, instructionY));
         }
 
+        /// <summary>
+        /// Adds acceleration for x and y axes.
+        /// </summary>
+        /// <param name="accelerationProfileX">Profile for x axis acceleration.</param>
+        /// <param name="accelerationProfileY">Profile for y axis acceleration.</param>
+        public void AddAccelerationXY(AccelerationProfile accelerationProfileX, AccelerationProfile accelerationProfileY)
+        {
+            AddXY(accelerationProfileX.ToInstruction(), accelerationProfileY.ToInstruction());
+        }
 
-        internal void SEND_TransitionRPM(int stepCount, int startRPM, int targetRPM, int endRPM)
+        /// <summary>
+        /// Adds transition with specified entry, cruise and leaving speeds by RPM.
+        /// </summary>
+        /// <param name="stepCount">How many steps will be done.</param>
+        /// <param name="startRPM">RPM at the start.</param>
+        /// <param name="targetRPM">Cruise RPM.</param>
+        /// <param name="endRPM">RPM at the end.</param>
+        public void AddTransitionRPM(int stepCount, int startRPM, int targetRPM, int endRPM)
         {
             var startDeltaT = DeltaTFromRPM(startRPM);
             var targetDeltaT = DeltaTFromRPM(targetRPM);
@@ -83,16 +72,17 @@ namespace ControllerCNC.Planning
         /// <param name="distanceX">Distance along X axis in steps.</param>
         /// <param name="distanceY">Distance along Y axis in steps.</param>
         /// <param name="transitionSpeed">Speed of the transition.</param>
-        public void AddConstantSpeedTransition2D(int distanceX, int distanceY, Speed transitionSpeed)
+        public void AddConstantSpeedTransitionXY(int distanceX, int distanceY, Speed transitionSpeed)
         {
             checked
             {
-                var transitionTime = (long)(Math.Sqrt(distanceX * distanceX + distanceY * distanceY) * transitionSpeed.Ticks / transitionSpeed.StepCount);
+                var sqrt = Math.Sqrt(1.0 * distanceX * distanceX + 1.0 * distanceY * distanceY);
+                var transitionTime = (long)(sqrt * transitionSpeed.Ticks / transitionSpeed.StepCount);
 
                 var remainingStepsX = distanceX;
                 var remainingStepsY = distanceY;
 
-                var chunkLengthLimit = 35500;
+                var chunkLengthLimit = 31500;
                 var chunkCount = 1.0 * Math.Max(Math.Abs(distanceX), Math.Abs(distanceY)) / chunkLengthLimit;
                 chunkCount = Math.Max(1, chunkCount);
 
@@ -136,7 +126,7 @@ namespace ControllerCNC.Planning
 
                     var xPart = createConstant(stepCountX, stepTimeX, timeRemainderX);
                     var yPart = createConstant(stepCountY, stepTimeY, timeRemainderY);
-                    Add2D(xPart, yPart);
+                    AddXY(xPart, yPart);
                     i = i + 1 > chunkCount ? chunkCount : i + 1;
                 }
             }
@@ -147,16 +137,123 @@ namespace ControllerCNC.Planning
         /// </summary>
         /// <param name="xSteps">Number of steps along x.</param>
         /// <param name="ySteps">Numer of steps along y.</param>
-        /// <param name="acceleration">Acceleration used for ramping.</param>
-        /// <param name="speedLimit">Maximal speed that could be achieved.</param>
-        public void AddRampedLine2D(int xSteps, int ySteps, Acceleration acceleration, Speed speedLimit)
+        /// <param name="planeAcceleration">Acceleration used for ramping - calculated for both axis combined.</param>
+        /// <param name="planeSpeedLimit">Maximal speed that could be achieved for both axis combined.</param>
+        public void AddRampedLineXY(int xSteps, int ySteps, Acceleration planeAcceleration, Speed planeSpeedLimit)
         {
-            throw new NotImplementedException();
+            if (xSteps == 0 && ySteps == 0)
+                //nothing to do
+                return;
+            Speed speedLimitX, speedLimitY;
+            DecomposeXY(xSteps, ySteps, planeSpeedLimit, out speedLimitX, out speedLimitY);
+
+            Acceleration accelerationX, accelerationY;
+            DecomposeXY(xSteps, ySteps, planeAcceleration, out accelerationX, out accelerationY);
+
+            var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, speedLimitX, accelerationX, xSteps / 2);
+            var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, speedLimitY, accelerationY, ySteps / 2);
+            var reachedSpeedX = Speed.FromDelta(accelerationProfileX.EndDelta);
+            var reachedSpeedY = Speed.FromDelta(accelerationProfileY.EndDelta);
+            var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
+
+            var decelerationProfileX = AccelerationProfile.FromTo(reachedSpeedX, Speed.Zero, accelerationX, xSteps / 2);
+            var decelerationProfileY = AccelerationProfile.FromTo(reachedSpeedY, Speed.Zero, accelerationY, ySteps / 2);
+
+            var remainingX = xSteps - accelerationProfileX.StepCount - decelerationProfileX.StepCount;
+            var remainingY = ySteps - accelerationProfileY.StepCount - decelerationProfileY.StepCount;
+
+            //send ramp
+            AddAccelerationXY(accelerationProfileX, accelerationProfileY);
+            AddConstantSpeedTransitionXY(remainingX, remainingY, reachedSpeed);
+            AddAccelerationXY(decelerationProfileX, decelerationProfileY);
         }
 
-        #region Obsolete accelertion calculation
+        #region Acceleration calculation utilities
+
+        /// <summary>
+        /// Compose separate axes speeds into a plane speed.
+        /// </summary>
+        /// <param name="speedX">Speed for x axis.</param>
+        /// <param name="speedY">Speed for y axis.</param>
+        /// <returns>The composed speed.</returns>
+        public Speed ComposeXY(Speed speedX, Speed speedY)
+        {
+            checked
+            {
+                var composedSpeed = Math.Sqrt(1.0 * speedX.StepCount * speedX.StepCount / speedX.Ticks / speedX.Ticks + 1.0 * speedY.StepCount * speedY.StepCount / speedY.Ticks / speedY.Ticks);
+
+                var resolution = Constants.TimerFrequency * 1000;
+                return new Speed((long)Math.Round(Math.Abs(composedSpeed * resolution)), resolution);
+            }
+        }
+
+        /// <summary>
+        /// Decomposes plane speed into separate axes speeds in a direction specified by step counts.
+        /// </summary>
+        /// <param name="planeSpeed">Speed within the plane</param>
+        /// <param name="speedX">Output speed for x axis.</param>
+        /// <param name="speedY">Output speed for y axis.</param>
+        public void DecomposeXY(int stepsX, int stepsY, Speed planeSpeed, out Speed speedX, out Speed speedY)
+        {
+            //TODO verify/improve precision
+            checked
+            {
+                var direction = new Vector(stepsX, stepsY);
+                direction.Normalize();
+
+                var speedVector = direction * planeSpeed.StepCount / planeSpeed.Ticks;
+                var resolution = Constants.TimerFrequency;
+
+                speedX = new Speed((long)Math.Round(Math.Abs(speedVector.X * resolution)), resolution);
+                speedY = new Speed((long)Math.Round(Math.Abs(speedVector.Y * resolution)), resolution);
+            }
+        }
+
+        /// <summary>
+        /// Decomposes plane acceleration into separate axes accelerations in a direction specified by step counts.
+        /// </summary>
+        public void DecomposeXY(int stepsX, int stepsY, Acceleration planeAcceleration, out Acceleration accelerationX, out Acceleration accelerationY)
+        {
+            checked
+            {
+                Speed speedX, speedY;
+                DecomposeXY(stepsX, stepsY, planeAcceleration.Speed, out speedX, out speedY);
+
+                accelerationX = new Acceleration(speedX, planeAcceleration.Ticks);
+                accelerationY = new Acceleration(speedY, planeAcceleration.Ticks);
+            }
+        }
+
+        #endregion
+
+        #region Planning related calculation utilities
+
+        public Int16 GetStepSlice(long steps, Int16 maxSize = 30000)
+        {
+            maxSize = Math.Abs(maxSize);
+            if (steps > 0)
+                return (Int16)Math.Min(maxSize, steps);
+            else
+                return (Int16)Math.Max(-maxSize, steps);
+        }
+
+
+        public int DeltaTFromRPM(int rpm)
+        {
+            if (rpm == 0)
+                return Constants.StartDeltaT;
+
+            checked
+            {
+                var deltaT = Constants.TimerFrequency * 60 / 400 / rpm;
+                return (int)deltaT;
+            }
+        }
+        #endregion
+
+        #region Obsolete acceleration calculation
         [Obsolete("Use correct acceleration profiles instead")]
-        public static AccelerationInstruction CalculateBoundedAcceleration(int startDeltaT, int endDeltaT, Int16 accelerationDistanceLimit, int accelerationNumerator = 1, int accelerationDenominator = 1)
+        internal static AccelerationInstruction CalculateBoundedAcceleration(int startDeltaT, int endDeltaT, Int16 accelerationDistanceLimit, int accelerationNumerator = 1, int accelerationDenominator = 1)
         {
             checked
             {

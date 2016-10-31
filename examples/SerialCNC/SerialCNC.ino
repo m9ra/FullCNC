@@ -6,11 +6,11 @@
 #define BUFFERED_INSTRUCTION_COUNT 8
 #define STEPPER_COUNT 2
 
-byte STEP_CLK_PIN1 = 8;
-byte STEP_DIR_PIN1 = 9;
+byte STEP_CLK_PIN1 = 10;
+byte STEP_DIR_PIN1 = 11;
 
-byte STEP_CLK_PIN2 = 10;
-byte STEP_DIR_PIN2 = 11;
+byte STEP_CLK_PIN2 = 8;
+byte STEP_DIR_PIN2 = 9;
 
 //Buffer used in form of INSTRUCTION_SIZE segments which are filled with Serial data.
 byte INSTRUCTION_BUFFER[INSTRUCTION_SIZE*BUFFERED_INSTRUCTION_COUNT] = { 0 };
