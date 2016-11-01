@@ -150,14 +150,23 @@ namespace ControllerCNC.Planning
             Acceleration accelerationX, accelerationY;
             DecomposeXY(xSteps, ySteps, planeAcceleration, out accelerationX, out accelerationY);
 
-            var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, speedLimitX, accelerationX, xSteps / 2);
-            var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, speedLimitY, accelerationY, ySteps / 2);
+            Speed reachedX, reachedY;
+            int accelerationStepsX, accelerationStepsY;
+            var timeX = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitX, accelerationX, xSteps / 2, out reachedX, out accelerationStepsX);
+            var timeY = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitY, accelerationY, ySteps / 2, out reachedY, out accelerationStepsY);
+
+            //take acceleration time according to axis with more precision
+            var accelerationTime = Math.Max(timeX, timeY);
+
+            var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, reachedX, accelerationStepsX, accelerationTime);
+            var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, reachedY, accelerationStepsY, accelerationTime);
+
             var reachedSpeedX = Speed.FromDelta(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
             var reachedSpeedY = Speed.FromDelta(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
             var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
 
-            var decelerationProfileX = AccelerationProfile.FromTo(reachedSpeedX, Speed.Zero, accelerationX, xSteps / 2);
-            var decelerationProfileY = AccelerationProfile.FromTo(reachedSpeedY, Speed.Zero, accelerationY, ySteps / 2);
+            var decelerationProfileX = AccelerationProfile.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
+            var decelerationProfileY = AccelerationProfile.FromTo(reachedY, Speed.Zero, accelerationStepsY, accelerationTime);
 
             var remainingX = xSteps - accelerationProfileX.StepCount - decelerationProfileX.StepCount;
             var remainingY = ySteps - accelerationProfileY.StepCount - decelerationProfileY.StepCount;

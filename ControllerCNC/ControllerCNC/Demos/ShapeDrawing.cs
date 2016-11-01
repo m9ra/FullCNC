@@ -59,17 +59,14 @@ namespace ControllerCNC.Demos
         {
             var speed = Constants.MaxPlaneSpeed;
             var acceleration = Constants.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
-            var squareSize = 3000;
-            var diagonalDistance = 300;
+            var squareSize = 9000;
+            var diagonalDistance = 600;
 
 
 
             var builder = new PlanBuilder();
-            //builder.AddRampedLineXY(squareSize, 0, acceleration, speed);
-            //builder.AddRampedLineXY(0, squareSize, acceleration, speed);
-            //builder.AddRampedLineXY(-squareSize, -squareSize, acceleration, speed);
-            //return builder;
 
+            builder.AddRampedLineXY(5553, 7772, acceleration, speed);
 
             //do a square border
             builder.AddRampedLineXY(squareSize, 0, acceleration, speed);
@@ -169,8 +166,8 @@ namespace ControllerCNC.Demos
         public static IEnumerable<Point4D> MulticrossCoordinates()
         {
             var points = new List<Point4D>();
-            var r = 5000;
-            var smoothness = 0.25;
+            var r = 15000;
+            var smoothness = 0.5;
             for (var i = 0; i <= 360 * smoothness; ++i)
             {
                 var x = Math.Sin(i * Math.PI / 180 / smoothness);

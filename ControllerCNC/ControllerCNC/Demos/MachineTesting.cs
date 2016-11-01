@@ -14,6 +14,9 @@ namespace ControllerCNC.Demos
 {
     static class MachineTesting
     {
+        /// <summary>
+        /// Draws multicross by using ramped lines.
+        /// </summary>
         public static PlanBuilder AcceleratedMultiCross()
         {
             return ShapeDrawing.DrawByRampedLines(ShapeDrawing.MulticrossCoordinates);
@@ -24,6 +27,13 @@ namespace ControllerCNC.Demos
         /// </summary>
         public static PlanBuilder AccelerationTest()
         {
+            var speed = Constants.MaxPlaneSpeed;
+            var acceleration = Constants.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
+
+            var builder = new PlanBuilder();
+            builder.AddRampedLineXY(5555, 3337, acceleration, speed);
+            return builder;
+
             var tracer = new PathTracer2D();
             var maxAcceleration = 1 * 400;
 

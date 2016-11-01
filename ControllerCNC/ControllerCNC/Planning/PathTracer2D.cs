@@ -124,39 +124,12 @@ namespace ControllerCNC.Planning
         {
             checked
             {
-                var profile = findAccelerationProfile(initialSpeed, endSpeed, Math.Abs(distance), exactDuration);
-
-                var startN = profile.IsDeceleration ? -profile.InitialN : profile.InitialN;
-                var accelerationPlan = new AccelerationInstruction((Int16)distance, profile.StartDeltaT, profile.BaseDeltaT, profile.BaseRemainder, startN);
+                var profile = AccelerationProfile.FromTo(initialSpeed, endSpeed, (int)Math.Round(distance), exactDuration);
                 var timeDiff = Math.Abs(profile.TotalTickCount - exactDuration * Constants.TimerFrequency);
                 System.Diagnostics.Debug.WriteLine("Acceleration time diff: " + timeDiff);
                 System.Diagnostics.Debug.WriteLine("\t" + profile);
-                pathPlans.Add(accelerationPlan);
+                pathPlans.Add(profile.ToInstruction());
             }
-        }
-
-        private AccelerationProfile findAccelerationProfile(double initialSpeed, double endSpeed, double distance, double exactDuration)
-        {
-            var absoluteInitialSpeed = Math.Abs(initialSpeed);
-            var absoluteEndSpeed = Math.Abs(endSpeed);
-            var absoluteStepCount = (int)Math.Abs(distance);
-            var tickCount = (int)(exactDuration * Constants.TimerFrequency);
-
-            var acceleration = Math.Abs(absoluteEndSpeed - absoluteInitialSpeed) / exactDuration;
-            var rawC0 = Constants.TimerFrequency * Math.Sqrt(2 / acceleration);
-
-            var isDeceleration = absoluteInitialSpeed > absoluteEndSpeed;
-
-            var targetDelta = (int)Math.Abs(Math.Round(Constants.TimerFrequency / endSpeed));
-            if (targetDelta < 0)
-                //overflow when decelerating to stand still
-                targetDelta = int.MaxValue;
-
-            if (isDeceleration)
-                rawC0 = -rawC0;
-            var plan = new AccelerationProfile(rawC0, targetDelta, absoluteStepCount, tickCount);
-
-            return plan;
         }
     }
 }

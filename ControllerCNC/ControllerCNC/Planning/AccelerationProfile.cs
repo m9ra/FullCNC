@@ -78,8 +78,6 @@ namespace ControllerCNC.Planning
             IsDeceleration = c0 < 0;
             EndDelta = targetDelta;
 
-
-
             c0 = Math.Abs(c0);
             findInitialDeltaT(c0, targetDelta, out InitialDeltaT, out InitialN);
             StartDeltaT = InitialDeltaT;
@@ -107,42 +105,30 @@ namespace ControllerCNC.Planning
         }
 
 
-        internal static AccelerationProfile FromTo(Speed initialSpeed, Speed desiredTargetSpeed, Acceleration acceleration, int stepCountLimit)
+        internal static AccelerationProfile FromTo(Speed initialSpeed, Speed desiredSpeed, Acceleration acceleration, int stepCountLimit)
         {
             checked
             {
                 if (stepCountLimit == 0)
                     return new AccelerationProfile(0, 0, 0, 0);
 
-                var absStepCountLimit = Math.Abs(stepCountLimit);
-                //TODO verify/improve precision
                 var timeScale = Constants.TimerFrequency;
-                var initialSpeedF = initialSpeed.Ticks == 0 ? 0.0 : 1.0 * initialSpeed.StepCount / initialSpeed.Ticks * timeScale;
-                var desiredSpeedF = desiredTargetSpeed.Ticks == 0 ? 0.0 : 1.0 * desiredTargetSpeed.StepCount / desiredTargetSpeed.Ticks * timeScale;
-                var accelerationF = 1.0 * acceleration.Speed.StepCount / acceleration.Speed.Ticks / acceleration.Ticks * timeScale * timeScale;
-                var desiredAccelerationTime = Math.Abs(desiredSpeedF - initialSpeedF) / accelerationF;
-                var isDeceleration = initialSpeedF > desiredSpeedF;
-                var decelerationCoefficient = isDeceleration ? -1 : 1;
 
-                var a = 0.5 * accelerationF;
-                var b = initialSpeedF * decelerationCoefficient;
-                var c = -absStepCountLimit;
-                var availableAccelerationTime = (-b + Math.Sqrt(b * b - 4 * a * c)) / 2 / a;
-
-                var accelerationTime = Math.Min(desiredAccelerationTime, availableAccelerationTime);
-                var reachedSpeed = initialSpeedF + decelerationCoefficient * accelerationF * accelerationTime;
-                var accelerationDistanceF = (initialSpeedF * accelerationTime + 0.5 * decelerationCoefficient * accelerationF * accelerationTime * accelerationTime);
-                var plan = findAccelerationProfile(initialSpeedF, reachedSpeed, (int)Math.Round(accelerationDistanceF) * Math.Sign(stepCountLimit), accelerationTime);
+                Speed reachedSpeed;
+                int accelerationSteps;
+                var accelerationTime = CalculateTime(initialSpeed, desiredSpeed, acceleration, stepCountLimit, out reachedSpeed, out accelerationSteps);
+                var initialSpeedF = 1.0 * initialSpeed.StepCount / initialSpeed.Ticks * timeScale;
+                var reachedSpeedF = 1.0 * reachedSpeed.StepCount / reachedSpeed.Ticks * timeScale;
+                var plan = FromTo(initialSpeedF, reachedSpeedF, accelerationSteps, accelerationTime);
 
                 return plan;
             }
         }
 
-        private static AccelerationProfile findAccelerationProfile(double initialSpeed, double endSpeed, double distance, double exactDuration)
+        internal static AccelerationProfile FromTo(double initialSpeed, double endSpeed, int stepCount, double exactDuration)
         {
             var absoluteInitialSpeed = Math.Abs(initialSpeed);
             var absoluteEndSpeed = Math.Abs(endSpeed);
-            var stepCount = (int)distance;
             var tickCount = (int)(exactDuration * Constants.TimerFrequency);
 
             var acceleration = Math.Abs(absoluteEndSpeed - absoluteInitialSpeed) / exactDuration;
@@ -160,6 +146,58 @@ namespace ControllerCNC.Planning
 
             var plan = new AccelerationProfile(rawC0, targetDelta, stepCount, tickCount);
             return plan;
+        }
+
+        internal static AccelerationProfile FromTo(Speed initialSpeed, Speed targetSpeed, int stepCount, double exactDuration)
+        {
+            var timeScale = Constants.TimerFrequency;
+            var initialSpeedF = 1.0 * initialSpeed.StepCount / initialSpeed.Ticks * timeScale;
+            var targetSpeedF = 1.0 * targetSpeed.StepCount / targetSpeed.Ticks * timeScale;
+
+            return FromTo(initialSpeedF, targetSpeedF, stepCount, exactDuration);
+        }
+
+        internal static double CalculateTime(Speed initialSpeed, Speed desiredSpeed, Acceleration acceleration, int stepCountLimit)
+        {
+            Speed reachedSpeed;
+            int accelerationDistance;
+            return CalculateTime(initialSpeed, desiredSpeed, acceleration, stepCountLimit, out reachedSpeed, out accelerationDistance);
+        }
+
+        internal static double CalculateTime(Speed initialSpeed, Speed desiredSpeed, Acceleration acceleration, int stepCountLimit, out Speed reachedSpeed, out int stepCount)
+        {
+            if (stepCountLimit == 0)
+            {
+                reachedSpeed = Speed.Zero;
+                stepCount = 0;
+                return 0;
+            }
+
+            checked
+            {
+                var absStepCountLimit = Math.Abs(stepCountLimit);
+                //TODO verify/improve precision
+                var timeScale = Constants.TimerFrequency;
+                var initialSpeedF = initialSpeed.Ticks == 0 ? 0.0 : 1.0 * initialSpeed.StepCount / initialSpeed.Ticks * timeScale;
+                var desiredSpeedF = desiredSpeed.Ticks == 0 ? 0.0 : 1.0 * desiredSpeed.StepCount / desiredSpeed.Ticks * timeScale;
+                var accelerationF = 1.0 * acceleration.Speed.StepCount / acceleration.Speed.Ticks / acceleration.Ticks * timeScale * timeScale;
+                var desiredAccelerationTime = Math.Abs(desiredSpeedF - initialSpeedF) / accelerationF;
+                var isDeceleration = initialSpeedF > desiredSpeedF;
+                var decelerationCoefficient = isDeceleration ? -1 : 1;
+
+                var a = 0.5 * accelerationF;
+                var b = initialSpeedF * decelerationCoefficient;
+                var c = -absStepCountLimit;
+                var availableAccelerationTime = (-b + Math.Sqrt(b * b - 4 * a * c)) / 2 / a;
+
+                var accelerationTime = Math.Min(desiredAccelerationTime, availableAccelerationTime);
+                var accelerationDistanceF = (initialSpeedF * accelerationTime + 0.5 * decelerationCoefficient * accelerationF * accelerationTime * accelerationTime);
+
+                stepCount = (int)accelerationDistanceF * Math.Sign(stepCountLimit);
+                var reachedSpeedF = initialSpeedF + decelerationCoefficient * accelerationF * accelerationTime;
+                reachedSpeed = new Speed((int)reachedSpeedF, timeScale);
+                return accelerationTime;
+            }
         }
 
         internal AccelerationInstruction ToInstruction()
