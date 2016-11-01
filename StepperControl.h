@@ -185,6 +185,12 @@ public:
 			this->lastActivationSlack2 = 0;
 			SCHEDULER_STOP_EVENT_FLAG = false;
 		}
+		/*
+		Serial.print("|Sl1:");
+		Serial.print(this->lastActivationSlack1);
+		Serial.print("|Sl2:");
+		Serial.println(this->lastActivationSlack2);
+		*/
 
 		this->_d1.loadFrom(data);
 		this->_d2.loadFrom(data + _d1.dataSize);

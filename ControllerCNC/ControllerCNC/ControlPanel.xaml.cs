@@ -102,12 +102,12 @@ namespace ControllerCNC
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
         {
-            Execute(MachineTesting.AccelerationTest);
+            Execute(MachineTesting.AcceleratedMultiCross);
         }
 
         private void Button_Click_4(object sender, RoutedEventArgs e)
         {
-            Execute(ShapeDrawing.DrawByConstantSpeed(ShapeDrawing.HeartCoordinates));
+            Execute(ShapeDrawing.DrawByConstantSpeed(ShapeDrawing.CircleCoordinates));
         }
 
         private void Button_Click_5(object sender, RoutedEventArgs e)
@@ -201,6 +201,7 @@ namespace ControllerCNC
 
         private void startTransition(int dirX, int dirY)
         {
+            _coord2DController.SetSpeed(int.Parse(MaxSpeed.Text));
             _coord2DController.SetMovement(dirX, dirY);
         }
 

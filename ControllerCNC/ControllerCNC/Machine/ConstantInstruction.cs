@@ -16,12 +16,15 @@ namespace ControllerCNC.Machine
 
         public readonly UInt16 PeriodDenominator;
 
-        public ConstantInstruction(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator, UInt16 periodDenominator)
+        public ConstantInstruction(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator)
         {
             StepCount = stepCount;
             BaseDeltaT = baseDeltaT;
             PeriodNumerator = periodNumerator;
-            PeriodDenominator = periodDenominator;
+            if (PeriodNumerator > Math.Abs(StepCount))
+                throw new NotSupportedException("Invalid numerator value");
+
+            PeriodDenominator = (UInt16)Math.Abs(StepCount);
         }
 
         /// </inheritdoc>

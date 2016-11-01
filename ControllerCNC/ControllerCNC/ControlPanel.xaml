@@ -8,7 +8,7 @@
                 <Button Height="50" Width="100" Content="Run demo" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click"/>
                 <Button Height="50" Width="100" Content="Interrupted rev." HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_1"/>
                 <Button Height="50" Width="100" Content="Back and forward" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2"/>
-                <Button Height="50" Width="100" Content="Motor 1 + 2" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_3"/>
+                <Button Height="50" Width="100" Content="Acceleration test" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_3"/>
                 <Button Height="50" Width="100" Content="Line planning" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_4"/>
                 <Button Height="50" Width="100" Content="Diagonal test" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_5"/>
                 <TextBox Height="50" DockPanel.Dock="Top" HorizontalScrollBarVisibility="Visible" Background="White" x:Name="Status" TextWrapping="Wrap" />
@@ -22,7 +22,7 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Button Name="LeftB" DockPanel.Dock="Left" Content="L" FontSize="20" Width="50" Height="50" PreviewMouseDown="LeftB_MouseDown" PreviewMouseUp="LeftB_MouseUp" />
-                        <TextBox Name="MaxSpeed" Text="300" VerticalContentAlignment="Center"  TextAlignment="Center" FontSize="20" Height="50" Width="50" Background="White" TextWrapping="Wrap" TextChanged="MaxSpeed_TextChanged" />
+                        <TextBox Name="MaxSpeed" Text="350" VerticalContentAlignment="Center"  TextAlignment="Center" FontSize="20" Height="50" Width="50" Background="White" TextWrapping="Wrap" TextChanged="MaxSpeed_TextChanged" />
                         <Button Name="RightB" DockPanel.Dock="Right" Content="R" FontSize="20" Width="50" Height="50" PreviewMouseDown="RightB_MouseDown" PreviewMouseUp="RightB_MouseUp" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">

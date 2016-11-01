@@ -22,7 +22,7 @@ namespace ControllerCNC
 
         private volatile int _desiredDirectionY;
 
-        private volatile UInt16 _desiredVelocity = 350;
+        private volatile UInt16 _desiredVelocity = 0;
 
         private volatile int _velocityX;
 
@@ -103,8 +103,8 @@ namespace ControllerCNC
             var stepCountX = (Int16)(200 * 1 * Math.Sign(_velocityX));
             var stepCountY = (Int16)(200 * 1 * Math.Sign(_velocityY));
 
-            var xInstruction = new ConstantInstruction(stepCountX, (UInt16)Math.Abs(_velocityX), 0, 0);
-            var yInstruction = new ConstantInstruction(stepCountY, (UInt16)Math.Abs(_velocityY), 0, 0);
+            var xInstruction = new ConstantInstruction(stepCountX, (UInt16)Math.Abs(_velocityX), 0);
+            var yInstruction = new ConstantInstruction(stepCountY, (UInt16)Math.Abs(_velocityY), 0);
             _cnc.SEND(Axes.XY(xInstruction, yInstruction));
         }
 

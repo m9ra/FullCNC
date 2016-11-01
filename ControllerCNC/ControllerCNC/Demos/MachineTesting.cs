@@ -14,6 +14,11 @@ namespace ControllerCNC.Demos
 {
     static class MachineTesting
     {
+        public static PlanBuilder AcceleratedMultiCross()
+        {
+            return ShapeDrawing.DrawByRampedLines(ShapeDrawing.MulticrossCoordinates);
+        }
+
         /// <summary>
         /// Tests path tracing algorithm driven by accelerations.
         /// </summary>

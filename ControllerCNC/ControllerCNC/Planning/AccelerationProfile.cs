@@ -176,7 +176,7 @@ namespace ControllerCNC.Planning
             var exactInitialN = targetDelta == int.MaxValue ? 0 : (int)Math.Round(Math.Pow(c0 * c0 - targetDelta * targetDelta, 2) / 4 / c0 / c0 / targetDelta / targetDelta);
             var minimalInitialN = IsDeceleration ? StepCountAbsolute : 0;
 
-            exactInitialN = IsDeceleration ? Math.Max(StepCount, exactInitialN) : exactInitialN - StepCount;
+            exactInitialN = IsDeceleration ? StepCountAbsolute + exactInitialN : exactInitialN - StepCountAbsolute;
             exactInitialN = Math.Max(0, exactInitialN);
 
             globalInitialDeltaT = (int)Math.Round(c0);
@@ -184,12 +184,12 @@ namespace ControllerCNC.Planning
             var globalRemainderBuffer2 = 0;
             while (true)
             {
-                if (globalInitialN >= minimalInitialN)
+                if (globalInitialN >= exactInitialN)
                 {
                     //try if the initial conditions match the requirements
                     var endDelta = getEndDelta(globalInitialDeltaT, globalInitialN);
-                    if (targetDelta >= endDelta)
-                        return;
+                    //if (targetDelta >= endDelta)
+                    return;
                 }
 
                 nextStep_SpeedUpDirection(ref globalInitialDeltaT, ref globalInitialN, ref globalRemainderBuffer2);

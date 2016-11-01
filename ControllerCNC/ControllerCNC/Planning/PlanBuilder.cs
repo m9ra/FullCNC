@@ -315,7 +315,7 @@ namespace ControllerCNC.Planning
         {
             checked
             {
-                return new ConstantInstruction(stepCount, baseTime, timeRemainder, (UInt16)Math.Abs(stepCount));
+                return new ConstantInstruction(stepCount, baseTime, timeRemainder);
             }
         }
 

@@ -23,7 +23,7 @@ namespace ControllerCNC.Demos
         /// </summary>
         /// <param name="provider">Provider which creates coordinates.</param>
         /// <param name="speed">Speed of drawing</param>
-        public static IEnumerable<InstructionCNC> DrawByConstantSpeed(CoordinateProvider provider, Speed speed = null)
+        public static PlanBuilder DrawByConstantSpeed(CoordinateProvider provider, Speed speed = null)
         {
             if (speed == null)
                 speed = Constants.ReverseSafeSpeed;
@@ -31,8 +31,25 @@ namespace ControllerCNC.Demos
             var points = provider();
             var trajectory = new Trajectory4D(points);
 
-            var planner = new ConstantSpeedLinePlanner2D(speed);
-            return planner.CreatePlan(trajectory);
+            var planner = new StraightLinePlanner(speed);
+            return planner.CreateConstantPlan(trajectory);
+        }
+
+        /// <summary>
+        /// Draws coordinates from a provider by a constant speed
+        /// </summary>
+        /// <param name="provider">Provider which creates coordinates.</param>
+        /// <param name="speed">Speed of drawing</param>
+        public static PlanBuilder DrawByRampedLines(CoordinateProvider provider, Speed speed = null)
+        {
+            if (speed == null)
+                speed = Constants.MaxPlaneSpeed;
+
+            var points = provider();
+            var trajectory = new Trajectory4D(points);
+
+            var planner = new StraightLinePlanner(speed);
+            return planner.CreateRampedPlan(trajectory);
         }
 
         /// <summary>
@@ -41,7 +58,7 @@ namespace ControllerCNC.Demos
         public static PlanBuilder DrawSquareWithDiagonals()
         {
             var speed = Constants.MaxPlaneSpeed;
-            var acceleration = Constants.MaxPlaneAcceleration;
+            var acceleration = Constants.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
             var squareSize = 3000;
             var diagonalDistance = 300;
 
@@ -144,6 +161,24 @@ namespace ControllerCNC.Demos
                 circlePoints.Add(point2D(x, y, r));
             }
             return circlePoints;
+        }
+
+        /// <summary>
+        /// Coordinates of a multicross.
+        /// </summary>
+        public static IEnumerable<Point4D> MulticrossCoordinates()
+        {
+            var points = new List<Point4D>();
+            var r = 5000;
+            var smoothness = 0.25;
+            for (var i = 0; i <= 360 * smoothness; ++i)
+            {
+                var x = Math.Sin(i * Math.PI / 180 / smoothness);
+                var y = Math.Cos(i * Math.PI / 180 / smoothness);
+                points.Add(point2D(x, y, r));
+                points.Add(point2D(0, 0, r));
+            }
+            return points;
         }
 
         /// <summary>

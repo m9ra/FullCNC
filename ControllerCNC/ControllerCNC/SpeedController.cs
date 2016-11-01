@@ -18,9 +18,7 @@ namespace ControllerCNC
 
         private volatile int _desiredDeltaT;
 
-        private volatile UInt16 _desiredNumerator;
-
-        private volatile UInt16 _desiredDenominator;
+        private double _desiredDeltaRemainder;
 
         private volatile int _currentDeltaT;
 
@@ -72,7 +70,8 @@ namespace ControllerCNC
 
             var stepCount = (Int16)(Math.Max(2, 20000 / _currentDeltaT));
             var sendStepCount = Direction ? (Int16)(-stepCount) : stepCount;
-            _cnc.SEND(Axes.Y(new ConstantInstruction(sendStepCount, _currentDeltaT, _desiredNumerator, _desiredDenominator)));
+            var remainder = (UInt16)(_desiredDeltaRemainder * stepCount);
+            _cnc.SEND(Axes.Y(new ConstantInstruction(sendStepCount, _currentDeltaT, remainder)));
 
             var plannedTime = stepCount * _currentDeltaT;
             _plannedTimeTotal += plannedTime;
@@ -97,11 +96,8 @@ namespace ControllerCNC
             if (deltaT > UInt16.MaxValue)
                 throw new NotSupportedException("Value is out of range");
 
-            _desiredDeltaT = (UInt16)deltaT;
-
-            var fraction = deltaT - Math.Floor(deltaT);
-            _desiredDenominator = 10000;
-            _desiredNumerator = (UInt16)(fraction * _desiredDenominator);
+            _desiredDeltaT = (int)deltaT;
+            _desiredDeltaRemainder = deltaT - Math.Floor(deltaT);
         }
     }
 }

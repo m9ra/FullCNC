@@ -76,8 +76,8 @@ namespace ControllerCNC.Planning
             var endPosition = _actualPosition;
             var distance = endPosition - startPosition;
             var tickCount = (int)(Constants.TimerFrequency * time);
-            addConstantPlan(_actualVelocity.X, tickCount, distance.X, _pathPlansX);
-            addConstantPlan(_actualVelocity.Y, tickCount, distance.Y, _pathPlansY);
+            addConstantPlan(tickCount, distance.X, _pathPlansX);
+            addConstantPlan(tickCount, distance.Y, _pathPlansY);
         }
 
         internal PlanBuilder FillBuilder()
@@ -98,7 +98,7 @@ namespace ControllerCNC.Planning
             return builder;
         }
 
-        private void addConstantPlan(double velocity, int tickCount, double distance, List<InstructionCNC> pathPlans)
+        private void addConstantPlan(int tickCount, double distance, List<InstructionCNC> pathPlans)
         {
             checked
             {
@@ -106,16 +106,15 @@ namespace ControllerCNC.Planning
                 var stepCount = (Int16)distance;
                 if (stepCount == 0)
                 {
-                    pathPlans.Add(new ConstantInstruction(0, 0, 0, 0));
+                    pathPlans.Add(new ConstantInstruction(0, 0, 0));
                     return;
                 }
                 checked
                 {
-                    var baseDeltaExact = Math.Abs(Constants.TimerFrequency / velocity);
+                    var baseDeltaExact = Math.Abs(tickCount / stepCount);
                     var baseDelta = Math.Abs((int)(baseDeltaExact));
-                    var periodDenominator = (UInt16)Math.Abs(stepCount);
-                    var tickRemainder = (UInt16)(tickCount - periodDenominator * baseDelta);
-                    var constantPlan = new ConstantInstruction(stepCount, baseDelta, tickRemainder, periodDenominator);
+                    var tickRemainder = (UInt16)(tickCount - Math.Abs(stepCount) * baseDelta);
+                    var constantPlan = new ConstantInstruction(stepCount, baseDelta, tickRemainder);
                     pathPlans.Add(constantPlan);
                 }
             }
