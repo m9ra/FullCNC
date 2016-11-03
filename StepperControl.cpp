@@ -7,6 +7,7 @@ byte CUMULATIVE_SCHEDULE_ACTIVATION = 0;
 volatile byte SCHEDULE_START = 0;
 volatile byte SCHEDULE_END = 0;
 
+volatile byte ACTIVATION_MASK = 0;
 volatile byte ACTIVATIONS_CLOCK_MASK = 1 + 4;
 volatile bool SCHEDULER_STOP_EVENT_FLAG = false;
 volatile bool SCHEDULER_START_EVENT_FLAG = false;
@@ -16,12 +17,12 @@ ISR(TIMER1_OVF_vect) {
 	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
 
 	//pins go LOW here (pulse start)
-	PORTB = SCHEDULE_ACTIVATIONS[SCHEDULE_END];
-	/*interrupts();
+	PORTB = SCHEDULE_ACTIVATIONS[SCHEDULE_END] | ACTIVATION_MASK;
+	/*///interrupts();
 	Serial.print("|T:");
 	Serial.print(UINT16_MAX - SCHEDULE_BUFFER[SCHEDULE_END]);
 	Serial.print("B:");
-	Serial.println(PORTB);*/
+	Serial.println(PORTB);/**/
 
 	if (SCHEDULE_START == SCHEDULE_END) {
 		//we are at schedule end
@@ -55,6 +56,15 @@ bool Steppers::startScheduler() {
 	TIMSK1 = (1 << TOIE1); //enable scheduler
 
 	return false;
+}
+
+void Steppers::setActivationMask(byte mask) {
+	ACTIVATION_MASK = mask;
+}
+
+bool Steppers::isSchedulerRunning()
+{
+	return TIMSK1 > 0;
 }
 
 void Steppers::initialize()
@@ -94,6 +104,26 @@ void AccelerationPlan::loadFrom(byte * data)
 	this->_baseRemainder = abs(baseRemainder);
 	this->_baseRemainderBuffer = this->_baseRemainder / 2;
 	this->_currentDeltaT = initialDeltaT;
+	this->_current4N = ((uint32_t)4) * abs(n);
+	this->_currentDeltaTBuffer2 = 0;
+}
+
+void AccelerationPlan::initForHoming()
+{
+	//TODO refactore homing settings somewhere
+	this->stepCount = abs(198);
+	this->remainingSteps = this->stepCount;
+	this->isActive = this->remainingSteps > 0;
+	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->nextActivationTime = 0;
+	this->isActivationBoundary = !this->isActive;
+
+	int n = 6;
+	this->_isDeceleration = n < 0;
+	this->_baseDeltaT = 0;
+	this->_baseRemainder = 0;
+	this->_baseRemainderBuffer = this->_baseRemainder / 2;
+	this->_currentDeltaT = 2000;
 	this->_current4N = ((uint32_t)4) * abs(n);
 	this->_currentDeltaTBuffer2 = 0;
 }
@@ -198,6 +228,22 @@ void ConstantPlan::loadFrom(byte * data)
 	this->_baseDeltaT = baseDeltaT;
 	this->_periodNumerator = periodNumerator;
 	this->_periodDenominator = periodDenominator;
+	this->_periodAccumulator = 0;
+}
+
+void ConstantPlan::initForHoming()
+{
+	//TODO refactore homing settings somewhere
+	this->stepCount = 200;
+	this->remainingSteps = this->stepCount;
+	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->isActive = this->remainingSteps > 0;
+	this->nextActivationTime = 0;
+	this->isActivationBoundary = !this->isActive;
+
+	this->_baseDeltaT = 350;
+	this->_periodNumerator = 0;
+	this->_periodDenominator = 0;
 	this->_periodAccumulator = 0;
 }
 

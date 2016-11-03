@@ -88,6 +88,7 @@ public:
 
 	// Mask for clock port.
 	const byte clkMask;
+
 	// Mask for dir port.
 	const byte dirMask;
 
@@ -104,6 +105,9 @@ public:
 
 	// Loads plan from given data.
 	void loadFrom(byte* data);
+
+	// Initialize plan for homing routine.
+	void initForHoming();
 
 	// Creates next activation.
 	void createNextActivation();
@@ -128,6 +132,9 @@ public:
 
 	// Loads plan from given data.
 	void loadFrom(byte* data);
+
+	// Initialize plan for homing routine.
+	void initForHoming();
 
 	// Creates next activation.
 	void createNextActivation();
@@ -155,6 +162,12 @@ public:
 
 	// Starts scheduler.
 	static bool startScheduler();
+
+	// Determine whether scheduler is started.
+	static bool isSchedulerRunning();
+
+	// Blocks given ports by mask (one blocks, zero unblocks)
+	static void setActivationMask(byte mask);
 private:
 	// Determine whether steppers environment is initialized.
 	static bool _isInitialized;
@@ -174,6 +187,14 @@ public:
 	void registerLastActivationSlack(int32_t slack1, int32_t slack2) {
 		this->lastActivationSlack1 = slack1;
 		this->lastActivationSlack2 = slack2;
+	}
+
+	void initForHoming() {
+		this->_d1.initForHoming();
+		this->_d2.initForHoming();
+		this->_d1.createNextActivation();
+		this->_d2.createNextActivation();
+		this->_needInit = true;
 	}
 
 	// loads plan from given data

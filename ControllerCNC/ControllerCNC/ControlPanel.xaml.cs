@@ -40,7 +40,7 @@ namespace ControllerCNC
         Coord2DController _coord2DController;
 
         public MainWindow()
-        {
+        {           
             //Demos.ShapeDrawing.DrawSquareWithDiagonals();
             //Demos.MachineTesting.AcceleratedMultiCross();
             InitializeComponent();
@@ -88,7 +88,7 @@ namespace ControllerCNC
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            Execute(MachineTesting.Ramping);
+            Execute(new HomingInstruction());
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
@@ -124,6 +124,11 @@ namespace ControllerCNC
         private void Execute(PlanBuilder plan)
         {
             Execute(plan.Build());
+        }
+
+        private void Execute(InstructionCNC instruction)
+        {
+            Execute(new[] { instruction });
         }
 
         private void Execute(IEnumerable<InstructionCNC> plan)

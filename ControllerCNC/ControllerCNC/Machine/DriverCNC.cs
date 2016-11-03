@@ -168,6 +168,20 @@ namespace ControllerCNC.Machine
                             Monitor.Pulse(_L_planCompletition);
                         }
                         break;
+
+                    case 'H':
+                        lock (_L_confirmation)
+                        {
+                            _expectsConfirmation = false;
+                            Monitor.Pulse(_L_confirmation);
+                        }
+
+                        lock (_L_planCompletition)
+                        {
+                            --_incompletePlans;
+                            Monitor.Pulse(_L_planCompletition);
+                        }
+                        break;
                     case 'Y':
                         lock (_L_confirmation)
                         {
@@ -254,7 +268,7 @@ namespace ControllerCNC.Machine
             while (data.Count < _instructionLength - 2)
                 data.Add(0);
 
-            if (data.Count != _instructionLength-2)
+            if (data.Count != _instructionLength - 2)
                 throw new NotSupportedException("Invalid instruction length detected.");
 
             //checksum is used for error detection

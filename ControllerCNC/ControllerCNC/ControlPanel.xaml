@@ -5,7 +5,7 @@
     <Grid Background="Gray">
         <DockPanel LastChildFill="True">
             <StackPanel>
-                <Button Height="50" Width="100" Content="Run demo" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click"/>
+                <Button Height="50" Width="100" Content="Homing" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click"/>
                 <Button Height="50" Width="100" Content="Interrupted rev." HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_1"/>
                 <Button Height="50" Width="100" Content="Back and forward" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_2"/>
                 <Button Height="50" Width="100" Content="Acceleration test" HorizontalAlignment="Left" VerticalAlignment="Top" Click="Button_Click_3"/>

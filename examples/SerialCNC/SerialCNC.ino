@@ -37,9 +37,16 @@ bool enableAccelerationSchedule = false;
 PlanScheduler2D<AccelerationPlan> ACCELERATION_SCHEDULER(STEP_CLK_PIN1, STEP_DIR_PIN1, STEP_CLK_PIN2, STEP_DIR_PIN2);
 
 
+//homing interrupt
+volatile byte HOME_MASK = 0;
+ISR(PCINT1_vect) {
+	setHomeMask();
+}
+
 void setup() {
 	Serial.begin(128000);
 
+	// initialize outputs
 	pinMode(13, OUTPUT);
 	pinMode(STEP_CLK_PIN1, OUTPUT);
 	pinMode(STEP_DIR_PIN1, OUTPUT);
@@ -49,8 +56,22 @@ void setup() {
 	digitalWrite(STEP_CLK_PIN1, HIGH);
 	digitalWrite(STEP_CLK_PIN2, HIGH);
 
-	Steppers::initialize();
+	//initialze inputs
+	pinMode(A0, OUTPUT);
+	pinMode(A3, OUTPUT);
+	pinMode(A4, OUTPUT);
+	pinMode(A5, OUTPUT);
+	pinMode(A1, INPUT);
+	pinMode(A2, INPUT);
 
+	digitalWrite(A1, HIGH);
+	digitalWrite(A2, HIGH);
+	pciSetup(A1);
+	pciSetup(A2);
+
+	//initialize libraries
+	Steppers::initialize();
+	setHomeMask();
 	delay(1000);
 	melodyStart();
 }
@@ -137,6 +158,10 @@ inline bool processControllerInstruction() {
 		INSTRUCTION_BUFFER_ARRIVAL_INDEX = boundedIncrement(INSTRUCTION_BUFFER_ARRIVAL_INDEX, BUFFERED_INSTRUCTION_COUNT);
 		INSTRUCTION_BUFFER_ARRIVAL_OFFSET = INSTRUCTION_BUFFER_ARRIVAL_INDEX * INSTRUCTION_SIZE;
 		return true;
+	case 'H':
+		//homing procedure
+		homing();
+		return true;
 	case 'I':
 		//welcome message
 		melody();
@@ -146,6 +171,64 @@ inline bool processControllerInstruction() {
 
 	//unknown command
 	return false;
+}
+
+void homing() {
+	if (enableAccelerationSchedule || enableAccelerationSchedule || Steppers::isSchedulerRunning()) {
+		//cannot do homing because something is scheduled
+		Serial.print('Q');
+		return;
+	}
+
+	//TODO refactor pin numbers
+
+	ACCELERATION_SCHEDULER.initForHoming();
+	while (ACCELERATION_SCHEDULER.fillSchedule());
+	while (HOME_MASK != 1 + 4)
+	{
+		CONSTANT_SCHEDULER.initForHoming();
+		//we can't keep here some unplanned steps - flush them all
+		while (CONSTANT_SCHEDULER.fillSchedule());
+	}
+	//arrived home
+
+	// wait until all steps are flushed
+	while (Steppers::isSchedulerRunning());
+	
+	//now go slowly back to release home switches
+	digitalWrite(STEP_DIR_PIN1, LOW);
+	digitalWrite(STEP_DIR_PIN2, LOW);
+	delayMicroseconds(PORT_CHANGE_DELAY);
+	while (HOME_MASK > 0)
+	{
+		if (HOME_MASK & 4)
+			digitalWrite(STEP_CLK_PIN1, LOW);
+
+		if (HOME_MASK & 1)
+			digitalWrite(STEP_CLK_PIN2, LOW);
+
+		delayMicroseconds(PORT_CHANGE_DELAY);
+		digitalWrite(STEP_CLK_PIN1, HIGH);
+		digitalWrite(STEP_CLK_PIN2, HIGH);
+
+		delayMicroseconds(2000 - PORT_CHANGE_DELAY);
+	}
+	//homing was successful
+	Serial.print('H');
+}
+
+void pciSetup(byte pin)
+{
+	*digitalPinToPCMSK(pin) |= bit(digitalPinToPCMSKbit(pin));  // enable pin
+	PCIFR |= bit(digitalPinToPCICRbit(pin)); // clear any outstanding interrupt
+	PCICR |= bit(digitalPinToPCICRbit(pin)); // enable interrupt for the group
+}
+
+inline void setHomeMask() {
+	byte l1Pushed = (digitalRead(A1) == LOW) << 2;
+	byte l2Pushed = (digitalRead(A2) == LOW) << 0;
+	HOME_MASK = l1Pushed | l2Pushed;
+	Steppers::setActivationMask(HOME_MASK);
 }
 
 bool canAddPlan() {
