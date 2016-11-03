@@ -53,6 +53,23 @@ namespace ControllerCNC.Demos
         }
 
         /// <summary>
+        /// Draws coordinates from a provider by a continuous speed
+        /// </summary>
+        /// <param name="provider">Provider which creates coordinates.</param>
+        /// <param name="speed">Speed of drawing</param>
+        public static PlanBuilder DrawContinuousLines(CoordinateProvider provider, Speed speed = null)
+        {
+            if (speed == null)
+                speed = Constants.MaxPlaneSpeed;
+
+            var points = provider();
+            var trajectory = new Trajectory4D(points);
+
+            var planner = new StraightLinePlanner(speed);
+            return planner.CreateContinuousPlan(trajectory);
+        }
+
+        /// <summary>
         /// Draws a square filled with diagonals - uses 45 degree acceleration methods 
         /// </summary>
         public static PlanBuilder DrawSquareWithDiagonals()
@@ -60,13 +77,11 @@ namespace ControllerCNC.Demos
             var speed = Constants.MaxPlaneSpeed;
             var acceleration = Constants.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
             var squareSize = 9000;
-            var diagonalDistance = 600;
+            var diagonalDistance = 300;
 
 
 
             var builder = new PlanBuilder();
-
-            builder.AddRampedLineXY(5553, 7772, acceleration, speed);
 
             //do a square border
             builder.AddRampedLineXY(squareSize, 0, acceleration, speed);
@@ -149,8 +164,8 @@ namespace ControllerCNC.Demos
         public static IEnumerable<Point4D> CircleCoordinates()
         {
             var circlePoints = new List<Point4D>();
-            var r = 5000;
-            var smoothness = 5;
+            var r = 15000;
+            var smoothness = 0.25;
             for (var i = 0; i <= 360 * smoothness; ++i)
             {
                 var x = Math.Sin(i * Math.PI / 180 / smoothness);

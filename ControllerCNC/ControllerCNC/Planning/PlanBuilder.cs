@@ -177,6 +177,55 @@ namespace ControllerCNC.Planning
             AddAccelerationXY(decelerationProfileX, decelerationProfileY);
         }
 
+        /// <summary>
+        /// Adds line with specified initial and desired speed.
+        /// </summary>
+        /// <param name="xSteps">Number of steps along x.</param>
+        /// <param name="ySteps">Numer of steps along y.</param>
+        /// <param name="planeAcceleration">Acceleration used for getting desired speed out of initial.</param>
+        public Speed AddLineXY(int xSteps, int ySteps, Speed initialSpeed, Acceleration planeAcceleration, Speed desiredEndSpeed)
+        {
+            if (xSteps == 0 && ySteps == 0)
+                //nothing to do
+                return initialSpeed;
+
+            Speed speedLimitX, speedLimitY;
+            DecomposeXY(xSteps, ySteps, desiredEndSpeed, out speedLimitX, out speedLimitY);
+
+            Speed initialSpeedX, initialSpeedY;
+            DecomposeXY(xSteps, ySteps, initialSpeed, out initialSpeedX, out initialSpeedY);
+
+            Acceleration accelerationX, accelerationY;
+            DecomposeXY(xSteps, ySteps, planeAcceleration, out accelerationX, out accelerationY);
+
+            Speed reachedX, reachedY;
+            int accelerationStepsX, accelerationStepsY;
+            var timeX = AccelerationProfile.CalculateTime(initialSpeedX, speedLimitX, accelerationX, xSteps, out reachedX, out accelerationStepsX);
+            var timeY = AccelerationProfile.CalculateTime(initialSpeedY, speedLimitY, accelerationY, ySteps, out reachedY, out accelerationStepsY);
+
+            //take acceleration time according to axis with more precision
+            var accelerationTime = Math.Max(timeX, timeY);
+
+            var accelerationProfileX = AccelerationProfile.FromTo(initialSpeedX, reachedX, accelerationStepsX, accelerationTime);
+            var accelerationProfileY = AccelerationProfile.FromTo(initialSpeedY, reachedY, accelerationStepsY, accelerationTime);
+
+            var reachedSpeedX = Speed.FromDelta(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
+            var reachedSpeedY = Speed.FromDelta(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
+            var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
+
+            var remainingX = xSteps - accelerationProfileX.StepCount;
+            var remainingY = ySteps - accelerationProfileY.StepCount;
+
+            if (accelerationProfileX.StepCount == 0 && accelerationProfileY.StepCount == 0)
+                reachedSpeed = initialSpeed;
+
+            //send profile
+            AddAccelerationXY(accelerationProfileX, accelerationProfileY);
+            AddConstantSpeedTransitionXY(remainingX, remainingY, reachedSpeed);
+
+            return reachedSpeed;
+        }
+
         #region Acceleration calculation utilities
 
         /// <summary>

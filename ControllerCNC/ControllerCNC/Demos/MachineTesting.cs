@@ -28,11 +28,7 @@ namespace ControllerCNC.Demos
         public static PlanBuilder AccelerationTest()
         {
             var speed = Constants.MaxPlaneSpeed;
-            var acceleration = Constants.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
-
-            var builder = new PlanBuilder();
-            builder.AddRampedLineXY(5555, 3337, acceleration, speed);
-            return builder;
+            var acceleration = Constants.MaxPlaneAcceleration;
 
             var tracer = new PathTracer2D();
             var maxAcceleration = 1 * 400;
@@ -108,7 +104,7 @@ namespace ControllerCNC.Demos
             var segmentation = 100;
             for (var i = 0; i < 400 / segmentation; ++i)
             {
-                plan.AddTransitionRPM(segmentation, 0, 1500, 0);
+                plan.AddRampedLineXY(segmentation, segmentation, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             }
 
             return plan;
@@ -125,8 +121,8 @@ namespace ControllerCNC.Demos
             var segmentation = 4;
             for (var i = 0; i < 400 / segmentation; ++i)
             {
-                plan.AddTransitionRPM(-overShoot, 0, 1500, 0);
-                plan.AddTransitionRPM(segmentation + overShoot, 0, 1500, 0);
+                plan.AddRampedLineXY(-overShoot, -overShoot, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+                plan.AddRampedLineXY(segmentation + overShoot, segmentation + overShoot, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             }
 
             return plan;

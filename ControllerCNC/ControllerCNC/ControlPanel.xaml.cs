@@ -108,7 +108,7 @@ namespace ControllerCNC
 
         private void Button_Click_4(object sender, RoutedEventArgs e)
         {
-            Execute(ShapeDrawing.DrawByConstantSpeed(ShapeDrawing.CircleCoordinates));
+            Execute(ShapeDrawing.DrawContinuousLines(ShapeDrawing.HeartCoordinates));
         }
 
         private void Button_Click_5(object sender, RoutedEventArgs e)

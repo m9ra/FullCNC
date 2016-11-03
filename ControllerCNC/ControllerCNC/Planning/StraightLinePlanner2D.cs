@@ -38,7 +38,7 @@ namespace ControllerCNC.Planning
         {
             var planBuilder = new PlanBuilder();
 
-            iterateDistances(trajectory, (x, y) => planBuilder.AddConstantSpeedTransitionXY(x, y, _transitionSpeed));
+            iterateDistances(trajectory, (p, x, y) => planBuilder.AddConstantSpeedTransitionXY(x, y, _transitionSpeed));
             return planBuilder;
         }
 
@@ -51,11 +51,34 @@ namespace ControllerCNC.Planning
         {
             var planBuilder = new PlanBuilder();
 
-            iterateDistances(trajectory, (x, y) => planBuilder.AddRampedLineXY(x, y, Constants.MaxPlaneAcceleration, _transitionSpeed));
+            iterateDistances(trajectory, (p, x, y) => planBuilder.AddRampedLineXY(x, y, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed));
             return planBuilder;
         }
 
-        private void iterateDistances(Trajectory4D trajectory, Action<int, int> planner)
+        /// <summary>
+        /// Creates the plan connecting coordinates by lines with continuous speed.
+        /// </summary>
+        /// <param name="trajectory">Trajectory which plan will be created.</param>
+        /// <returns>The created plan.</returns>
+        public PlanBuilder CreateContinuousPlan(Trajectory4D trajectory)
+        {
+            var pointSpeeds = createPointSpeeds(trajectory.Points);
+
+            var planBuilder = new PlanBuilder();
+
+            var currentSpeed = Speed.Zero;
+            iterateDistances(trajectory, (p, x, y) =>
+            {
+                var targetSpeedF = pointSpeeds[p];
+                var targetSpeed = new Speed((int)(targetSpeedF), Constants.TimerFrequency);
+                planBuilder.AddLineXY(x, y, currentSpeed, Constants.MaxPlaneAcceleration, targetSpeed);
+                currentSpeed = targetSpeed;
+            });
+
+            return planBuilder;
+        }
+
+        private void iterateDistances(Trajectory4D trajectory, Action<Point4D, int, int> planner)
         {
             Point4D lastPoint = null;
             foreach (var point in trajectory.Points)
@@ -69,9 +92,121 @@ namespace ControllerCNC.Planning
                 var distanceX = point.X - lastPoint.X;
                 var distanceY = point.Y - lastPoint.Y;
 
-                planner(distanceX, distanceY);
+                planner(point, distanceX, distanceY);
                 lastPoint = point;
             }
+        }
+
+        private Dictionary<Point4D, double> createPointSpeeds(IEnumerable<Point4D> points)
+        {
+            var junctionLimits = createJunctionLimits(points);
+
+            var calculationPlan = new PlanBuilder();
+            var speedLimits = new Dictionary<Point4D, double>();
+            var currentSpeedF = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
+            var stepAcceleration = 1;
+            Point4D previousPoint = null;
+            foreach (var point in points.Reverse())
+            {
+                var junctionLimitF = junctionLimits[point];
+
+                var newSpeedF = currentSpeedF + stepAcceleration;
+                if (previousPoint != null)
+                {
+                    var currentSpeed = new Speed((int)(currentSpeedF), Constants.TimerFrequency);
+                    var junctionSpeed = new Speed((int)(junctionLimitF), Constants.TimerFrequency);
+                    var stepsX = previousPoint.X - point.X;
+                    var stepsY = previousPoint.Y - point.Y;
+                    var newSpeed = calculationPlan.AddLineXY(stepsX, stepsY, currentSpeed, Constants.MaxPlaneAcceleration, junctionSpeed);
+                    newSpeedF = 1.0 * newSpeed.StepCount / newSpeed.Ticks * Constants.TimerFrequency;
+                }
+
+
+                currentSpeedF = Math.Min(newSpeedF, junctionLimitF);
+
+                if (double.IsNaN(currentSpeedF))
+                    throw new NotSupportedException("invalid computation");
+                speedLimits[point] = currentSpeedF;
+                previousPoint = point;
+            }
+
+            previousPoint = null;
+            currentSpeedF = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
+            foreach (var point in points)
+            {
+                var speedLimitF = speedLimits[point];
+                var newSpeedF = currentSpeedF + stepAcceleration;
+                if (previousPoint != null)
+                {
+                    var currentSpeed = new Speed((int)(currentSpeedF), Constants.TimerFrequency);
+                    var limitSpeed = new Speed((int)(speedLimitF), Constants.TimerFrequency);
+                    var stepsX = previousPoint.X - point.X;
+                    var stepsY = previousPoint.Y - point.Y;
+                    var newSpeed = calculationPlan.AddLineXY(stepsX, stepsY, currentSpeed, Constants.MaxPlaneAcceleration, limitSpeed);
+                    newSpeedF = 1.0 * newSpeed.StepCount / newSpeed.Ticks * Constants.TimerFrequency;
+                }
+                currentSpeedF = Math.Min(newSpeedF, speedLimitF);
+                speedLimits[point] = currentSpeedF;
+                previousPoint = point;
+                //Debug.WriteLine(currentVelocity);
+            }
+
+            return speedLimits;
+        }
+
+        private Dictionary<Point4D, double> createJunctionLimits(IEnumerable<Point4D> points)
+        {
+            var startVelocity = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
+            var maxVelocity = 1.0 * Constants.TimerFrequency / Constants.FastestDeltaT;
+            var aMax = 1.0 * Constants.MaxAcceleration / Constants.TimerFrequency / Constants.TimerFrequency;
+
+            var junctionLimits = new Dictionary<Point4D, double>();
+            var pointsArrayRev = points.Reverse().ToArray();
+            junctionLimits[pointsArrayRev.First()] = startVelocity;
+            junctionLimits[pointsArrayRev.Last()] = startVelocity;
+
+            for (var i = 1; i < pointsArrayRev.Length - 1; ++i)
+            {
+                var previousPoint = pointsArrayRev[i - 1];
+                var currentPoint = pointsArrayRev[i];
+                var nextPoint = pointsArrayRev[i + 1];
+
+                //my angle based vJunction
+                var angle = getTheta(previousPoint, currentPoint, nextPoint);
+                while (angle < 0)
+                    angle += 360;
+
+                while (angle > 360)
+                    angle -= 360;
+
+                if (angle > 180)
+                    angle = 360 - angle;
+
+                if (angle < 0 || angle > 180)
+                    throw new NotSupportedException("Error in normalization.");
+
+                var velocityDiff = maxVelocity - startVelocity;
+                var vJunction = (Math.Max(90, angle) / 180 - 0.5) * 2 * velocityDiff + startVelocity;
+
+                if (double.IsNaN(vJunction))
+                    throw new NotSupportedException("Invalid computation.");
+
+                junctionLimits[currentPoint] = vJunction;
+            }
+            return junctionLimits;
+        }
+
+        private double getTheta(Point4D point1, Point4D point2, Point4D point3)
+        {
+            var Ax = 1.0 * point2.X - point1.X;
+            var Ay = 1.0 * point2.Y - point1.Y;
+            var A = new Vector(Ax, Ay);
+
+            var Bx = 1.0 * point2.X - point3.X;
+            var By = 1.0 * point2.Y - point3.Y;
+            var B = new Vector(Bx, By);
+
+            return Vector.AngleBetween(A, B);
         }
     }
 }

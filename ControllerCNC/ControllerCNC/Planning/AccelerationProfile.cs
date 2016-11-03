@@ -78,6 +78,14 @@ namespace ControllerCNC.Planning
             IsDeceleration = c0 < 0;
             EndDelta = targetDelta;
 
+
+            if (StepCountAbsolute == 1) checked
+                {
+                    InitialDeltaT = StartDeltaT = (int)tickCount;
+                    TotalTickCount = tickCount;
+                    return;
+                }
+
             c0 = Math.Abs(c0);
             findInitialDeltaT(c0, targetDelta, out InitialDeltaT, out InitialN);
             StartDeltaT = InitialDeltaT;
