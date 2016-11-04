@@ -77,6 +77,7 @@ void setup() {
 }
 
 void loop() {
+	Serial.print('1'); // the device is ready
 	for (;;) {
 		if (!enableAccelerationSchedule && !enableConstantSchedule)
 			tryToFetchNextPlans();
@@ -194,7 +195,7 @@ void homing() {
 
 	// wait until all steps are flushed
 	while (Steppers::isSchedulerRunning());
-	
+
 	//now go slowly back to release home switches
 	digitalWrite(STEP_DIR_PIN1, LOW);
 	digitalWrite(STEP_DIR_PIN2, LOW);

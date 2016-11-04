@@ -22,11 +22,11 @@ namespace ControllerCNC
 
         private volatile int _desiredDirectionY;
 
-        private volatile UInt16 _desiredVelocity = 0;
+        private volatile UInt16 _desiredSpeed = 0;
 
-        private volatile int _velocityX;
+        private volatile int _deltaTX;
 
-        private volatile int _velocityY;
+        private volatile int _deltaTY;
 
         private volatile bool _stop = true;
 
@@ -59,8 +59,8 @@ namespace ControllerCNC
 
         private void sendNextPlan()
         {
-            var accelerationX = CreateAcceleration(_velocityX, _desiredVelocity * _desiredDirectionX);
-            var accelerationY = CreateAcceleration(_velocityY, _desiredVelocity * _desiredDirectionY);
+            var accelerationX = CreateAcceleration(_deltaTX, _desiredSpeed * _desiredDirectionX);
+            var accelerationY = CreateAcceleration(_deltaTY, _desiredSpeed * _desiredDirectionY);
 
             if (accelerationX.Concat(accelerationY).Count() > 2 && accelerationX.Length != accelerationY.Length)
                 throw new NotImplementedException("We have to handle reverting one axis and starting the other");
@@ -94,23 +94,29 @@ namespace ControllerCNC
             }
 
 
-            if (_velocityX == 0 && _velocityY == 0)
+            if (_deltaTX == 0 && _deltaTY == 0)
             {
                 _stop = true;
                 return;
             }
 
-            var stepCountX = (Int16)(200 * 1 * Math.Sign(_velocityX));
-            var stepCountY = (Int16)(200 * 1 * Math.Sign(_velocityY));
+            var instructionTime = 100 * 350;
+            var timedStepCountX = _deltaTX == 0 ? 0 : instructionTime / Math.Abs(_deltaTX);
+            var timedStepCountY = _deltaTY == 0 ? 0 : instructionTime / Math.Abs(_deltaTY);
 
-            var xInstruction = new ConstantInstruction(stepCountX, (UInt16)Math.Abs(_velocityX), 0);
-            var yInstruction = new ConstantInstruction(stepCountY, (UInt16)Math.Abs(_velocityY), 0);
+            var stepCountX = (Int16)(timedStepCountX * Math.Sign(_deltaTX));
+            var stepCountY = (Int16)(timedStepCountY * Math.Sign(_deltaTY));
+
+            var xInstruction = new ConstantInstruction(stepCountX, (UInt16)Math.Abs(_deltaTX), 0);
+            var yInstruction = new ConstantInstruction(stepCountY, (UInt16)Math.Abs(_deltaTY), 0);
             _cnc.SEND(Axes.XY(xInstruction, yInstruction));
         }
 
         internal static AccelerationInstruction[] CreateAcceleration(int speed, int desiredSpeed)
         {
-            if (speed == desiredSpeed)
+            var canSkipAcceleration = speed == desiredSpeed;
+            canSkipAcceleration |= Math.Abs(speed) >= Constants.StartDeltaT && Math.Abs(desiredSpeed) >= Constants.StartDeltaT;
+            if (canSkipAcceleration)
                 //no acceleration is required
                 return new AccelerationInstruction[0];
 
@@ -138,8 +144,8 @@ namespace ControllerCNC
 
         private void velocityReached()
         {
-            _velocityX = _desiredDirectionX * _desiredVelocity;
-            _velocityY = _desiredDirectionY * _desiredVelocity;
+            _deltaTX = _desiredDirectionX * _desiredSpeed;
+            _deltaTY = _desiredDirectionY * _desiredSpeed;
         }
 
         internal void SetMovement(int dirX, int dirY)
@@ -149,9 +155,9 @@ namespace ControllerCNC
             _stop = false;
         }
 
-        internal void SetSpeed(int velocity)
+        internal void SetSpeed(int speed)
         {
-            _desiredVelocity = (UInt16)velocity;
+            _desiredSpeed = (UInt16)speed;
         }
     }
 }

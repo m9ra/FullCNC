@@ -23,7 +23,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Port where we will communicate with the machine.
         /// </summary>
-        private readonly SerialPort _port;
+        private SerialPort _port;
 
         /// <summary>
         /// What is maximum number of incomplete plans that can be 
@@ -37,9 +37,39 @@ namespace ControllerCNC.Machine
         private readonly int _instructionLength = 59;
 
         /// <summary>
+        /// Baud rate for serial communication.
+        /// </summary>
+        private readonly int _communicationBaudRate = 128000;
+
+        /// <summary>
         /// Queue waiting for sending.
         /// </summary>
         private readonly Queue<byte[]> _sendQueue = new Queue<byte[]>();
+
+        /// <summary>
+        /// Queue of inComplete instructions (parallel to send queue);
+        /// </summary>
+        private readonly Queue<InstructionCNC> _incompleteInstructionQueue = new Queue<InstructionCNC>();
+
+        /// <summary>
+        /// Position in steps which will be achieved after end of plan.
+        /// </summary>
+        private volatile int _confirmedPositionX = 0;
+
+        /// <summary>
+        /// Position in steps which will be achieved after end of plan.
+        /// </summary>
+        private volatile int _confirmedPositionY = 0;
+
+        /// <summary>
+        /// Position in steps which is currently planned.
+        /// </summary>
+        private volatile int _plannedPositionY = 0;
+
+        /// <summary>
+        /// Position in steps which is currently planned.
+        /// </summary>
+        private volatile int _plannedPositionX = 0;
 
         /// <summary>
         /// Lock for send queue synchornization.
@@ -54,7 +84,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Lock for counter of incomplete plans.
         /// </summary>
-        private readonly object _L_planCompletition = new object();
+        private readonly object _L_instructionCompletition = new object();
 
         /// <summary>
         /// Flag determining whether confirmation from machine is expected.
@@ -72,9 +102,24 @@ namespace ControllerCNC.Machine
         private volatile int _incompletePlans;
 
         /// <summary>
+        /// Determine whether connection needs to be reset.
+        /// </summary>
+        private volatile bool _resetConnection;
+
+        /// <summary>
         /// Worker that handles communication with the machine.
         /// </summary>
-        private readonly Thread _communicationWorker;
+        private Thread _communicationWorker;
+
+        /// <summary>
+        /// Position obtained from confirmed instrutions.
+        /// </summary>
+        public int ConfirmedPositionX { get { return _confirmedPositionX; } }
+
+        /// <summary>
+        /// Position obtained from confirmed instrutions.
+        /// </summary>
+        public int ConfirmedPositionY { get { return _confirmedPositionY; } }
 
         /// <summary>
         /// Handler that can be used for observing of received data.
@@ -82,60 +127,71 @@ namespace ControllerCNC.Machine
         public event DataReceivedHandler OnDataReceived;
 
         /// <summary>
+        /// Event fired when connection status change (between connected/disconnected).
+        /// </summary>
+        public event Action OnConnectionStatusChange;
+
+        /// <summary>
+        /// Event fired when homing result arrived.
+        /// </summary>
+        public event Action OnHomingEnded;
+
+        /// <summary>
         /// How many from sent plans was not completed
         /// </summary>
         public int IncompletePlanCount { get { return _incompletePlans + _sendQueue.Count; } }
 
+        /// <summary>
+        /// Determine whether machine is connected.
+        /// </summary>
+        public bool IsConnected { get; private set; }
+
+        /// <summary>
+        /// Determine whether last homing attempt was successful.
+        /// </summary>
+        public bool IsHomeCalibrated { get; private set; }
+
         public DriverCNC()
         {
-            //1250,625,4799,4000000
-            //var plan = new AccelerationProfile(1250, 625, 4799, 4000000);
-            //var acc=new AccelerationProfile(105737.12634405641, 1398, 1431, 4000000);
-            //var dec=new AccelerationProfile(-105737.12634405641,int.MaxValue,1431,4000000);
-
-            _port = new SerialPort("COM27");
-            _port.BaudRate = 128000;
-            _port.Open();
-
-            _port.DataReceived += _port_DataReceived;
-
             _communicationWorker = new Thread(SERIAL_worker);
             _communicationWorker.IsBackground = true;
             _communicationWorker.Priority = ThreadPriority.Highest;
-
-            _communicationWorker.Start();
         }
 
         internal void Initialize()
         {
-            //read initial garbage
-            while (_port.BytesToRead > 0)
-            {
-                var data = readData(_port);
-                if (OnDataReceived != null)
-                    OnDataReceived(data);
-            }
+            System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
+            myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;
+
+            _communicationWorker.Start();
         }
 
         /// <summary>
         /// Sends parts of the given plan.
         /// </summary>
         /// <param name="plan">Plan which parts will be executed.</param>
-        public void SEND(IEnumerable<InstructionCNC> plan)
+        public bool SEND(IEnumerable<InstructionCNC> plan)
         {
             foreach (var part in plan)
             {
-                SEND(part);
+                if (!SEND(part))
+                    return false;
             }
+
+            return true;
         }
 
         /// <summary>
         /// Sends a given part to the machine.
         /// </summary>
         /// <param name="part">Part to send.</param>
-        public void SEND(InstructionCNC part)
+        public bool SEND(InstructionCNC part)
         {
+            if (!checkBoundaries(part))
+                return false;
+
             send(part);
+            return true;
         }
 
         #region Communication utilities
@@ -155,32 +211,37 @@ namespace ControllerCNC.Machine
                 }
                 switch (response)
                 {
+                    case '1':
+                        //_resetConnection = true;
+                        clearDriverState();
+                        break;
                     case 'I':
-                        lock (_L_confirmation)
-                        {
-                            _expectsConfirmation = false;
-                            Monitor.Pulse(_L_confirmation);
-                        }
-
-                        lock (_L_planCompletition)
-                        {
-                            _incompletePlans = 0;
-                            Monitor.Pulse(_L_planCompletition);
-                        }
+                        //first reset plans - the driver is blocked on expects confirmation
+                        clearDriverState();
                         break;
 
                     case 'H':
+
                         lock (_L_confirmation)
                         {
                             _expectsConfirmation = false;
                             Monitor.Pulse(_L_confirmation);
                         }
 
-                        lock (_L_planCompletition)
+                        lock (_L_instructionCompletition)
                         {
+                            _incompleteInstructionQueue.Dequeue();
+                            _confirmedPositionX = 0;
+                            _confirmedPositionY = 0;
                             --_incompletePlans;
-                            Monitor.Pulse(_L_planCompletition);
+                            Monitor.Pulse(_L_instructionCompletition);
                         }
+
+                        IsHomeCalibrated = true;
+                        //homing was finished successfuly
+                        if (OnHomingEnded != null)
+                            OnHomingEnded();
+
                         break;
                     case 'Y':
                         lock (_L_confirmation)
@@ -190,10 +251,11 @@ namespace ControllerCNC.Machine
                         }
                         break;
                     case 'F':
-                        lock (_L_planCompletition)
+                        lock (_L_instructionCompletition)
                         {
+                            onInstructionCompleted();
                             --_incompletePlans;
-                            Monitor.Pulse(_L_planCompletition);
+                            Monitor.Pulse(_L_instructionCompletition);
                         }
                         break;
                     case 'S':
@@ -219,8 +281,158 @@ namespace ControllerCNC.Machine
                 OnDataReceived(data);
         }
 
+        /// <summary>
+        /// HAS TO BE COLLED WITH _L_instrutionCompletition
+        /// </summary>
+        private void onInstructionCompleted()
+        {
+            var instruction = _incompleteInstructionQueue.Dequeue();
+            var axesInstruction = instruction as Axes;
+            if (axesInstruction != null)
+            {
+                if (axesInstruction.InstructionX != null)
+                    _confirmedPositionX -= axesInstruction.InstructionX.StepCount;
+
+                if (axesInstruction.InstructionY != null)
+                    _confirmedPositionY -= axesInstruction.InstructionY.StepCount;
+                return;
+            }
+
+            var stepInstruction = instruction as StepInstrution;
+            if (stepInstruction != null)
+            {
+                _confirmedPositionX -= stepInstruction.StepCount;
+            }
+        }
+
+        private bool checkBoundaries(InstructionCNC instruction)
+        {
+
+            var nextPlannedPositionX = _plannedPositionX;
+            var nextPlannedPositionY = _plannedPositionY;
+
+            var axesInstruction = instruction as Axes;
+            if (axesInstruction != null)
+            {
+                if (axesInstruction.InstructionX != null)
+                    nextPlannedPositionX -= axesInstruction.InstructionX.StepCount;
+
+                if (axesInstruction.InstructionY != null)
+                    nextPlannedPositionY -= axesInstruction.InstructionY.StepCount;
+            }
+            else
+            {
+                var stepInstruction = instruction as StepInstrution;
+                if (stepInstruction != null)
+                {
+                    nextPlannedPositionX -= stepInstruction.StepCount;
+                }
+            }
+
+            if (instruction is HomingInstruction)
+            {
+                nextPlannedPositionX = 0;
+                nextPlannedPositionY = 0;
+            }
+
+            if (nextPlannedPositionX < 0)
+                return false;
+
+            if (nextPlannedPositionY < 0)
+                return false;
+
+            if (nextPlannedPositionX > Constants.MaxStepsX)
+                return false;
+
+            if (nextPlannedPositionY > Constants.MaxStepsY)
+                return false;
+
+            _plannedPositionX = nextPlannedPositionX;
+            _plannedPositionY = nextPlannedPositionY;
+            return true;
+        }
+
+        private void clearDriverState()
+        {
+            lock (_L_instructionCompletition)
+            {
+                _sendQueue.Clear();
+                _incompleteInstructionQueue.Clear();
+                _incompletePlans = 0;
+                Monitor.Pulse(_L_instructionCompletition);
+            }
+
+            lock (_L_confirmation)
+            {
+                if (!_expectsConfirmation)
+                    throw new NotSupportedException("Race condition threat");
+
+                _expectsConfirmation = false;
+                Monitor.Pulse(_L_confirmation);
+            }
+        }
+
         private void SERIAL_worker()
         {
+            for (; ; )
+            {
+                //loop forever and try to establish connection
+
+                var portName = getCncPortName();
+                if (portName != null)
+                {
+                    //try to connect
+                    try
+                    {
+                        _port = new SerialPort(portName);
+                        _port.BaudRate = _communicationBaudRate;
+                        _port.Open();
+
+                        _port.DataReceived += _port_DataReceived;
+                    }
+                    catch (Exception)
+                    {
+                        //connection was not successful
+                        _port = null;
+                        continue;
+                    }
+
+                    //read initial garbage
+                    while (_port.BytesToRead > 0)
+                    {
+                        var data = readData(_port);
+                        if (OnDataReceived != null)
+                            OnDataReceived(data);
+                    }
+
+                    IsConnected = true;
+                    if (OnConnectionStatusChange != null)
+                        OnConnectionStatusChange();
+                    try
+                    {
+                        //the communication handler can return only by throwing exception
+                        communicate();
+                    }
+                    catch (Exception)
+                    {
+                        //disconnection appeared                     
+                    }
+                    finally
+                    {
+                        _port = null;
+                        IsConnected = false;
+                        if (OnConnectionStatusChange != null)
+                            OnConnectionStatusChange();
+                    }
+                }
+
+                Thread.Sleep(1000);
+            }
+        }
+
+        private void communicate()
+        {
+            _resetConnection = false;
             //welcome message
             send(new InitializationInstruction());
 
@@ -230,18 +442,25 @@ namespace ControllerCNC.Machine
                 lock (_L_sendQueue)
                 {
                     while (_sendQueue.Count == 0)
+                    {
+                        if (_resetConnection)
+                            throw new NotSupportedException("Invalid state");
                         Monitor.Wait(_L_sendQueue);
+                    }
 
                     data = _sendQueue.Dequeue();
                 }
 
-                lock (_L_planCompletition)
+                lock (_L_instructionCompletition)
                 {
                     while (_incompletePlans >= MaxIncompletePlanCount)
-                        Monitor.Wait(_L_planCompletition);
+                        Monitor.Wait(_L_instructionCompletition);
 
                     _incompletePlans += 1;
                 }
+
+                if (_resetConnection)
+                    throw new NotSupportedException("Invalid state");
 
                 lock (_L_confirmation)
                 {
@@ -252,6 +471,19 @@ namespace ControllerCNC.Machine
                         Monitor.Wait(_L_confirmation);
                 }
             }
+        }
+
+        private string getCncPortName()
+        {
+            var ports = SerialPort.GetPortNames();
+            if (ports.Length == 0)
+                return null;
+
+            if (ports.Length == 1)
+                //TODO the device might be something different we expect
+                return ports[0];
+
+            throw new NotImplementedException("Disambiguate ports");
         }
 
         private static string readData(SerialPort port)
@@ -282,6 +514,7 @@ namespace ControllerCNC.Machine
             var dataBuffer = data.ToArray();
             lock (_L_sendQueue)
             {
+                _incompleteInstructionQueue.Enqueue(instruction);
                 _sendQueue.Enqueue(dataBuffer);
                 Monitor.Pulse(_L_sendQueue);
             }

@@ -20,8 +20,8 @@ namespace ControllerCNC.Planning
 
         private Vector _actualPosition = new Vector(0, 0);
 
-        private List<InstructionCNC> _pathPlansX = new List<InstructionCNC>();
-        private List<InstructionCNC> _pathPlansY = new List<InstructionCNC>();
+        private List<StepInstrution> _pathPlansX = new List<StepInstrution>();
+        private List<StepInstrution> _pathPlansY = new List<StepInstrution>();
 
         public void AppendAcceleration(Vector acceleration, double time)
         {
@@ -98,7 +98,7 @@ namespace ControllerCNC.Planning
             return builder;
         }
 
-        private void addConstantPlan(int tickCount, double distance, List<InstructionCNC> pathPlans)
+        private void addConstantPlan(int tickCount, double distance, List<StepInstrution> pathPlans)
         {
             checked
             {
@@ -120,7 +120,7 @@ namespace ControllerCNC.Planning
             }
         }
 
-        private void addRampPlan(double initialSpeed, double endSpeed, double exactDuration, double distance, List<InstructionCNC> pathPlans)
+        private void addRampPlan(double initialSpeed, double endSpeed, double exactDuration, double distance, List<StepInstrution> pathPlans)
         {
             checked
             {

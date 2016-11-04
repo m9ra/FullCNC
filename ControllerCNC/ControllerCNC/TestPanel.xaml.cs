@@ -30,7 +30,7 @@ namespace ControllerCNC
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class TestPanel : Window
     {
         DriverCNC _cnc;
         DispatcherTimer _positionTimer = new DispatcherTimer();
@@ -39,13 +39,9 @@ namespace ControllerCNC
         PositionController _positionController;
         Coord2DController _coord2DController;
 
-        public MainWindow()
+        public TestPanel()
         {           
-            //Demos.ShapeDrawing.DrawSquareWithDiagonals();
-            //Demos.MachineTesting.AcceleratedMultiCross();
             InitializeComponent();
-            System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
-            myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;
 
             Output.ScrollToEnd();
 

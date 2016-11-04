@@ -33,7 +33,7 @@ namespace ControllerCNC.Planning
         /// </summary>
         /// <param name="instructionX">instruction for the x axis.</param>
         /// <param name="instructionY">instruction for the y axis.</param>
-        public void AddXY(InstructionCNC instructionX, InstructionCNC instructionY)
+        public void AddXY(StepInstrution instructionX, StepInstrution instructionY)
         {
             _plan.Add(Axes.XY(instructionX, instructionY));
         }

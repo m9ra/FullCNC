@@ -56,14 +56,15 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Coord2DController.cs" />
-    <Compile Include="CutterPane.xaml.cs">
-      <DependentUpon>CutterPane.xaml</DependentUpon>
+    <Compile Include="CutterPanel.xaml.cs">
+      <DependentUpon>CutterPanel.xaml</DependentUpon>
     </Compile>
     <Compile Include="Demos\MachineTesting.cs" />
     <Compile Include="Demos\ShapeDrawing.cs" />
     <Compile Include="Machine\Axes.cs" />
     <Compile Include="Machine\HomingInstruction.cs" />
     <Compile Include="Machine\InitializationInstruction.cs" />
+    <Compile Include="Machine\StepInstrution.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />
     <Compile Include="Planning\AccelerationProfile.cs" />
     <Compile Include="Planning\PathTracer2D.cs" />
@@ -81,7 +82,7 @@
     <Compile Include="Simulation\ChannelTrace.cs" />
     <Compile Include="Simulation\CncSimulator.cs" />
     <Compile Include="SpeedController.cs" />
-    <Page Include="ControlPanel.xaml">
+    <Page Include="TestPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
@@ -90,11 +91,11 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Machine\DriverCNC.cs" />
-    <Compile Include="ControlPanel.xaml.cs">
-      <DependentUpon>ControlPanel.xaml</DependentUpon>
+    <Compile Include="TestPanel.xaml.cs">
+      <DependentUpon>TestPanel.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="CutterPane.xaml">
+    <Page Include="CutterPanel.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

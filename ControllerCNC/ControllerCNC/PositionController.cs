@@ -14,8 +14,6 @@ namespace ControllerCNC
 
         private int _currentPosition;
 
-        bool _lastDirection;
-
         public PositionController(DriverCNC driver)
         {
             _cnc = driver;

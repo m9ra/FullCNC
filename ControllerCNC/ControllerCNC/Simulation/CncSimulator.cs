@@ -18,7 +18,6 @@ namespace TrajectorySimulator
             var currentDelta = (int)(initialDelta * 0.676);
 
             var currentN = initialN;
-            var accumulator = 0;
             var rest = 0;
             for (var i = 0; i < stepCount; ++i)
             {

@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Machine
 {
-    public class ConstantInstruction : InstructionCNC
+    public class ConstantInstruction : StepInstrution
     {
-        public readonly Int16 StepCount;
-
         public readonly int BaseDeltaT;
 
         public readonly UInt16 PeriodNumerator;
@@ -17,8 +15,8 @@ namespace ControllerCNC.Machine
         public readonly UInt16 PeriodDenominator;
 
         public ConstantInstruction(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator)
+            : base(stepCount)
         {
-            StepCount = stepCount;
             BaseDeltaT = baseDeltaT;
             PeriodNumerator = periodNumerator;
             if (PeriodNumerator > Math.Abs(StepCount))

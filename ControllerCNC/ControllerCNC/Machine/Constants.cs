@@ -17,17 +17,32 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Time scale of the machine. (2MHz)
         /// </summary>
-        internal static readonly uint TimerFrequency = 2000000;
+        public static readonly uint TimerFrequency = 2000000;
 
         /// <summary>
         /// How many steps for single revolution has to be done.
         /// </summary>
-        internal static readonly uint StepsPerRevolution = 400;
+        public static readonly uint StepsPerRevolution = 400;
+
+        /// <summary>
+        /// Screw with 1.25mm per revolution.
+        /// </summary>
+        public static readonly double MilimetersPerStep = 1.25 / StepsPerRevolution;
 
         /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
-        internal static readonly uint MaxAcceleration = 200 * StepsPerRevolution;
+        public static readonly uint MaxAcceleration = 200 * StepsPerRevolution;
+
+        /// <summary>
+        /// X axis is 460mm long
+        /// </summary>
+        public static readonly uint MaxStepsX = 460 * StepsPerRevolution * 100 / 125;
+
+        /// <summary>
+        /// Y axis is 256mm long
+        /// </summary>
+        public static readonly uint MaxStepsY = 256 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// DeltaT which can be safely used after stand still.

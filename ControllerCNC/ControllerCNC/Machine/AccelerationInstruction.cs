@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Machine
 {
-    class AccelerationInstruction : InstructionCNC
+    class AccelerationInstruction : StepInstrution
     {
-        public readonly Int16 StepCount;
-
         public readonly int InitialDeltaT;
 
         public readonly int StartN;
@@ -19,8 +17,8 @@ namespace ControllerCNC.Machine
         public readonly Int16 BaseRemainder;
 
         public AccelerationInstruction(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 baseRemainder, int startN)
+            :base(stepCount)
         {
-            StepCount = stepCount;
             InitialDeltaT = initialDeltaT;
             StartN = startN;
             BaseDelta = baseDelta;

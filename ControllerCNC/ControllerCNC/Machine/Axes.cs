@@ -11,33 +11,33 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Instruction for x axis.
         /// </summary>
-        private readonly InstructionCNC _x;
+        internal readonly StepInstrution InstructionX;
 
         /// <summary>
         /// Instruction for y axis.
         /// </summary>
-        private readonly InstructionCNC _y;
+        internal readonly StepInstrution InstructionY;
 
         /// <summary>
         /// Instruction for u axis.
         /// </summary>
-        private readonly InstructionCNC _u;
+        internal readonly StepInstrution InstructionU;
 
         /// <summary>
         /// Instruction for v axis.
         /// </summary>
-        private readonly InstructionCNC _v;
+        internal readonly StepInstrution InstructionV;
 
-        private Axes(InstructionCNC x, InstructionCNC y, InstructionCNC u, InstructionCNC v)
+        private Axes(StepInstrution x, StepInstrution y, StepInstrution u, StepInstrution v)
         {
-            _x = x;
-            _y = y;
-            _u = u;
-            _v = v;
+            InstructionX = x;
+            InstructionY = y;
+            InstructionU = u;
+            InstructionV = v;
 
             //check instruction compatibility
             Type detectedType = null;
-            foreach (var instruction in new[] { _x, _y, _u, _v })
+            foreach (var instruction in new[] { InstructionX, InstructionY, InstructionU, InstructionV })
             {
                 if (instruction == null)
                     continue;
@@ -58,7 +58,7 @@ namespace ControllerCNC.Machine
         /// </summary>
         /// <param name="x">Instruction for x.</param>
         /// <param name="y">Instruction for y.</param>
-        public static Axes XY(InstructionCNC x, InstructionCNC y)
+        public static Axes XY(StepInstrution x, StepInstrution y)
         {
             return new Axes(x, y, null, null);
         }
@@ -67,7 +67,7 @@ namespace ControllerCNC.Machine
         /// Instruct x axis.
         /// </summary>
         /// <param name="x">Instruction for x.</param>
-        public static Axes X(InstructionCNC x)
+        public static Axes X(StepInstrution x)
         {
             return new Axes(x, null, null, null);
         }
@@ -76,7 +76,7 @@ namespace ControllerCNC.Machine
         /// Instruct y axis.
         /// </summary>
         /// <param name="y">Instruction for y.</param>
-        public static Axes Y(InstructionCNC y)
+        public static Axes Y(StepInstrution y)
         {
             return new Axes(null, y, null, null);
         }
@@ -91,7 +91,7 @@ namespace ControllerCNC.Machine
             groupBytes[0] = getInstructionIdentifier();
 
             var instructionIndex = 0;
-            foreach (var instruction in new[] { _x, _y, _u, _v })
+            foreach (var instruction in new[] { InstructionX, InstructionY, InstructionU, InstructionV })
             {
                 var instructionOffset = 1 + instructionIndex * payloadLength;
                 ++instructionIndex;
@@ -131,7 +131,7 @@ namespace ControllerCNC.Machine
         /// </summary>
         private InstructionCNC getNonNullInstruction()
         {
-            foreach (var instruction in new[] { _x, _y, _u, _v })
+            foreach (var instruction in new[] { InstructionX, InstructionY, InstructionU, InstructionV })
             {
                 if (instruction != null)
                     return instruction;
