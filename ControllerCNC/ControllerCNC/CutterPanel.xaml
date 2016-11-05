@@ -1,6 +1,7 @@
 ﻿<Window x:Class="ControllerCNC.CutterPanel"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:g="clr-namespace:ControllerCNC.GUI"
         Title="CutterPane" Height="1000" Width="1500" WindowState="Maximized" WindowStyle="None">
     <Window.Resources>
         <Style x:Key="MovementArrow" TargetType="{x:Type Button}">
@@ -192,9 +193,7 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
-            <Border BorderBrush="Black" BorderThickness="2">
-                <Canvas Background="{StaticResource GridTile}"></Canvas>
-            </Border>
+            <Border Background="Gray" Name="WorkspaceSlot" BorderBrush="Black" BorderThickness="2"></Border>
         </DockPanel>
     </Grid>
 </Window>

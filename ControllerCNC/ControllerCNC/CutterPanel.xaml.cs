@@ -14,6 +14,7 @@ using System.Windows.Shapes;
 
 using System.Windows.Threading;
 
+using ControllerCNC.GUI;
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
 
@@ -32,6 +33,10 @@ namespace ControllerCNC
 
         private readonly DispatcherTimer _statusTimer = new DispatcherTimer();
 
+        private readonly WorkspacePanel _workspace;
+
+        private readonly WorkspaceItem _xyHead = new HeadCNC();
+
         private int _positionOffsetX = 0;
 
         private int _positionOffsetY = 0;
@@ -43,6 +48,10 @@ namespace ControllerCNC
             System.Threading.Thread.CurrentThread.CurrentCulture = customCulture;
 
             InitializeComponent();
+
+            _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
+            WorkspaceSlot.Child = _workspace;
+            _workspace.Children.Add(_xyHead);
 
             _motionCommands.Add(Calibration);
             _motionCommands.Add(GoToZeros);
@@ -86,6 +95,8 @@ namespace ControllerCNC
 
             PositionX.Text = positionX.ToString("0.000");
             PositionY.Text = positionY.ToString("0.000");
+            _xyHead.PositionX = _cnc.ConfirmedPositionX;
+            _xyHead.PositionY = _cnc.ConfirmedPositionY;
         }
 
 

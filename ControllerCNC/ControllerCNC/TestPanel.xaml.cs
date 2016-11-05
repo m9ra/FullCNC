@@ -40,7 +40,7 @@ namespace ControllerCNC
         Coord2DController _coord2DController;
 
         public TestPanel()
-        {           
+        {          
             InitializeComponent();
 
             Output.ScrollToEnd();

@@ -22,7 +22,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// How many steps for single revolution has to be done.
         /// </summary>
-        public static readonly uint StepsPerRevolution = 400;
+        public static readonly int StepsPerRevolution = 400;
 
         /// <summary>
         /// Screw with 1.25mm per revolution.
@@ -32,17 +32,27 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
-        public static readonly uint MaxAcceleration = 200 * StepsPerRevolution;
+        public static readonly int MaxAcceleration = 200 * StepsPerRevolution;
+
+        /// <summary>
+        /// U axis is 460mm long
+        /// </summary>
+        public static readonly int MaxStepsU = 460 * StepsPerRevolution * 100 / 125;
+
+        /// <summary>
+        /// V axis is 256mm long
+        /// </summary>
+        public static readonly int MaxStepsV = 256 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// X axis is 460mm long
         /// </summary>
-        public static readonly uint MaxStepsX = 460 * StepsPerRevolution * 100 / 125;
+        public static readonly int MaxStepsX = 460 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// Y axis is 256mm long
         /// </summary>
-        public static readonly uint MaxStepsY = 256 * StepsPerRevolution * 100 / 125;
+        public static readonly int MaxStepsY = 256 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// DeltaT which can be safely used after stand still.
