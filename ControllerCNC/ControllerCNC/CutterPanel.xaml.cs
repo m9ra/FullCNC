@@ -12,11 +12,14 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
+using System.Threading;
 using System.Windows.Threading;
 
 using ControllerCNC.GUI;
+using ControllerCNC.Demos;
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
+using ControllerCNC.Primitives;
 
 namespace ControllerCNC
 {
@@ -37,6 +40,8 @@ namespace ControllerCNC
 
         private readonly WorkspaceItem _xyHead = new HeadCNC();
 
+        private readonly TrajectoryShapeItem _shape;
+
         private int _positionOffsetX = 0;
 
         private int _positionOffsetY = 0;
@@ -53,9 +58,17 @@ namespace ControllerCNC
             WorkspaceSlot.Child = _workspace;
             _workspace.Children.Add(_xyHead);
 
+            _shape = new TrajectoryShapeItem(new Trajectory4D(ShapeDrawing.HeartCoordinates()), _workspace);
+            _shape.PositionX = 3000;
+            _shape.PositionY = 5000;
+
+            _workspace.Children.Add(new JoinLine(null, _shape));
+
+
             _motionCommands.Add(Calibration);
             _motionCommands.Add(GoToZeros);
             _motionCommands.Add(AlignHeads);
+            _motionCommands.Add(StartPlan);
 
             _cnc = new DriverCNC();
             _cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
@@ -66,7 +79,7 @@ namespace ControllerCNC
             _coordController = new Coord2DController(_cnc);
             initializeTransitionHandlers();
 
-            _statusTimer.Interval = TimeSpan.FromMilliseconds(100);
+            _statusTimer.Interval = TimeSpan.FromMilliseconds(20);
             _statusTimer.Tick += _statusTimer_Tick;
             _statusTimer.IsEnabled = true;
         }
@@ -102,6 +115,38 @@ namespace ControllerCNC
 
         #endregion
 
+        #region Plan execution
+
+        private void executePlan()
+        {
+            disableMotionCommands();
+            _workspace.DisableChanges();
+
+            var builder = new PlanBuilder();
+            var entryPoint = _workspace.GetEntryJoinLine();
+
+            var initX = entryPoint.PositionX - _cnc.PlannedPositionX;
+            var initY = entryPoint.PositionY - _cnc.PlannedPositionY;
+            builder.AddRampedLineXY(initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+
+
+            entryPoint.FillBuilder(builder);
+            var plan = builder.Build();
+            if (!_cnc.SEND(plan))
+                throw new NotSupportedException("Invalid plan");
+
+            _cnc.OnInstructionQueueIsComplete += planCompleted;
+        }
+
+        private void planCompleted()
+        {
+            _cnc.OnInstructionQueueIsComplete -= planCompleted;
+            _workspace.EnableChanges();
+            enableMotionCommands();
+        }
+
+        #endregion
+
         #region Controls implementation
 
         private void enableMotionCommands()
@@ -122,15 +167,15 @@ namespace ControllerCNC
 
         private void initializeTransitionHandlers()
         {
-            initializeTransitionHandlers(UpB, 0, 1);
-            initializeTransitionHandlers(BottomB, 0, -1);
-            initializeTransitionHandlers(LeftB, 1, 0);
-            initializeTransitionHandlers(RightB, -1, 0);
+            initializeTransitionHandlers(UpB, 0, -1);
+            initializeTransitionHandlers(BottomB, 0, 1);
+            initializeTransitionHandlers(LeftB, -1, 0);
+            initializeTransitionHandlers(RightB, 1, 0);
 
-            initializeTransitionHandlers(LeftUpB, 1, 1);
-            initializeTransitionHandlers(UpRightB, -1, 1);
-            initializeTransitionHandlers(LeftBottomB, 1, -1);
-            initializeTransitionHandlers(BottomRightB, -1, -1);
+            initializeTransitionHandlers(LeftUpB, -1, -1);
+            initializeTransitionHandlers(UpRightB, 1, -1);
+            initializeTransitionHandlers(LeftBottomB, -1, 1);
+            initializeTransitionHandlers(BottomRightB, 1, 1);
         }
 
         private void initializeTransitionHandlers(Button button, int dirX, int dirY)
@@ -178,6 +223,13 @@ namespace ControllerCNC
             planner.AddRampedLineXY(-stepsX, -stepsY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             _cnc.SEND(planner.Build());
         }
+
+        private void StartPlan_Click(object sender, RoutedEventArgs e)
+        {
+            executePlan();
+        }
         #endregion
+
+
     }
 }

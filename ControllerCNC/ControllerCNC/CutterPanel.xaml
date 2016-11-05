@@ -128,7 +128,7 @@
                     <StackPanel DockPanel.Dock="Right" Width="220">
                         <Button Style="{StaticResource CommandButton}">Add shape</Button>
                         <Button Style="{StaticResource CommandButton}">Add join</Button>
-                        <Button Background="GreenYellow" Style="{StaticResource CommandButton}">START!</Button>
+                        <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
                     </StackPanel>
                     <ListBox DockPanel.Dock="Left" MinWidth="300" FontSize="30"  BorderBrush="Gray">
                         <ListBoxItem>Shape1</ListBoxItem>

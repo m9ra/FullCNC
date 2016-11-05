@@ -62,6 +62,8 @@
     <Compile Include="Demos\MachineTesting.cs" />
     <Compile Include="Demos\ShapeDrawing.cs" />
     <Compile Include="GUI\HeadCNC.cs" />
+    <Compile Include="GUI\JoinLine.cs" />
+    <Compile Include="GUI\TrajectoryShapeItem.cs" />
     <Compile Include="GUI\WorkspaceItem.cs" />
     <Compile Include="GUI\WorkspacePanel.cs" />
     <Compile Include="Machine\Axes.cs" />

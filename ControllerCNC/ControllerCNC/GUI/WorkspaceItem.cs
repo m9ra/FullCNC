@@ -14,16 +14,6 @@ namespace ControllerCNC.GUI
         private int _positionY;
 
         /// <summary>
-        /// Offset of visual representation (in wpf coordinate units).
-        /// </summary>
-        internal readonly double VisualOffsetX;
-
-        /// <summary>
-        /// Offset of visual representation (in wpf coordinate units).
-        /// </summary>
-        internal readonly double VisualOffsetY;
-
-        /// <summary>
         /// Position of the item in steps.
         /// </summary>
         internal int PositionX
@@ -60,12 +50,16 @@ namespace ControllerCNC.GUI
         /// Creates visual face of the item
         /// </summary>
         /// <returns></returns>
-        protected abstract object createContent(out double visualOffsetX, out double visualOffsetY);
+        protected abstract object createContent();
 
 
         internal WorkspaceItem()
         {
-            Content = createContent(out VisualOffsetX, out VisualOffsetY);
+        }
+
+        protected void initialize()
+        {
+            Content = createContent();
         }
 
 

@@ -39,6 +39,14 @@ namespace ControllerCNC.Planning
         }
 
         /// <summary>
+        /// Add given instructions.
+        /// </summary>
+        public void Add(IEnumerable<InstructionCNC> plan)
+        {
+            _plan.AddRange(plan);
+        }
+
+        /// <summary>
         /// Adds acceleration for x and y axes.
         /// </summary>
         /// <param name="accelerationProfileX">Profile for x axis acceleration.</param>

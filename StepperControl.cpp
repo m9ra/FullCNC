@@ -95,7 +95,7 @@ void AccelerationPlan::loadFrom(byte * data)
 	this->stepCount = abs(stepCount);
 	this->remainingSteps = this->stepCount;
 	this->isActive = this->remainingSteps > 0;
-	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->stepMask = stepCount < 0 ? this->dirMask : 0;
 	this->nextActivationTime = 0;
 	this->isActivationBoundary = !this->isActive;
 
@@ -111,10 +111,11 @@ void AccelerationPlan::loadFrom(byte * data)
 void AccelerationPlan::initForHoming()
 {
 	//TODO refactore homing settings somewhere
-	this->stepCount = abs(198);
+	int16_t stepCount = -198;
+	this->stepCount = abs(stepCount);
 	this->remainingSteps = this->stepCount;
 	this->isActive = this->remainingSteps > 0;
-	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->stepMask = stepCount < 0 ? this->dirMask : 0;
 	this->nextActivationTime = 0;
 	this->isActivationBoundary = !this->isActive;
 
@@ -220,7 +221,7 @@ void ConstantPlan::loadFrom(byte * data)
 
 	this->stepCount = abs(stepCount);
 	this->remainingSteps = this->stepCount;
-	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->stepMask = stepCount < 0 ? this->dirMask : 0;
 	this->isActive = this->remainingSteps > 0;
 	this->nextActivationTime = 0;
 	this->isActivationBoundary = !this->isActive;
@@ -234,9 +235,10 @@ void ConstantPlan::loadFrom(byte * data)
 void ConstantPlan::initForHoming()
 {
 	//TODO refactore homing settings somewhere
-	this->stepCount = 200;
+	int16_t stepCount = -200;
+	this->stepCount = abs(stepCount);
 	this->remainingSteps = this->stepCount;
-	this->stepMask = stepCount > 0 ? this->dirMask : 0;
+	this->stepMask = stepCount < 0 ? this->dirMask : 0;
 	this->isActive = this->remainingSteps > 0;
 	this->nextActivationTime = 0;
 	this->isActivationBoundary = !this->isActive;

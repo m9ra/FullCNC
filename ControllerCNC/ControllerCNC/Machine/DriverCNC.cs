@@ -99,7 +99,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// How many plans are not complete yet.
         /// </summary>
-        private volatile int _incompletePlans;
+        private volatile int _incompleteInstructions;
 
         /// <summary>
         /// Determine whether connection needs to be reset.
@@ -122,6 +122,16 @@ namespace ControllerCNC.Machine
         public int ConfirmedPositionY { get { return _confirmedPositionY; } }
 
         /// <summary>
+        /// Position obtained from planned instrutions.
+        /// </summary>
+        public int PlannedPositionX { get { return _plannedPositionX; } }
+
+        /// <summary>
+        /// Position obtained from planned instrutions.
+        /// </summary>
+        public int PlannedPositionY { get { return _plannedPositionY; } }
+
+        /// <summary>
         /// Handler that can be used for observing of received data.
         /// </summary>
         public event DataReceivedHandler OnDataReceived;
@@ -135,11 +145,16 @@ namespace ControllerCNC.Machine
         /// Event fired when homing result arrived.
         /// </summary>
         public event Action OnHomingEnded;
+        
+        /// <summary>
+        /// Event fired when all instructions have been confirmed.
+        /// </summary>
+        public event Action OnInstructionQueueIsComplete;
 
         /// <summary>
         /// How many from sent plans was not completed
         /// </summary>
-        public int IncompletePlanCount { get { return _incompletePlans + _sendQueue.Count; } }
+        public int IncompletePlanCount { get { return _incompleteInstructions + _sendQueue.Count; } }
 
         /// <summary>
         /// Determine whether machine is connected.
@@ -233,7 +248,7 @@ namespace ControllerCNC.Machine
                             _incompleteInstructionQueue.Dequeue();
                             _confirmedPositionX = 0;
                             _confirmedPositionY = 0;
-                            --_incompletePlans;
+                            --_incompleteInstructions;
                             Monitor.Pulse(_L_instructionCompletition);
                         }
 
@@ -251,12 +266,18 @@ namespace ControllerCNC.Machine
                         }
                         break;
                     case 'F':
+                        var incompleteInstrutionCount = 0;
                         lock (_L_instructionCompletition)
                         {
                             onInstructionCompleted();
-                            --_incompletePlans;
+                            --_incompleteInstructions;
+                            incompleteInstrutionCount = _incompleteInstructionQueue.Count;
                             Monitor.Pulse(_L_instructionCompletition);
                         }
+
+                        if (incompleteInstrutionCount == 0 && OnInstructionQueueIsComplete != null)
+                            OnInstructionQueueIsComplete();
+
                         break;
                     case 'S':
                         //scheduler was enabled
@@ -291,17 +312,17 @@ namespace ControllerCNC.Machine
             if (axesInstruction != null)
             {
                 if (axesInstruction.InstructionX != null)
-                    _confirmedPositionX -= axesInstruction.InstructionX.StepCount;
+                    _confirmedPositionX += axesInstruction.InstructionX.StepCount;
 
                 if (axesInstruction.InstructionY != null)
-                    _confirmedPositionY -= axesInstruction.InstructionY.StepCount;
+                    _confirmedPositionY += axesInstruction.InstructionY.StepCount;
                 return;
             }
 
             var stepInstruction = instruction as StepInstrution;
             if (stepInstruction != null)
             {
-                _confirmedPositionX -= stepInstruction.StepCount;
+                _confirmedPositionX += stepInstruction.StepCount;
             }
         }
 
@@ -315,17 +336,17 @@ namespace ControllerCNC.Machine
             if (axesInstruction != null)
             {
                 if (axesInstruction.InstructionX != null)
-                    nextPlannedPositionX -= axesInstruction.InstructionX.StepCount;
+                    nextPlannedPositionX += axesInstruction.InstructionX.StepCount;
 
                 if (axesInstruction.InstructionY != null)
-                    nextPlannedPositionY -= axesInstruction.InstructionY.StepCount;
+                    nextPlannedPositionY += axesInstruction.InstructionY.StepCount;
             }
             else
             {
                 var stepInstruction = instruction as StepInstrution;
                 if (stepInstruction != null)
                 {
-                    nextPlannedPositionX -= stepInstruction.StepCount;
+                    nextPlannedPositionX += stepInstruction.StepCount;
                 }
             }
 
@@ -358,7 +379,7 @@ namespace ControllerCNC.Machine
             {
                 _sendQueue.Clear();
                 _incompleteInstructionQueue.Clear();
-                _incompletePlans = 0;
+                _incompleteInstructions = 0;
                 Monitor.Pulse(_L_instructionCompletition);
             }
 
@@ -453,10 +474,10 @@ namespace ControllerCNC.Machine
 
                 lock (_L_instructionCompletition)
                 {
-                    while (_incompletePlans >= MaxIncompletePlanCount)
+                    while (_incompleteInstructions >= MaxIncompletePlanCount)
                         Monitor.Wait(_L_instructionCompletition);
 
-                    _incompletePlans += 1;
+                    _incompleteInstructions += 1;
                 }
 
                 if (_resetConnection)

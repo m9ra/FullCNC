@@ -241,7 +241,7 @@ namespace ControllerCNC.Demos
         /// <returns>The <see cref="Point4D"/>.</returns>
         private static Point4D point2D(int x, int y)
         {
-            return new Point4D(0, 0, x, y);
+            return new Point4D(0, 0, -x, -y);
         }
 
         /// <summary>
