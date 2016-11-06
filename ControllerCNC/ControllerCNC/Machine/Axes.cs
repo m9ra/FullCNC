@@ -54,6 +54,18 @@ namespace ControllerCNC.Machine
         }
 
         /// <summary>
+        /// Combines instructions for u,v, x, y axes.
+        /// </summary>
+        /// <param name="u">Instruction for u.</param>
+        /// <param name="v">Instruction for v.</param>
+        /// <param name="y">Instruction for y.</param>
+        /// <param name="y">Instruction for y.</param>
+        public static Axes UVXY(StepInstrution u, StepInstrution v, StepInstrution x, StepInstrution y)
+        {
+            return new Axes(x, y, u, v);
+        }
+
+        /// <summary>
         /// Combines instructions for x and y axes.
         /// </summary>
         /// <param name="x">Instruction for x.</param>
@@ -80,6 +92,35 @@ namespace ControllerCNC.Machine
         {
             return new Axes(null, y, null, null);
         }
+
+        /// <summary>
+        /// Changes axes X, Y to UV.
+        /// </summary>
+        internal Axes AsUV()
+        {
+            if (InstructionU != null)
+                throw new NotSupportedException("Instruction for U is not empty.");
+
+            if (InstructionV != null)
+                throw new NotSupportedException("Instruction for V is not empty.");
+
+            return new Axes(null, null, InstructionX, InstructionY);
+        }
+
+        /// <summary>
+        /// Duplicates instruction for X to U and Y to V.
+        /// </summary>
+        internal InstructionCNC DuplicateToUV()
+        {
+            if (InstructionU != null)
+                throw new NotSupportedException("Instruction for U is not empty.");
+
+            if (InstructionV != null)
+                throw new NotSupportedException("Instruction for V is not empty.");
+
+            return new Axes(InstructionX, InstructionY, InstructionX, InstructionY);
+        }
+
 
         /// </inheritdoc>
         internal override byte[] GetInstructionBytes()
@@ -139,5 +180,6 @@ namespace ControllerCNC.Machine
 
             throw new NullReferenceException("There has to be at least one non-null instruction.");
         }
+
     }
 }

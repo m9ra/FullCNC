@@ -54,18 +54,18 @@ namespace ControllerCNC.Demos
         /// </summary>
         public static PlanBuilder BackAndForwardAxisTraversal()
         {
-            var traverseDelta = 450;
+            var traverseDelta = 400;
             var builder = new PlanBuilder();
 
             for (var i = 0; i < 30; ++i)
             {
-                var distance = (int)(450 / (1.25 / 400));
+                var distance = Constants.MaxStepsX;
                 var acceleration = Coord2DController.CreateAcceleration(Constants.StartDeltaT, traverseDelta)[0];
                 var deceleration = Coord2DController.CreateAcceleration(traverseDelta, Constants.StartDeltaT)[0];
                 distance -= Math.Abs(acceleration.StepCount);
                 distance -= Math.Abs(deceleration.StepCount);
 
-                if (i % 2 == 1)
+                if (i % 2 == 0)
                 {
                     builder.AddXY(acceleration, null);
                     builder.AddConstantSpeedTransitionXY(distance, 0, Speed.FromDelta(traverseDelta));
@@ -79,6 +79,7 @@ namespace ControllerCNC.Demos
                 }
             }
 
+            builder.ChangeXYtoUV();
             return builder;
         }
 

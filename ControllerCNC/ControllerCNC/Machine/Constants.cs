@@ -62,7 +62,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Fastest DeltaT which is supported
         /// </summary>
-        public static int FastestDeltaT = 350;
+        public static int FastestDeltaT = 400;
 
         /// <summary>
         /// Speed which is safe to turn around without any additional delays.

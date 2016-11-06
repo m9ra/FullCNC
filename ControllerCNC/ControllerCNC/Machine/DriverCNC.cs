@@ -52,24 +52,14 @@ namespace ControllerCNC.Machine
         private readonly Queue<InstructionCNC> _incompleteInstructionQueue = new Queue<InstructionCNC>();
 
         /// <summary>
-        /// Position in steps which will be achieved after end of plan.
+        /// State which was already completed by machine.
         /// </summary>
-        private volatile int _confirmedPositionX = 0;
+        private StateInfo _completedState;
 
         /// <summary>
-        /// Position in steps which will be achieved after end of plan.
+        /// State which will be achieved after completing all planned instructions.
         /// </summary>
-        private volatile int _confirmedPositionY = 0;
-
-        /// <summary>
-        /// Position in steps which is currently planned.
-        /// </summary>
-        private volatile int _plannedPositionY = 0;
-
-        /// <summary>
-        /// Position in steps which is currently planned.
-        /// </summary>
-        private volatile int _plannedPositionX = 0;
+        private StateInfo _plannedState;
 
         /// <summary>
         /// Lock for send queue synchornization.
@@ -97,6 +87,16 @@ namespace ControllerCNC.Machine
         private volatile bool _isCommentEnabled;
 
         /// <summary>
+        /// Storage for incomming state data.
+        /// </summary>
+        private byte[] _stateDataBuffer = new byte[1 + 4 * 4];
+
+        /// <summary>
+        /// How many bytes we need to obtain.
+        /// </summary>
+        private int _stateDataRemainingBytes = 0;
+
+        /// <summary>
         /// How many plans are not complete yet.
         /// </summary>
         private volatile int _incompleteInstructions;
@@ -111,25 +111,16 @@ namespace ControllerCNC.Machine
         /// </summary>
         private Thread _communicationWorker;
 
-        /// <summary>
-        /// Position obtained from confirmed instrutions.
-        /// </summary>
-        public int ConfirmedPositionX { get { return _confirmedPositionX; } }
 
         /// <summary>
-        /// Position obtained from confirmed instrutions.
+        /// State which was already completed by the machine.
         /// </summary>
-        public int ConfirmedPositionY { get { return _confirmedPositionY; } }
+        public StateInfo CompletedState { get { return _completedState.Copy(); } }
 
         /// <summary>
-        /// Position obtained from planned instrutions.
+        /// State which will be achieved after confirming all planned instructions.
         /// </summary>
-        public int PlannedPositionX { get { return _plannedPositionX; } }
-
-        /// <summary>
-        /// Position obtained from planned instrutions.
-        /// </summary>
-        public int PlannedPositionY { get { return _plannedPositionY; } }
+        public StateInfo PlannedState { get { return _plannedState.Copy(); } }
 
         /// <summary>
         /// Handler that can be used for observing of received data.
@@ -145,7 +136,7 @@ namespace ControllerCNC.Machine
         /// Event fired when homing result arrived.
         /// </summary>
         public event Action OnHomingEnded;
-        
+
         /// <summary>
         /// Event fired when all instructions have been confirmed.
         /// </summary>
@@ -187,9 +178,17 @@ namespace ControllerCNC.Machine
         /// <param name="plan">Plan which parts will be executed.</param>
         public bool SEND(IEnumerable<InstructionCNC> plan)
         {
-            foreach (var part in plan)
+            var testState = _plannedState.Copy();
+            foreach (var instruction in plan)
             {
-                if (!SEND(part))
+                if (!checkBoundaries(instruction, ref testState))
+                    //atomic behaviour for whole plan
+                    return false;
+            }
+
+            foreach (var instruction in plan)
+            {
+                if (!SEND(instruction))
                     return false;
             }
 
@@ -202,8 +201,11 @@ namespace ControllerCNC.Machine
         /// <param name="part">Part to send.</param>
         public bool SEND(InstructionCNC part)
         {
-            if (!checkBoundaries(part))
+            var testState = _plannedState.Copy();
+            if (!checkBoundaries(part, ref testState))
                 return false;
+
+            _plannedState = testState;
 
             send(part);
             return true;
@@ -217,6 +219,30 @@ namespace ControllerCNC.Machine
             for (var i = 0; i < data.Length; ++i)
             {
                 var response = data[i];
+                if (_stateDataRemainingBytes > 0)
+                {
+                    _stateDataBuffer[_stateDataBuffer.Length - _stateDataRemainingBytes] = (byte)response;
+                    --_stateDataRemainingBytes;
+
+                    if (_stateDataRemainingBytes == 0)
+                    {
+                        lock (_L_instructionCompletition)
+                        {
+                            _incompleteInstructionQueue.Dequeue();
+                            _completedState.SetState(_stateDataBuffer);
+                            --_incompleteInstructions;
+
+                            if (_incompleteInstructionQueue.Count > 0)
+                                throw new NotSupportedException("State retrieval requires empty queue");
+                            _plannedState = _completedState.Copy();
+
+                            Monitor.Pulse(_L_instructionCompletition);
+                        }
+                    }
+
+                    continue;
+                }
+
                 if (_isCommentEnabled)
                 {
                     if (response == '\n')
@@ -233,8 +259,18 @@ namespace ControllerCNC.Machine
                     case 'I':
                         //first reset plans - the driver is blocked on expects confirmation
                         clearDriverState();
+                        send(new StateDataInstruction());
                         break;
 
+                    case 'D':
+                        lock (_L_confirmation)
+                        {
+                            _expectsConfirmation = false;
+                            Monitor.Pulse(_L_confirmation);
+                            _stateDataRemainingBytes = _stateDataBuffer.Length;
+                        }
+
+                        break;
                     case 'H':
 
                         lock (_L_confirmation)
@@ -246,8 +282,7 @@ namespace ControllerCNC.Machine
                         lock (_L_instructionCompletition)
                         {
                             _incompleteInstructionQueue.Dequeue();
-                            _confirmedPositionX = 0;
-                            _confirmedPositionY = 0;
+                            _completedState.CalibrateHome();
                             --_incompleteInstructions;
                             Monitor.Pulse(_L_instructionCompletition);
                         }
@@ -308,69 +343,14 @@ namespace ControllerCNC.Machine
         private void onInstructionCompleted()
         {
             var instruction = _incompleteInstructionQueue.Dequeue();
+            _completedState.Completed(instruction);
             var axesInstruction = instruction as Axes;
-            if (axesInstruction != null)
-            {
-                if (axesInstruction.InstructionX != null)
-                    _confirmedPositionX += axesInstruction.InstructionX.StepCount;
-
-                if (axesInstruction.InstructionY != null)
-                    _confirmedPositionY += axesInstruction.InstructionY.StepCount;
-                return;
-            }
-
-            var stepInstruction = instruction as StepInstrution;
-            if (stepInstruction != null)
-            {
-                _confirmedPositionX += stepInstruction.StepCount;
-            }
         }
 
-        private bool checkBoundaries(InstructionCNC instruction)
+        private bool checkBoundaries(InstructionCNC instruction, ref StateInfo state)
         {
-
-            var nextPlannedPositionX = _plannedPositionX;
-            var nextPlannedPositionY = _plannedPositionY;
-
-            var axesInstruction = instruction as Axes;
-            if (axesInstruction != null)
-            {
-                if (axesInstruction.InstructionX != null)
-                    nextPlannedPositionX += axesInstruction.InstructionX.StepCount;
-
-                if (axesInstruction.InstructionY != null)
-                    nextPlannedPositionY += axesInstruction.InstructionY.StepCount;
-            }
-            else
-            {
-                var stepInstruction = instruction as StepInstrution;
-                if (stepInstruction != null)
-                {
-                    nextPlannedPositionX += stepInstruction.StepCount;
-                }
-            }
-
-            if (instruction is HomingInstruction)
-            {
-                nextPlannedPositionX = 0;
-                nextPlannedPositionY = 0;
-            }
-
-            if (nextPlannedPositionX < 0)
-                return false;
-
-            if (nextPlannedPositionY < 0)
-                return false;
-
-            if (nextPlannedPositionX > Constants.MaxStepsX)
-                return false;
-
-            if (nextPlannedPositionY > Constants.MaxStepsY)
-                return false;
-
-            _plannedPositionX = nextPlannedPositionX;
-            _plannedPositionY = nextPlannedPositionY;
-            return true;
+            state.Completed(instruction);
+            return state.CheckBoundaries();
         }
 
         private void clearDriverState()
@@ -388,6 +368,7 @@ namespace ControllerCNC.Machine
                 if (!_expectsConfirmation)
                     throw new NotSupportedException("Race condition threat");
 
+                _stateDataRemainingBytes = 0;
                 _expectsConfirmation = false;
                 Monitor.Pulse(_L_confirmation);
             }
@@ -507,7 +488,7 @@ namespace ControllerCNC.Machine
             throw new NotImplementedException("Disambiguate ports");
         }
 
-        private static string readData(SerialPort port)
+        private string readData(SerialPort port)
         {
             var incommingBuffer = new byte[4096];
             var incommingSize = port.Read(incommingBuffer, 0, incommingBuffer.Length);

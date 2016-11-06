@@ -28,6 +28,32 @@ namespace ControllerCNC.Planning
         }
 
         /// <summary>
+        /// Changes instructions for XY to UV.
+        /// </summary>
+        public void ChangeXYtoUV()
+        {
+            var planCopy = _plan.ToArray();
+            _plan.Clear();
+            foreach (Axes instruction in planCopy)
+            {
+                _plan.Add(instruction.AsUV());
+            }
+        }
+
+        /// <summary>
+        /// Duplicates instructions for XY to UV.
+        /// </summary>
+        public void DuplicateXYtoUV()
+        {
+            var planCopy = _plan.ToArray();
+            _plan.Clear();
+            foreach (Axes instruction in planCopy)
+            {
+                _plan.Add(instruction.DuplicateToUV());
+            }
+        }
+
+        /// <summary>
         /// Adds a plan instruction for simultaneous controll of two axes.
         /// The instruction type has to be same for the axes.
         /// </summary>

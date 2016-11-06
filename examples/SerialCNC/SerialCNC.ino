@@ -6,14 +6,11 @@
 #define BUFFERED_INSTRUCTION_COUNT 8
 #define STEPPER_COUNT 2
 
-byte STEP_CLK_PIN1 = 10;
-byte STEP_DIR_PIN1 = 11;
-
-byte STEP_CLK_PIN2 = 8;
-byte STEP_DIR_PIN2 = 9;
-
 //Buffer used in form of INSTRUCTION_SIZE segments which are filled with Serial data.
 byte INSTRUCTION_BUFFER[INSTRUCTION_SIZE*BUFFERED_INSTRUCTION_COUNT] = { 0 };
+
+// determine whether home position was calibrated already
+bool IS_HOME_CALIBRATED = false;
 
 //Index where next instruction segment will contain plan instruction.
 uint16_t INSTRUCTION_BUFFER_LAST_INDEX = 0;
@@ -27,15 +24,13 @@ uint16_t SEGMENT_ARRIVAL_OFFSET = 0;
 //Time where last byte has arrived (is used for incomplete message recoveries).
 unsigned long LAST_BYTE_ARRIVAL_TIME = 0;
 
-int32_t lastActivationSlack1 = 0;
-int32_t lastActivationSlack2 = 0;
+ActivationSlack4D lastSlack = { 0 };
 
 bool enableConstantSchedule = false;
-PlanScheduler2D<ConstantPlan> CONSTANT_SCHEDULER(STEP_CLK_PIN1, STEP_DIR_PIN1, STEP_CLK_PIN2, STEP_DIR_PIN2);
+PlanScheduler4D<ConstantPlan> CONSTANT_SCHEDULER(SLOT1_CLK_MASK, SLOT1_DIR_MASK, SLOT0_CLK_MASK, SLOT0_DIR_MASK, SLOT3_CLK_MASK, SLOT3_DIR_MASK, SLOT2_CLK_MASK, SLOT2_DIR_MASK);
 
 bool enableAccelerationSchedule = false;
-PlanScheduler2D<AccelerationPlan> ACCELERATION_SCHEDULER(STEP_CLK_PIN1, STEP_DIR_PIN1, STEP_CLK_PIN2, STEP_DIR_PIN2);
-
+PlanScheduler4D<AccelerationPlan> ACCELERATION_SCHEDULER(SLOT1_CLK_MASK, SLOT1_DIR_MASK, SLOT0_CLK_MASK, SLOT0_DIR_MASK, SLOT3_CLK_MASK, SLOT3_DIR_MASK, SLOT2_CLK_MASK, SLOT2_DIR_MASK);
 
 //homing interrupt
 volatile byte HOME_MASK = 0;
@@ -48,13 +43,23 @@ void setup() {
 
 	// initialize outputs
 	pinMode(13, OUTPUT);
-	pinMode(STEP_CLK_PIN1, OUTPUT);
-	pinMode(STEP_DIR_PIN1, OUTPUT);
-	pinMode(STEP_CLK_PIN2, OUTPUT);
-	pinMode(STEP_DIR_PIN2, OUTPUT);
 
-	digitalWrite(STEP_CLK_PIN1, HIGH);
-	digitalWrite(STEP_CLK_PIN2, HIGH);
+	pinMode(SLOT0_CLK_PIN, OUTPUT);
+	pinMode(SLOT0_DIR_PIN, OUTPUT);
+
+	pinMode(SLOT1_CLK_PIN, OUTPUT);
+	pinMode(SLOT1_DIR_PIN, OUTPUT);
+
+	pinMode(SLOT2_CLK_PIN, OUTPUT);
+	pinMode(SLOT2_DIR_PIN, OUTPUT);
+
+	pinMode(SLOT3_CLK_PIN, OUTPUT);
+	pinMode(SLOT3_DIR_PIN, OUTPUT);
+
+	digitalWrite(SLOT0_CLK_PIN, HIGH);
+	digitalWrite(SLOT1_CLK_PIN, HIGH);
+	digitalWrite(SLOT2_CLK_PIN, HIGH);
+	digitalWrite(SLOT3_CLK_PIN, HIGH);
 
 	//initialze inputs
 	pinMode(A0, OUTPUT);
@@ -66,8 +71,12 @@ void setup() {
 
 	digitalWrite(A1, HIGH);
 	digitalWrite(A2, HIGH);
+	digitalWrite(A3, HIGH);
+	digitalWrite(A4, HIGH);
 	pciSetup(A1);
 	pciSetup(A2);
+	pciSetup(A3);
+	pciSetup(A4);
 
 	//initialize libraries
 	Steppers::initialize();
@@ -91,14 +100,12 @@ void loop() {
 		if (isPlanFinished) {
 			// executed plans were finished
 			if (enableConstantSchedule) {
-				lastActivationSlack1 = CONSTANT_SCHEDULER.lastActivationSlack1;
-				lastActivationSlack2 = CONSTANT_SCHEDULER.lastActivationSlack2;
+				lastSlack = CONSTANT_SCHEDULER.slack;
 				enableConstantSchedule = false;
 			}
 
 			if (enableAccelerationSchedule) {
-				lastActivationSlack1 = ACCELERATION_SCHEDULER.lastActivationSlack1;
-				lastActivationSlack2 = ACCELERATION_SCHEDULER.lastActivationSlack2;
+				lastSlack = ACCELERATION_SCHEDULER.slack;
 				enableAccelerationSchedule = false;
 			}
 
@@ -163,6 +170,21 @@ inline bool processControllerInstruction() {
 		//homing procedure
 		homing();
 		return true;
+	case 'D': {
+		//state data request
+		Serial.print('|');
+		Serial.println(SLOT1_STEPS);
+		byte data[] = {
+			'D', IS_HOME_CALIBRATED,
+			INT32_TO_BYTES(SLOT1_STEPS),
+			INT32_TO_BYTES(SLOT0_STEPS),
+			INT32_TO_BYTES(SLOT3_STEPS),
+			INT32_TO_BYTES(SLOT2_STEPS)
+		};
+
+		Serial.write(data, sizeof(data));
+		return true;
+	}
 	case 'I':
 		//welcome message
 		melody();
@@ -181,11 +203,9 @@ void homing() {
 		return;
 	}
 
-	//TODO refactor pin numbers
-
 	ACCELERATION_SCHEDULER.initForHoming();
 	while (ACCELERATION_SCHEDULER.fillSchedule());
-	while (HOME_MASK != 1 + 4)
+	while (HOME_MASK != ACTIVATIONS_CLOCK_MASK)
 	{
 		CONSTANT_SCHEDULER.initForHoming();
 		//we can't keep here some unplanned steps - flush them all
@@ -197,23 +217,63 @@ void homing() {
 	while (Steppers::isSchedulerRunning());
 
 	//now go slowly back to release home switches
-	digitalWrite(STEP_DIR_PIN1, LOW);
-	digitalWrite(STEP_DIR_PIN2, LOW);
+	digitalWrite(SLOT0_DIR_PIN, LOW);
+	digitalWrite(SLOT1_DIR_PIN, LOW);
+	digitalWrite(SLOT2_DIR_PIN, LOW);
+	digitalWrite(SLOT3_DIR_PIN, LOW);
 	delayMicroseconds(PORT_CHANGE_DELAY);
+	int slot0_home_rev = 0;
+	int slot1_home_rev = 0;
+	int slot2_home_rev = 0;
+	int slot3_home_rev = 0;
+
 	while (HOME_MASK > 0)
 	{
-		if (HOME_MASK & 4)
-			digitalWrite(STEP_CLK_PIN1, LOW);
+		if (HOME_MASK & SLOT0_CLK_MASK) {
+			digitalWrite(SLOT0_CLK_PIN, LOW);
+			++slot0_home_rev;
+		}
 
-		if (HOME_MASK & 1)
-			digitalWrite(STEP_CLK_PIN2, LOW);
+		if (HOME_MASK & SLOT1_CLK_MASK) {
+			digitalWrite(SLOT1_CLK_PIN, LOW);
+			++slot1_home_rev;
+		}
+
+		if (HOME_MASK & SLOT2_CLK_MASK) {
+			digitalWrite(SLOT2_CLK_PIN, LOW);
+			++slot2_home_rev;
+		}
+
+		if (HOME_MASK & SLOT3_CLK_MASK) {
+			digitalWrite(SLOT3_CLK_PIN, LOW);
+			++slot3_home_rev;
+		}
 
 		delayMicroseconds(PORT_CHANGE_DELAY);
-		digitalWrite(STEP_CLK_PIN1, HIGH);
-		digitalWrite(STEP_CLK_PIN2, HIGH);
+		digitalWrite(SLOT0_CLK_PIN, HIGH);
+		digitalWrite(SLOT1_CLK_PIN, HIGH);
+		digitalWrite(SLOT2_CLK_PIN, HIGH);
+		digitalWrite(SLOT3_CLK_PIN, HIGH);
 
-		delayMicroseconds(2000 - PORT_CHANGE_DELAY);
+		delayMicroseconds(4000 - PORT_CHANGE_DELAY);
 	}
+
+	//scheduler is disabled here - is it safe to udpate that without locking
+	SLOT0_STEPS = 0;
+	SLOT1_STEPS = 0;
+	SLOT2_STEPS = 0;
+	SLOT3_STEPS = 0;
+
+	Serial.print('|');
+	Serial.print(slot1_home_rev);
+	Serial.print(',');
+	Serial.print(slot0_home_rev);
+	Serial.print(',');
+	Serial.print(slot3_home_rev);
+	Serial.print(',');
+	Serial.println(slot2_home_rev);
+
+	IS_HOME_CALIBRATED = true;
 	//homing was successful
 	Serial.print('H');
 }
@@ -228,7 +288,10 @@ void pciSetup(byte pin)
 inline void setHomeMask() {
 	byte l1Pushed = (digitalRead(A1) == LOW) << 2;
 	byte l2Pushed = (digitalRead(A2) == LOW) << 0;
-	HOME_MASK = l1Pushed | l2Pushed;
+	byte l3Pushed = (digitalRead(A3) == LOW) << 6;
+	byte l4Pushed = (digitalRead(A4) == LOW) << 4;
+	byte mask = l1Pushed | l2Pushed | l3Pushed | l4Pushed;
+	HOME_MASK = mask;
 	Steppers::setActivationMask(HOME_MASK);
 }
 
@@ -256,13 +319,13 @@ void tryToFetchNextPlans() {
 	switch (buffer[-1]) {
 	case 'A': {
 		enableAccelerationSchedule = true;
-		ACCELERATION_SCHEDULER.registerLastActivationSlack(lastActivationSlack1, lastActivationSlack2);
+		ACCELERATION_SCHEDULER.registerLastActivationSlack(lastSlack);
 		ACCELERATION_SCHEDULER.initFrom(buffer);
 		break;
 	}
 	case 'C': {
 		enableConstantSchedule = true;
-		CONSTANT_SCHEDULER.registerLastActivationSlack(lastActivationSlack1, lastActivationSlack2);
+		CONSTANT_SCHEDULER.registerLastActivationSlack(lastSlack);
 		CONSTANT_SCHEDULER.initFrom(buffer);
 		break;
 	}
@@ -298,18 +361,18 @@ void melodyStart() {
 
 void note(int32_t length, int32_t tone) {
 	for (int32_t i = 0; i < length * 1000; i += 2 * tone) {
-		digitalWrite(STEP_DIR_PIN1, LOW);
+		digitalWrite(SLOT0_DIR_PIN, LOW);
 		delayMicroseconds(10);
-		digitalWrite(STEP_CLK_PIN1, LOW);
+		digitalWrite(SLOT0_CLK_PIN, LOW);
 		delayMicroseconds(tone - 20);
-		digitalWrite(STEP_CLK_PIN1, HIGH);
+		digitalWrite(SLOT0_CLK_PIN, HIGH);
 		delayMicroseconds(10);
 
-		digitalWrite(STEP_DIR_PIN1, HIGH);
+		digitalWrite(SLOT0_DIR_PIN, HIGH);
 		delayMicroseconds(10);
-		digitalWrite(STEP_CLK_PIN1, LOW);
+		digitalWrite(SLOT0_CLK_PIN, LOW);
 		delayMicroseconds(tone - 20);
-		digitalWrite(STEP_CLK_PIN1, HIGH);
+		digitalWrite(SLOT0_CLK_PIN, HIGH);
 		delayMicroseconds(10);
 	}
 }

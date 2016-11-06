@@ -91,18 +91,18 @@
                         <StackPanel Margin="10 30 20 0" Width="200">
                             <Button Name="ResetCoordinates" Style="{StaticResource CommandButton}" Click="ResetCoordinates_Click">Reset</Button>
                             <Button Name="GoToZeros" Style="{StaticResource CommandButton}" Click="GoToZeros_Click">Go to zeros</Button>
-                            <Button Name="AlignHeads" Style="{StaticResource CommandButton}">Align heads</Button>
+                            <Button Name="AlignHeads" Style="{StaticResource CommandButton}" Click="AlignHeads_Click">Align heads</Button>
                         </StackPanel>
                         <StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <Label Style="{StaticResource CoordinateName}">U:</Label>
-                                <TextBlock Style="{StaticResource Coordinate}">
+                                <TextBlock Name="PositionU" Style="{StaticResource Coordinate}">
                                     0.000
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <Label Style="{StaticResource CoordinateName}">V:</Label>
-                                <TextBlock Style="{StaticResource Coordinate}">
+                                <TextBlock Name="PositionV" Style="{StaticResource Coordinate}">
                                     0.000
                                 </TextBlock>
                             </StackPanel>
@@ -148,14 +148,14 @@
                 <Border BorderBrush="Black" BorderThickness="1">
                     <StackPanel DockPanel.Dock="Right" Margin="0 20 0 0">
                         <StackPanel Orientation="Vertical">
-                            <CheckBox IsChecked="True">
+                            <CheckBox Name="MoveUV"  IsChecked="True">
                                 <TextBlock FontWeight="Bold" Text="UV"/>
                                 <CheckBox.LayoutTransform>
                                     <ScaleTransform ScaleX="2" ScaleY="2" />
                                 </CheckBox.LayoutTransform>
                             </CheckBox>
 
-                            <CheckBox IsChecked="True">
+                            <CheckBox Name="MoveXY" IsChecked="True">
                                 <TextBlock FontWeight="Bold" Text="XY"/>
                                 <CheckBox.LayoutTransform>
                                     <ScaleTransform ScaleX="2" ScaleY="2" />

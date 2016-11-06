@@ -151,18 +151,47 @@ namespace ControllerCNC.GUI
             finalSize = this.DesiredSize;
             foreach (WorkspaceItem child in Children)
             {
-                var positionX = finalSize.Width * child.PositionX / StepCountX;
-                var positionY = finalSize.Height * child.PositionY / StepCountY;
                 if (child is JoinLine)
-                    //joins have to be refreshed any time
-                    child.InvalidateMeasure();
+                    //join lines are placed after all other children have positions set correctly
+                    continue;
 
+                var positionX = projectToX(finalSize, child);
+                var positionY = projectToY(finalSize, child);
                 child.RegisterWorkspaceSize(finalSize);
                 child.Measure(finalSize);
                 child.Arrange(new Rect(new Point(positionX, positionY), child.DesiredSize));
             }
 
+            foreach (WorkspaceItem child in Children)
+            {
+                if (!(child is JoinLine))
+                    //other children are handled already
+                    continue;
+
+                //join lines have to be repositioned every time
+                child.InvalidateMeasure();
+                child.InvalidateArrange();
+
+                child.RegisterWorkspaceSize(finalSize);
+                child.Measure(finalSize);
+                var positionX = projectToX(finalSize, child);
+                var positionY = projectToY(finalSize, child);
+                child.Arrange(new Rect(new Point(positionX, positionY), child.DesiredSize));
+            }
+
             return finalSize;
+        }
+
+        private double projectToX(Size finalSize, WorkspaceItem child)
+        {
+            var positionX = finalSize.Width * child.PositionX / StepCountX;
+            return positionX;
+        }
+
+        private double projectToY(Size finalSize, WorkspaceItem child)
+        {
+            var positionX = finalSize.Height * child.PositionY / StepCountY;
+            return positionX;
         }
     }
 }

@@ -8,16 +8,21 @@ volatile byte SCHEDULE_START = 0;
 volatile byte SCHEDULE_END = 0;
 
 volatile byte ACTIVATION_MASK = 0;
-volatile byte ACTIVATIONS_CLOCK_MASK = 1 + 4;
 volatile bool SCHEDULER_STOP_EVENT_FLAG = false;
 volatile bool SCHEDULER_START_EVENT_FLAG = false;
 
+volatile int32_t SLOT0_STEPS = 0;
+volatile int32_t SLOT1_STEPS = 0;
+volatile int32_t SLOT2_STEPS = 0;
+volatile int32_t SLOT3_STEPS = 0;
 
 ISR(TIMER1_OVF_vect) {
 	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
 
 	//pins go LOW here (pulse start)
-	PORTB = SCHEDULE_ACTIVATIONS[SCHEDULE_END] | ACTIVATION_MASK;
+	byte activation = SCHEDULE_ACTIVATIONS[SCHEDULE_END] | ACTIVATION_MASK;
+	PORTB = B_SLOTS_MASK & activation;
+	PORTD = D_SLOTS_MASK & activation;
 	/*///interrupts();
 	Serial.print("|T:");
 	Serial.print(UINT16_MAX - SCHEDULE_BUFFER[SCHEDULE_END]);
@@ -32,9 +37,40 @@ ISR(TIMER1_OVF_vect) {
 	else {
 		++SCHEDULE_END;
 	}
-	delayMicroseconds(3);
-	//pins go HIGH here (pulse end)
-	PORTB |= ACTIVATIONS_CLOCK_MASK;
+	//---HERE WE HAVE TO spent 3us at least (because of the minimal pulse width)
+	byte nactivation = ~activation;
+	byte step0 = nactivation & (SLOT0_CLK_MASK | SLOT0_DIR_MASK);
+	int8_t step0p = (step0 == (SLOT0_CLK_MASK | SLOT0_DIR_MASK));
+	int8_t step0n = (step0 == SLOT0_CLK_MASK);
+
+	byte step1 = nactivation & (SLOT1_CLK_MASK | SLOT1_DIR_MASK);
+	int8_t step1p = (step1 == (SLOT1_CLK_MASK | SLOT1_DIR_MASK));
+	int8_t step1n = (step1 == SLOT1_CLK_MASK);
+
+	byte step2 = nactivation & (SLOT2_CLK_MASK | SLOT2_DIR_MASK);
+	int8_t step2p = (step2 == (SLOT2_CLK_MASK | SLOT2_DIR_MASK));
+	int8_t step2n = (step2 == SLOT2_CLK_MASK);
+
+	byte step3 = nactivation & (SLOT3_CLK_MASK | SLOT3_DIR_MASK);
+	int8_t step3p = (step3 == (SLOT3_CLK_MASK | SLOT3_DIR_MASK));
+	int8_t step3n = (step3 == SLOT3_CLK_MASK);
+
+	SLOT0_STEPS += (int32_t)(step0p - step0n);
+	SLOT1_STEPS += (int32_t)(step1p - step1n);
+	SLOT2_STEPS += (int32_t)(step2p - step2n);
+	SLOT3_STEPS += (int32_t)(step3p - step3n);
+
+	/*	Serial.print('|');
+		Serial.print(step2p);
+		Serial.print(' ');
+		Serial.print(step2n);
+		Serial.print(' ');
+		Serial.println(SLOT2_STEPS);*/
+		//------------------------------------
+
+		//pins go HIGH here (pulse end)
+	PORTB |= B_SLOTS_MASK & ACTIVATIONS_CLOCK_MASK;
+	PORTD |= D_SLOTS_MASK & ACTIVATIONS_CLOCK_MASK;
 }
 
 bool Steppers::startScheduler() {
@@ -111,7 +147,7 @@ void AccelerationPlan::loadFrom(byte * data)
 void AccelerationPlan::initForHoming()
 {
 	//TODO refactore homing settings somewhere
-	int16_t stepCount = -198;
+	int16_t stepCount = -150;
 	this->stepCount = abs(stepCount);
 	this->remainingSteps = this->stepCount;
 	this->isActive = this->remainingSteps > 0;
@@ -243,14 +279,14 @@ void ConstantPlan::initForHoming()
 	this->nextActivationTime = 0;
 	this->isActivationBoundary = !this->isActive;
 
-	this->_baseDeltaT = 350;
+	this->_baseDeltaT = 400;
 	this->_periodNumerator = 0;
 	this->_periodDenominator = 0;
 	this->_periodAccumulator = 0;
 }
 
-Plan::Plan(byte clkPin, byte dirPin) :
-	clkMask(PIN_TO_MASK(clkPin)), dirMask(PIN_TO_MASK(dirPin)),
+Plan::Plan(byte clkMask, byte dirMask) :
+	clkMask(clkMask), dirMask(dirMask),
 	stepMask(0), stepCount(0), remainingSteps(0), isActive(false), isActivationBoundary(false), nextActivationTime(0)
 {
 }

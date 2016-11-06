@@ -38,9 +38,15 @@ namespace ControllerCNC
 
         private readonly WorkspacePanel _workspace;
 
-        private readonly WorkspaceItem _xyHead = new HeadCNC();
+        private readonly WorkspaceItem _uvHead = new HeadCNC(Colors.Blue, true);
+
+        private readonly WorkspaceItem _xyHead = new HeadCNC(Colors.Red, false);
 
         private readonly TrajectoryShapeItem _shape;
+
+        private int _positionOffsetU = 0;
+
+        private int _positionOffsetV = 0;
 
         private int _positionOffsetX = 0;
 
@@ -57,6 +63,7 @@ namespace ControllerCNC
             _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
             WorkspaceSlot.Child = _workspace;
             _workspace.Children.Add(_xyHead);
+            _workspace.Children.Add(_uvHead);
 
             _shape = new TrajectoryShapeItem(new Trajectory4D(ShapeDrawing.HeartCoordinates()), _workspace);
             _shape.PositionX = 3000;
@@ -103,13 +110,22 @@ namespace ControllerCNC
 
         void _statusTimer_Tick(object sender, EventArgs e)
         {
-            var positionX = Constants.MilimetersPerStep * (_cnc.ConfirmedPositionX - _positionOffsetX);
-            var positionY = Constants.MilimetersPerStep * (_cnc.ConfirmedPositionY - _positionOffsetY);
+            var state = _cnc.CompletedState;
+            var positionU = Constants.MilimetersPerStep * (state.U - _positionOffsetU);
+            var positionV = Constants.MilimetersPerStep * (state.V - _positionOffsetV);
+            var positionX = Constants.MilimetersPerStep * (state.X - _positionOffsetX);
+            var positionY = Constants.MilimetersPerStep * (state.Y - _positionOffsetY);
 
+            PositionU.Text = positionU.ToString("0.000");
+            PositionV.Text = positionV.ToString("0.000");
             PositionX.Text = positionX.ToString("0.000");
             PositionY.Text = positionY.ToString("0.000");
-            _xyHead.PositionX = _cnc.ConfirmedPositionX;
-            _xyHead.PositionY = _cnc.ConfirmedPositionY;
+
+            _uvHead.PositionX = state.U;
+            _uvHead.PositionY = state.V;
+
+            _xyHead.PositionX = state.X;
+            _xyHead.PositionY = state.Y;
         }
 
 
@@ -125,12 +141,13 @@ namespace ControllerCNC
             var builder = new PlanBuilder();
             var entryPoint = _workspace.GetEntryJoinLine();
 
-            var initX = entryPoint.PositionX - _cnc.PlannedPositionX;
-            var initY = entryPoint.PositionY - _cnc.PlannedPositionY;
+            var state = _cnc.PlannedState;
+            var initX = entryPoint.PositionX - state.X;
+            var initY = entryPoint.PositionY - state.Y;
             builder.AddRampedLineXY(initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
-
-
             entryPoint.FillBuilder(builder);
+
+            builder.DuplicateXYtoUV();
             var plan = builder.Build();
             if (!_cnc.SEND(plan))
                 throw new NotSupportedException("Invalid plan");
@@ -151,18 +168,24 @@ namespace ControllerCNC
 
         private void enableMotionCommands()
         {
-            foreach (var command in _motionCommands)
+            Dispatcher.Invoke(() =>
             {
-                command.IsEnabled = true;
-            }
+                foreach (var command in _motionCommands)
+                {
+                    command.IsEnabled = true;
+                }
+            });
         }
 
         private void disableMotionCommands()
         {
-            foreach (var command in _motionCommands)
+            Dispatcher.Invoke(() =>
             {
-                command.IsEnabled = false;
-            }
+                foreach (var command in _motionCommands)
+                {
+                    command.IsEnabled = false;
+                }
+            });
         }
 
         private void initializeTransitionHandlers()
@@ -195,12 +218,24 @@ namespace ControllerCNC
             {
                 _coordController.SetSpeed(Constants.FastestDeltaT);
             }
+            _coordController.SetPlanes(MoveUV.IsChecked.Value, MoveXY.IsChecked.Value);
             _coordController.SetMovement(dirX, dirY);
         }
 
         private void ExitButton_Click(object sender, RoutedEventArgs e)
         {
             this.Close();
+        }
+
+        private void AlignHeads_Click(object sender, RoutedEventArgs e)
+        {
+            var state = _cnc.PlannedState;
+            var xSteps = state.X - state.U;
+            var ySteps = state.Y - state.V;
+
+            var builder = new PlanBuilder();
+            builder.AddRampedLineXY(-xSteps, -ySteps, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            _cnc.SEND(builder.Build());
         }
 
         private void CalibrationButton_Click(object sender, RoutedEventArgs e)
@@ -211,16 +246,28 @@ namespace ControllerCNC
 
         private void ResetCoordinates_Click(object sender, RoutedEventArgs e)
         {
-            _positionOffsetX = _cnc.ConfirmedPositionX;
-            _positionOffsetY = _cnc.ConfirmedPositionY;
+            var state = _cnc.CompletedState;
+            _positionOffsetU = state.U;
+            _positionOffsetV = state.V;
+            _positionOffsetX = state.X;
+            _positionOffsetY = state.Y;
         }
 
         private void GoToZeros_Click(object sender, RoutedEventArgs e)
         {
+            var state = _cnc.PlannedState;
+            var stepsU = _positionOffsetU - state.U;
+            var stepsV = _positionOffsetV - state.V;
+            var stepsX = _positionOffsetX - state.X;
+            var stepsY = _positionOffsetY - state.Y;
+
             var planner = new PlanBuilder();
-            var stepsX = _positionOffsetX - _cnc.ConfirmedPositionX;
-            var stepsY = _positionOffsetY - _cnc.ConfirmedPositionY;
-            planner.AddRampedLineXY(-stepsX, -stepsY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            planner.AddRampedLineXY(stepsU, stepsV, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            planner.ChangeXYtoUV();
+            _cnc.SEND(planner.Build());
+
+            planner = new PlanBuilder();
+            planner.AddRampedLineXY(stepsX, stepsY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             _cnc.SEND(planner.Build());
         }
 
@@ -229,7 +276,5 @@ namespace ControllerCNC
             executePlan();
         }
         #endregion
-
-
     }
 }

@@ -30,6 +30,10 @@ namespace ControllerCNC
 
         private volatile bool _stop = true;
 
+        private volatile bool _moveXY = true;
+
+        private volatile bool _moveUV = true;
+
         internal Coord2DController(DriverCNC cnc)
         {
             _cnc = cnc;
@@ -69,7 +73,7 @@ namespace ControllerCNC
             {
                 for (var i = 0; i < accelerationX.Length; ++i)
                 {
-                    _cnc.SEND(Axes.XY(accelerationX[i], accelerationY[i]));
+                    sendInstruction(accelerationX[i], accelerationY[i]);
                 }
 
                 velocityReached();
@@ -81,12 +85,12 @@ namespace ControllerCNC
             {
                 foreach (var acceleration in accelerationX)
                 {
-                    _cnc.SEND(Axes.X(acceleration));
+                    sendInstruction(acceleration, null);
                 }
 
                 foreach (var acceleration in accelerationY)
                 {
-                    _cnc.SEND(Axes.Y(acceleration));
+                    sendInstruction(null, acceleration);
                 }
 
                 velocityReached();
@@ -109,7 +113,28 @@ namespace ControllerCNC
 
             var xInstruction = new ConstantInstruction(stepCountX, (UInt16)Math.Abs(_deltaTX), 0);
             var yInstruction = new ConstantInstruction(stepCountY, (UInt16)Math.Abs(_deltaTY), 0);
-            _cnc.SEND(Axes.XY(xInstruction, yInstruction));
+
+            sendInstruction(xInstruction, yInstruction);
+        }
+
+        private void sendInstruction(StepInstrution planeInstruction1, StepInstrution planeInstruction2)
+        {
+            StepInstrution u, v, x, y;
+            u = v = x = y = null;
+
+            if (_moveUV)
+            {
+                u = planeInstruction1;
+                v = planeInstruction2;
+            }
+
+            if (_moveXY)
+            {
+                x = planeInstruction1;
+                y = planeInstruction2;
+            }
+
+            _cnc.SEND(Axes.UVXY(u, v, x, y));
         }
 
         internal static AccelerationInstruction[] CreateAcceleration(int speed, int desiredSpeed)
@@ -153,6 +178,12 @@ namespace ControllerCNC
             _desiredDirectionX = dirX;
             _desiredDirectionY = dirY;
             _stop = false;
+        }
+
+        internal void SetPlanes(bool uv, bool xy)
+        {
+            _moveUV = uv;
+            _moveXY = xy;
         }
 
         internal void SetSpeed(int speed)

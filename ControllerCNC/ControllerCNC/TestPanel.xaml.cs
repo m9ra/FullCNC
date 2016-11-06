@@ -40,7 +40,7 @@ namespace ControllerCNC
         Coord2DController _coord2DController;
 
         public TestPanel()
-        {          
+        {
             InitializeComponent();
 
             Output.ScrollToEnd();
@@ -94,7 +94,7 @@ namespace ControllerCNC
 
         private void Button_Click_2(object sender, RoutedEventArgs e)
         {
-            Execute(MachineTesting.BackAndForwardRevolution);
+            Execute(MachineTesting.BackAndForwardAxisTraversal);
         }
 
         private void Button_Click_3(object sender, RoutedEventArgs e)
@@ -204,7 +204,7 @@ namespace ControllerCNC
         private void startTransition(int dirX, int dirY)
         {
             _coord2DController.SetSpeed(int.Parse(MaxSpeed.Text));
-            _coord2DController.SetMovement(dirX, dirY);
+            _coord2DController.SetMovement(-dirX, -dirY);
         }
 
         private void stopTransition()
