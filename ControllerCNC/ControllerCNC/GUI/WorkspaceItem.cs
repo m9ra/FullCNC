@@ -4,13 +4,21 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.Windows;
 using System.Windows.Controls;
 
 namespace ControllerCNC.GUI
 {
     abstract class WorkspaceItem : UserControl
     {
+        /// <summary>
+        /// Actual position x in steps.
+        /// </summary>
         private int _positionX;
+
+        /// <summary>
+        /// Actual position y in steps.
+        /// </summary>
         private int _positionY;
 
         /// <summary>
@@ -51,17 +59,20 @@ namespace ControllerCNC.GUI
         /// </summary>
         /// <returns></returns>
         protected abstract object createContent();
-
-
+        
         internal WorkspaceItem()
         {
+        }
+
+        internal virtual void RegisterWorkspaceSize(Size size)
+        {
+            //nothing to do by default
         }
 
         protected void initialize()
         {
             Content = createContent();
         }
-
 
         /// <summary>
         /// Handle change in position.

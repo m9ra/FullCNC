@@ -21,15 +21,21 @@ namespace ControllerCNC.GUI
 
         private readonly WorkspacePanel _workspace;
 
-        private readonly int _xStepOffset;
+        private readonly int _xStepMin;
 
-        private readonly int _yStepOffset;
+        private readonly int _yStepMin;
+
+        private readonly int _xStepMax;
+
+        private readonly int _yStepMax;
+
+        private Size _workspaceSize;
 
         internal IEnumerable<Point4D> TrajectoryPoints
         {
             get
             {
-                return _trajectory.Points.Select(p => new Point4D(p.U, p.V, p.X - _xStepOffset + PositionX, p.Y - _yStepOffset + PositionY));
+                return _trajectory.Points.Select(p => new Point4D(p.U, p.V, p.X - _xStepMin + PositionX, p.Y - _yStepMin + PositionY));
             }
         }
 
@@ -50,10 +56,15 @@ namespace ControllerCNC.GUI
             _trajectory = trajectory;
             _workspace = workspace;
 
+            _xStepMin = _yStepMin = int.MaxValue;
+            _xStepMax = _xStepMax = int.MinValue;
+
             foreach (var point in _trajectory.Points)
             {
-                _xStepOffset = Math.Min(point.X, _xStepOffset);
-                _yStepOffset = Math.Min(point.Y, _yStepOffset);
+                _xStepMin = Math.Min(point.X, _xStepMin);
+                _yStepMin = Math.Min(point.Y, _yStepMin);
+                _xStepMax = Math.Max(point.X, _xStepMax);
+                _yStepMax = Math.Max(point.Y, _yStepMax);
             }
 
             initialize();
@@ -64,59 +75,44 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override object createContent()
         {
+            return null;
+        }
+
+        /// <inheritdoc/>
+        internal override void RegisterWorkspaceSize(Size size)
+        {
+            var widthStep = _xStepMax - _xStepMin;
+            var heightStep = _yStepMax - _yStepMin;
+
+
+            Width = widthStep * size.Width / _workspace.StepCountX;
+            Height = heightStep * size.Height / _workspace.StepCountY;
+            _workspaceSize = size;
+        }
+
+        /// <inheritdoc/>
+        protected override void OnRender(DrawingContext drawingContext)
+        {
             var pathSegments = new PathSegmentCollection();
 
             var isFirst = true;
 
-            var workWidth = Math.Floor(_workspace.Size.Width);
-            var workHeight = Math.Floor(_workspace.Size.Height);
+            var workWidth = Math.Floor(_workspaceSize.Width);
+            var workHeight = Math.Floor(_workspaceSize.Height);
             foreach (var point in _trajectory.Points)
             {
                 var planePoint = getNormalizedPlanePoint(point);
                 planePoint.X = planePoint.X * workWidth;
                 planePoint.Y = planePoint.Y * workHeight;
 
-                if (planePoint.X > ActualWidth)
-                    planePoint.X = planePoint.X;
                 pathSegments.Add(new LineSegment(planePoint, !isFirst));
                 isFirst = false;
             }
 
-            var path = new Path();
             var figure = new PathFigure(new Point(0, 0), pathSegments, false);
-            path.Data = new PathGeometry(new[] { figure });
-            path.Stroke = Brushes.Black;
-            path.StrokeThickness = 1.0;
-
-            return path;
-        }
-
-        /// <inheritdoc/>
-        protected override Size MeasureOverride(Size constraint)
-        {
-            var width = 0.0;
-            var height = 0.0;
-            foreach (var point in _trajectory.Points)
-            {
-                var planePoint = getNormalizedPlanePoint(point);
-                width = Math.Max(planePoint.X, width);
-                height = Math.Max(planePoint.Y, height);
-            }
-
-
-            Height = height * _workspace.Size.Height;
-            Width = width * _workspace.Size.Width;
-
-            base.MeasureOverride(constraint);
-
-            return new Size(Height, Width);
-        }
-
-        protected override Size ArrangeOverride(Size arrangeBounds)
-        {
-            Content = createContent();
-            base.ArrangeOverride(arrangeBounds);
-            return new Size(Height, Width);
+            var geometry = new PathGeometry(new[] { figure });
+            var pen = new Pen(Brushes.Black, 1.0);
+            drawingContext.DrawGeometry(Brushes.Transparent, pen, geometry);
         }
 
         /// <summary>
@@ -124,8 +120,8 @@ namespace ControllerCNC.GUI
         /// </summary>
         private Point getNormalizedPlanePoint(Point4D point)
         {
-            var x = (1.0 * point.X - _xStepOffset) / _workspace.StepCountX;
-            var y = (1.0 * point.Y - _yStepOffset) / _workspace.StepCountY;
+            var x = (1.0 * point.X - _xStepMin) / _workspace.StepCountX;
+            var y = (1.0 * point.Y - _yStepMin) / _workspace.StepCountY;
             if (x < 0 || y < 0)
                 throw new NotSupportedException();
             return new Point(x, y);
