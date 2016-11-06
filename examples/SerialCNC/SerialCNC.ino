@@ -172,8 +172,6 @@ inline bool processControllerInstruction() {
 		return true;
 	case 'D': {
 		//state data request
-		Serial.print('|');
-		Serial.println(SLOT1_STEPS);
 		byte data[] = {
 			'D', IS_HOME_CALIBRATED,
 			INT32_TO_BYTES(SLOT1_STEPS),

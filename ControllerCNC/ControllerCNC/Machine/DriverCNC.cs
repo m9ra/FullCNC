@@ -216,9 +216,9 @@ namespace ControllerCNC.Machine
         private void _port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             var data = readData(_port);
-            for (var i = 0; i < data.Length; ++i)
+            foreach (var dataByte in data)
             {
-                var response = data[i];
+                var response = (char)dataByte;
                 if (_stateDataRemainingBytes > 0)
                 {
                     _stateDataBuffer[_stateDataBuffer.Length - _stateDataRemainingBytes] = (byte)response;
@@ -281,8 +281,7 @@ namespace ControllerCNC.Machine
 
                         lock (_L_instructionCompletition)
                         {
-                            _incompleteInstructionQueue.Dequeue();
-                            _completedState.CalibrateHome();
+                            onInstructionCompleted();
                             --_incompleteInstructions;
                             Monitor.Pulse(_L_instructionCompletition);
                         }
@@ -334,7 +333,7 @@ namespace ControllerCNC.Machine
 
 
             if (OnDataReceived != null)
-                OnDataReceived(data);
+                OnDataReceived(Encoding.ASCII.GetString(data.ToArray()));
         }
 
         /// <summary>
@@ -344,7 +343,6 @@ namespace ControllerCNC.Machine
         {
             var instruction = _incompleteInstructionQueue.Dequeue();
             _completedState.Completed(instruction);
-            var axesInstruction = instruction as Axes;
         }
 
         private bool checkBoundaries(InstructionCNC instruction, ref StateInfo state)
@@ -404,7 +402,7 @@ namespace ControllerCNC.Machine
                     {
                         var data = readData(_port);
                         if (OnDataReceived != null)
-                            OnDataReceived(data);
+                            OnDataReceived(Encoding.ASCII.GetString(data.ToArray()));
                     }
 
                     IsConnected = true;
@@ -488,12 +486,11 @@ namespace ControllerCNC.Machine
             throw new NotImplementedException("Disambiguate ports");
         }
 
-        private string readData(SerialPort port)
+        private IEnumerable<byte> readData(SerialPort port)
         {
             var incommingBuffer = new byte[4096];
             var incommingSize = port.Read(incommingBuffer, 0, incommingBuffer.Length);
-            var incommingData = Encoding.ASCII.GetString(incommingBuffer, 0, incommingSize);
-            return incommingData;
+            return incommingBuffer.Take(incommingSize);
         }
 
         private void send(InstructionCNC instruction)

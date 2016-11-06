@@ -144,7 +144,8 @@ namespace ControllerCNC
             var state = _cnc.PlannedState;
             var initX = entryPoint.PositionX - state.X;
             var initY = entryPoint.PositionY - state.Y;
-            builder.AddRampedLineXY(initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            //builder.AddRampedLineXY(-initX, -initY, Constants.MaxPlaneAcceleration, Constants.ReverseSafeSpeed);
+            builder.AddConstantSpeedTransitionXY(initX, initY, Constants.ReverseSafeSpeed);
             entryPoint.FillBuilder(builder);
 
             builder.DuplicateXYtoUV();

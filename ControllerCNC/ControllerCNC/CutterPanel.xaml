@@ -131,13 +131,8 @@
                         <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
                     </StackPanel>
                     <ListBox DockPanel.Dock="Left" MinWidth="300" FontSize="30"  BorderBrush="Gray">
+                        <ListBoxItem>START --> Shape1</ListBoxItem>
                         <ListBoxItem>Shape1</ListBoxItem>
-                        <ListBoxItem>Shape1 --> Shape2</ListBoxItem>
-                        <ListBoxItem>Shape2</ListBoxItem>
-                        <ListBoxItem>Shape3</ListBoxItem>
-                        <ListBoxItem>Shape4</ListBoxItem>
-                        <ListBoxItem>Shape5</ListBoxItem>
-                        <ListBoxItem>Shape6</ListBoxItem>
                     </ListBox>
                 </DockPanel>
             </DockPanel>

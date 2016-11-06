@@ -410,10 +410,4 @@ private:
 	bool _needInit;
 };
 
-
-
-
-
-
-
 #endif

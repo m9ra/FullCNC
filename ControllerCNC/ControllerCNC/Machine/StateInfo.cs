@@ -42,17 +42,19 @@ namespace ControllerCNC.Machine
             V = getStateDataInt32(dataBuffer, 4 + 4 + 4 + 1);
         }
 
-        internal void CalibrateHome()
-        {
-            IsHomeCalibrated = true;
-            U = 0;
-            V = 0;
-            X = 0;
-            Y = 0;
-        }
-
         internal void Completed(InstructionCNC instruction)
         {
+            var homing = instruction as HomingInstruction;
+            if (homing != null)
+            {
+                X = 0;
+                Y = 0;
+                U = 0;
+                V = 0;
+                IsHomeCalibrated = true;
+                return;
+            }
+
             var axesInstruction = instruction as Axes;
             if (axesInstruction != null)
             {
@@ -94,6 +96,15 @@ namespace ControllerCNC.Machine
             return this;
         }
 
+        private void calibrateHome()
+        {
+            IsHomeCalibrated = true;
+            U = 0;
+            V = 0;
+            X = 0;
+            Y = 0;
+        }
+
         private bool getStateDataBool(byte[] buffer, int position)
         {
             return buffer[position] > 0;
@@ -101,7 +112,9 @@ namespace ControllerCNC.Machine
 
         private int getStateDataInt32(byte[] buffer, int position)
         {
-            return BitConverter.ToInt32(buffer.Skip(position).Take(4).Reverse().ToArray(), 0);
+            var value = buffer[position + 3] | (buffer[position + 2] << 8) | (buffer[position + 1] << 16) | (buffer[position] << 24);
+            return value;
+            //return BitConverter.ToInt32(buffer.Skip(position).Take(4).Reverse().ToArray(), 0);
         }
     }
 }

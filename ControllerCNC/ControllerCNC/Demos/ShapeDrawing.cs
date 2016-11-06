@@ -127,8 +127,8 @@ namespace ControllerCNC.Demos
             var top = new List<Point4D>();
             var bottom = new List<Point4D>();
 
-            var smoothness = 200;
-            var scale = 5000;
+            var smoothness = 400;
+            var scale = 12500;
 
             for (var i = 0; i <= smoothness; ++i)
             {
