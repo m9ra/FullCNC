@@ -65,7 +65,9 @@ namespace ControllerCNC
             _workspace.Children.Add(_xyHead);
             _workspace.Children.Add(_uvHead);
 
-            _shape = new TrajectoryShapeItem(new Trajectory4D(ShapeDrawing.HeartCoordinates()), _workspace);
+            var coordinates = ShapeDrawing.LoadCoordinates("HT22.COR");
+            coordinates = ShapeDrawing.CircleCoordinates();
+            _shape = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
             _shape.PositionX = 3000;
             _shape.PositionY = 5000;
 
@@ -147,7 +149,7 @@ namespace ControllerCNC
             //builder.AddRampedLineXY(-initX, -initY, Constants.MaxPlaneAcceleration, Constants.ReverseSafeSpeed);
             builder.AddConstantSpeedTransitionXY(initX, initY, Constants.ReverseSafeSpeed);
             entryPoint.FillBuilder(builder);
-
+            builder.AddConstantSpeedTransitionXY(-initX, -initY, Constants.ReverseSafeSpeed);
             builder.DuplicateXYtoUV();
             var plan = builder.Build();
             if (!_cnc.SEND(plan))

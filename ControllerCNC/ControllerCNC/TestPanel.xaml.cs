@@ -129,7 +129,10 @@ namespace ControllerCNC
 
         private void Execute(IEnumerable<InstructionCNC> plan)
         {
-            _cnc.SEND(plan);
+            var builder = new PlanBuilder();
+            builder.Add(plan);
+            builder.DuplicateXYtoUV();
+            _cnc.SEND(builder.Build());
         }
 
         #endregion

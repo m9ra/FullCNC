@@ -57,7 +57,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// DeltaT which can be safely used after stand still.
         /// </summary>
-        public static readonly int StartDeltaT = 2000;
+        public static readonly int StartDeltaT = 3000;
 
         /// <summary>
         /// Fastest DeltaT which is supported

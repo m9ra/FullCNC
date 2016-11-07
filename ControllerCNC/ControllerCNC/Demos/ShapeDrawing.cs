@@ -8,6 +8,8 @@ using ControllerCNC.Machine;
 using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
 
+using System.IO;
+
 
 namespace ControllerCNC.Demos
 {
@@ -76,7 +78,7 @@ namespace ControllerCNC.Demos
         {
             var speed = Constants.MaxPlaneSpeed;
             var acceleration = Constants.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
-            var squareSize = 9000;
+            var squareSize = 6000;
             var diagonalDistance = 300;
 
 
@@ -119,6 +121,27 @@ namespace ControllerCNC.Demos
 
         #region Shape coordinate providers.
 
+        public static IEnumerable<Point4D> LoadCoordinates(string fileName)
+        {
+            //loading for .COR files
+            var lines = File.ReadAllLines(fileName);
+            var scale = 25000;
+            var coordinates = new List<Point4D>();
+            foreach (var line in lines)
+            {
+                if (line.Trim() == "")
+                    continue;
+
+                var parts = line.Trim().Split('\t');
+                var xCoord = double.Parse(parts[0]);
+                var yCoord = double.Parse(parts[1]);
+
+                coordinates.Add(point2D(xCoord, yCoord, scale));
+            }
+
+            return coordinates;
+        }
+
         /// <summary>
         /// Coordinates of a heart.
         /// </summary>
@@ -127,8 +150,8 @@ namespace ControllerCNC.Demos
             var top = new List<Point4D>();
             var bottom = new List<Point4D>();
 
-            var smoothness = 400;
-            var scale = 12500;
+            var smoothness = 200;
+            var scale = 2000;
 
             for (var i = 0; i <= smoothness; ++i)
             {
@@ -164,8 +187,8 @@ namespace ControllerCNC.Demos
         public static IEnumerable<Point4D> CircleCoordinates()
         {
             var circlePoints = new List<Point4D>();
-            var r = 15000;
-            var smoothness = 0.25;
+            var r = 4000;
+            var smoothness = 1;
             for (var i = 0; i <= 360 * smoothness; ++i)
             {
                 var x = Math.Sin(i * Math.PI / 180 / smoothness);
