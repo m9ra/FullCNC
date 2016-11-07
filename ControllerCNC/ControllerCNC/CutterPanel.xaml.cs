@@ -65,8 +65,11 @@ namespace ControllerCNC
             _workspace.Children.Add(_xyHead);
             _workspace.Children.Add(_uvHead);
 
-            var coordinates = ShapeDrawing.LoadCoordinates("HT22.COR");
-            coordinates = ShapeDrawing.CircleCoordinates();
+            //var coordinates = ShapeDrawing.LoadCoordinates("HT22.COR");
+            var coordinates = ShapeDrawing.CircleCoordinates();
+            //var coordinates = ShapeDrawing.InterpolateImage("sun_green_mask.png",500,50,20);
+            //var coordinates = ShapeDrawing.InterpolateImage("snowflake.png", 1500, 50,20);
+            //var coordinates = ShapeDrawing.InterpolateImage("snowflake3.png", 1500, 50, 100);
             _shape = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
             _shape.PositionX = 3000;
             _shape.PositionY = 5000;

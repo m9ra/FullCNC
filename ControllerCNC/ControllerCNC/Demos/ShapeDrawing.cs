@@ -9,6 +9,8 @@ using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
 
 using System.IO;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 
 namespace ControllerCNC.Demos
@@ -140,6 +142,84 @@ namespace ControllerCNC.Demos
             }
 
             return coordinates;
+        }
+
+        public static IEnumerable<Point4D> InterpolateImage(string filename, int pointCount, int pointDistance, double scale)
+        {
+            var image = new Bitmap(Image.FromFile(filename));
+            var data = image.LockBits(new Rectangle(new Point(), image.Size), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed);
+
+            // Get the address of the first line.
+            var ptr = data.Scan0;
+
+            // Declare an array to hold the bytes of the bitmap.
+            var dataSize = Math.Abs(data.Stride) * image.Height;
+            var bytes = new byte[dataSize];
+            System.Runtime.InteropServices.Marshal.Copy(ptr, bytes, 0, dataSize);
+            image.UnlockBits(data);
+
+            //first pixel will be treated as mask
+            var background = bytes[0];
+
+            var points = new List<Point>();
+            for (var y = 1; y < image.Height - 1; ++y)
+            {
+                for (var x = 1; x < image.Width - 1; ++x)
+                {
+                    var currentColor = bytes[y * data.Stride + x];
+                    if (currentColor != background)
+                        continue;
+
+                    tryAddPoint(x + 1, y, bytes, data, background, points);
+                    tryAddPoint(x, y + 1, bytes, data, background, points);
+                    tryAddPoint(x - 1, y, bytes, data, background, points);
+                    tryAddPoint(x, y - 1, bytes, data, background, points);
+                }
+            }
+
+            var desiredPointCount = pointCount;
+            var pointPeriod = points.Count / desiredPointCount;
+            var currentPoint = new Point();
+            var orderedPoints = new List<Point>();
+            while (points.Count > 0)
+            {
+                var currentBestPointIndex = 0;
+                var currentBestDistance = double.PositiveInfinity;
+                for (var i = 0; i < points.Count; ++i)
+                {
+                    var point = points[i];
+                    var distance = Math.Sqrt(Math.Pow(point.X - currentPoint.X, 2) + Math.Pow(point.Y - currentPoint.Y, 2));
+                    if (distance <= currentBestDistance)
+                    {
+                        currentBestPointIndex = i;
+                        currentBestDistance = distance;
+                    }
+                }
+
+                currentPoint = points[currentBestPointIndex];
+                points.RemoveAt(currentBestPointIndex);
+                if (currentBestDistance > 0 && (points.Count % Math.Max(1, pointPeriod)) == 0)
+                {
+                    if (currentBestDistance < pointDistance)
+                        orderedPoints.Add(currentPoint);
+                }
+            }
+
+            orderedPoints.Add(orderedPoints[0]);//make the drawing closed
+
+            var result = new List<Point4D>();
+            foreach (var point in orderedPoints)
+            {
+                result.Add(point2D(point.X, point.Y, scale));
+            }
+            return result;
+        }
+
+        private static void tryAddPoint(int x, int y, byte[] bytes, BitmapData data, byte background, List<Point> points)
+        {
+            var color = bytes[y * data.Stride + x];
+            if (color != background)
+                points.Add(new Point(x, y));
         }
 
         /// <summary>
