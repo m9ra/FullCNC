@@ -264,10 +264,9 @@ namespace ControllerCNC.Demos
         /// <summary>
         /// Coordinates of a circle.
         /// </summary>
-        public static IEnumerable<Point4D> CircleCoordinates()
+        public static IEnumerable<Point4D> CircleCoordinates(double r=4000)
         {
             var circlePoints = new List<Point4D>();
-            var r = 4000;
             var smoothness = 1;
             for (var i = 0; i <= 360 * smoothness; ++i)
             {

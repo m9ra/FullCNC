@@ -9,6 +9,10 @@ using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Controls;
 
+using ControllerCNC.Machine;
+using ControllerCNC.Planning;
+using ControllerCNC.Primitives;
+
 namespace ControllerCNC.GUI
 {
     class WorkspacePanel : Panel
@@ -24,9 +28,14 @@ namespace ControllerCNC.GUI
         internal readonly int StepCountY;
 
         /// <summary>
+        /// Entry point of the plan.
+        /// </summary>
+        internal EntryPoint EntryPoint { get { return _entryPoint; } }
+
+        /// <summary>
         /// Item that is moved by using drag and drop
         /// </summary>
-        private TrajectoryShapeItem _draggedItem = null;
+        private PointProviderItem _draggedItem = null;
 
         /// <summary>
         /// Last position of mouse
@@ -38,6 +47,18 @@ namespace ControllerCNC.GUI
         /// </summary>
         private bool _changesDisabled = false;
 
+        /// <summary>
+        /// Joints registered by the workspace.
+        /// </summary>
+        private readonly List<ItemJoin> _itemJoins = new List<ItemJoin>();
+
+        /// <summary>
+        /// Where the plan starts.
+        /// </summary>
+        private readonly EntryPoint _entryPoint;
+
+        private readonly Pen _joinPen = new Pen(Brushes.Blue, 1.0);
+
         internal WorkspacePanel(int stepCountX, int stepCountY)
         {
             StepCountX = stepCountX;
@@ -47,6 +68,9 @@ namespace ControllerCNC.GUI
 
             PreviewMouseUp += _mouseUp;
             PreviewMouseMove += _mouseMove;
+
+            _entryPoint = new EntryPoint();
+            Children.Add(_entryPoint);
         }
 
         /// <summary>
@@ -65,18 +89,76 @@ namespace ControllerCNC.GUI
             _changesDisabled = false;
         }
 
-        internal JoinLine GetEntryJoinLine()
+        /// <summary>
+        /// Builds plan configured by the workspace. 
+        /// ASSUMING the starting position be correctly set up on <see cref="EntryPoint"/>.
+        /// </summary>
+        internal void BuildPlan(PlanBuilder plan)
         {
-            foreach (var child in Children)
-            {
-                var joinLine = child as JoinLine;
-                if (joinLine == null)
-                    continue;
+            var planPoints = new List<Point4D>();
 
-                if (joinLine.IsEntryPoint)
-                    return joinLine;
+            //the plan starts from entry point (recursively)
+            fillPlanBy(planPoints, _entryPoint, 0);
+
+            var scheduler = new StraightLinePlanner(Constants.FoamCuttingSpeed);
+            var trajectoryPlan = scheduler.CreateConstantPlan(new Trajectory4D(planPoints));
+
+            plan.Add(trajectoryPlan.Build());
+        }
+
+        private void fillPlanBy(List<Point4D> planPoints, PointProviderItem item, int incommingPointIndex)
+        {
+            var points = item.ItemPoints.ToArray();
+            var isClosedShape = points.First().Equals(points.Last());
+            if (!isClosedShape)
+                throw new NotImplementedException("Plan non-closed shape items.");
+
+            var outgoingJoins = findOutgoingJoins(item);
+            for (var i = incommingPointIndex; i < incommingPointIndex + points.Length; ++i)
+            {
+                var currentIndex = i % points.Length;
+                var currentPoint = points[currentIndex];
+
+                planPoints.Add(currentPoint);
+                var currentOutgoingJoins = getOutgoingJoinsFrom(currentIndex, outgoingJoins);
+                foreach (var currentOutgoingJoin in currentOutgoingJoins)
+                {
+                    //insert connected shape
+                    fillPlanBy(planPoints, currentOutgoingJoin.Item2, currentOutgoingJoin.JoinPointIndex2);
+                    //plan the returning point
+                    planPoints.Add(currentPoint);
+                }
             }
-            return null;
+        }
+
+        private IEnumerable<ItemJoin> getOutgoingJoinsFrom(int currentIndex, IEnumerable<ItemJoin> outgoingJoins)
+        {
+            var result = new List<ItemJoin>();
+            foreach (var join in outgoingJoins)
+            {
+                if (join.JoinPointIndex1 == currentIndex)
+                    result.Add(join);
+            }
+
+            return result;
+        }
+
+        private IEnumerable<ItemJoin> findOutgoingJoins(PointProviderItem item)
+        {
+            var result = new List<ItemJoin>();
+            foreach (var join in _itemJoins)
+            {
+                if (join.Item1 == item)
+                    result.Add(join);
+            }
+
+            return result;
+        }
+
+        internal void SetJoin(PointProviderItem shape1, int joinPointIndex1, PointProviderItem shape2, int joinPointIndex2)
+        {
+            var join = new ItemJoin(shape1, joinPointIndex1, shape2, joinPointIndex2);
+            _itemJoins.Add(join);
         }
 
         #region Drag and drop handlers
@@ -111,11 +193,25 @@ namespace ControllerCNC.GUI
         #endregion
 
         /// <inheritdoc/>
+        protected override void OnRender(DrawingContext dc)
+        {
+            base.OnRender(dc);
+            //render join lines
+            foreach (var join in _itemJoins)
+            {
+                var startPoint = getJoinPointProjected(join.Item1, join.JoinPointIndex1);
+                var endPoint = getJoinPointProjected(join.Item2, join.JoinPointIndex2);
+
+                dc.DrawLine(_joinPen, startPoint, endPoint);
+            }
+        }
+
+        /// <inheritdoc/>
         protected override void OnVisualChildrenChanged(DependencyObject visualAdded, DependencyObject visualRemoved)
         {
             if (visualAdded != null)
             {
-                var shapeItem = visualAdded as TrajectoryShapeItem;
+                var shapeItem = visualAdded as PointProviderItem;
                 if (shapeItem != null)
                 {
                     shapeItem.PreviewMouseDown += (s, e) => _draggedItem = shapeItem;
@@ -148,34 +244,14 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Size ArrangeOverride(Size finalSize)
         {
+            InvalidateVisual();
             finalSize = this.DesiredSize;
             foreach (WorkspaceItem child in Children)
             {
-                if (child is JoinLine)
-                    //join lines are placed after all other children have positions set correctly
-                    continue;
-
                 var positionX = projectToX(finalSize, child);
                 var positionY = projectToY(finalSize, child);
                 child.RegisterWorkspaceSize(finalSize);
                 child.Measure(finalSize);
-                child.Arrange(new Rect(new Point(positionX, positionY), child.DesiredSize));
-            }
-
-            foreach (WorkspaceItem child in Children)
-            {
-                if (!(child is JoinLine))
-                    //other children are handled already
-                    continue;
-
-                //join lines have to be repositioned every time
-                child.InvalidateMeasure();
-                child.InvalidateArrange();
-
-                child.RegisterWorkspaceSize(finalSize);
-                child.Measure(finalSize);
-                var positionX = projectToX(finalSize, child);
-                var positionY = projectToY(finalSize, child);
                 child.Arrange(new Rect(new Point(positionX, positionY), child.DesiredSize));
             }
 
@@ -192,6 +268,16 @@ namespace ControllerCNC.GUI
         {
             var positionX = finalSize.Height * child.PositionY / StepCountY;
             return positionX;
+        }
+
+        private Point getJoinPointProjected(PointProviderItem item, int pointIndex)
+        {
+            var point4D = item.ItemPoints.Skip(pointIndex).First();
+
+            var coordX = ActualWidth * point4D.X / StepCountX;
+            var coordY = ActualHeight * point4D.Y / StepCountY;
+
+            return new Point(coordX, coordY);
         }
     }
 }

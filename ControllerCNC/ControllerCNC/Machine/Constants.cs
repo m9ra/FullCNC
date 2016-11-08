@@ -57,7 +57,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// DeltaT which can be safely used after stand still.
         /// </summary>
-        public static readonly int StartDeltaT = 3000;
+        public static readonly int StartDeltaT = 2000;
 
         /// <summary>
         /// Fastest DeltaT which is supported
@@ -73,6 +73,11 @@ namespace ControllerCNC.Machine
         /// Maximal speed for head moving in a plane (X,Y or U,V).
         /// </summary>
         public static readonly Speed MaxPlaneSpeed = Speed.FromDelta(FastestDeltaT);
+
+        /// <summary>
+        /// Speed which is OK for cutting foam (TODO will be refactored as different foams needs different speeds).
+        /// </summary>
+        public static readonly Speed FoamCuttingSpeed = Speed.FromDelta(3000);
 
         /// <summary>
         /// Maximal speed for head moving in a plane (X,Y or U,V).

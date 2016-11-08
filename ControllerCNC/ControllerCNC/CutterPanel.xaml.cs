@@ -42,8 +42,6 @@ namespace ControllerCNC
 
         private readonly WorkspaceItem _xyHead = new HeadCNC(Colors.Red, false);
 
-        private readonly TrajectoryShapeItem _shape;
-
         private int _positionOffsetU = 0;
 
         private int _positionOffsetV = 0;
@@ -66,15 +64,24 @@ namespace ControllerCNC
             _workspace.Children.Add(_uvHead);
 
             //var coordinates = ShapeDrawing.LoadCoordinates("HT22.COR");
-            var coordinates = ShapeDrawing.CircleCoordinates();
+            var coordinates1 = ShapeDrawing.CircleCoordinates(6000);
+            var coordinates2 = ShapeDrawing.CircleCoordinates(4000);
             //var coordinates = ShapeDrawing.InterpolateImage("sun_green_mask.png",500,50,20);
             //var coordinates = ShapeDrawing.InterpolateImage("snowflake.png", 1500, 50,20);
             //var coordinates = ShapeDrawing.InterpolateImage("snowflake3.png", 1500, 50, 100);
-            _shape = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
-            _shape.PositionX = 3000;
-            _shape.PositionY = 5000;
+            var shape1 = new TrajectoryShapeItem(new Trajectory4D(coordinates1), _workspace);
+            var yOffset = 10000;
+            shape1.PositionX = 15000;
+            shape1.PositionY = 10000 + yOffset;
 
-            _workspace.Children.Add(new JoinLine(null, _shape));
+            var shape2 = new TrajectoryShapeItem(new Trajectory4D(coordinates2), _workspace);
+            shape2.PositionX = 17000;
+            shape2.PositionY = 12000 + yOffset;
+
+            _workspace.EntryPoint.PositionX = 21000;
+            _workspace.EntryPoint.PositionY = 5000 + yOffset;
+            _workspace.SetJoin(_workspace.EntryPoint, 0, shape1, 0);
+            _workspace.SetJoin(shape1, 0, shape2, 0);
 
 
             _motionCommands.Add(Calibration);
@@ -144,15 +151,14 @@ namespace ControllerCNC
             _workspace.DisableChanges();
 
             var builder = new PlanBuilder();
-            var entryPoint = _workspace.GetEntryJoinLine();
+            var point = _workspace.EntryPoint;
 
             var state = _cnc.PlannedState;
-            var initX = entryPoint.PositionX - state.X;
-            var initY = entryPoint.PositionY - state.Y;
-            //builder.AddRampedLineXY(-initX, -initY, Constants.MaxPlaneAcceleration, Constants.ReverseSafeSpeed);
-            builder.AddConstantSpeedTransitionXY(initX, initY, Constants.ReverseSafeSpeed);
-            entryPoint.FillBuilder(builder);
-            builder.AddConstantSpeedTransitionXY(-initX, -initY, Constants.ReverseSafeSpeed);
+            var initX = point.PositionX - state.X;
+            var initY = point.PositionY - state.Y;
+            builder.AddRampedLineXY(initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            _workspace.BuildPlan(builder);
+            builder.AddRampedLineXY(-initX, -initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             builder.DuplicateXYtoUV();
             var plan = builder.Build();
             if (!_cnc.SEND(plan))
@@ -218,7 +224,7 @@ namespace ControllerCNC
         {
             if (SetSlowTransition.IsChecked.Value)
             {
-                _coordController.SetSpeed(Constants.StartDeltaT);
+                _coordController.SetSpeed((int)(Constants.FoamCuttingSpeed.Ticks / Constants.FoamCuttingSpeed.StepCount));
             }
             else
             {

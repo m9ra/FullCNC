@@ -12,7 +12,7 @@ using System.Windows.Shapes;
 
 namespace ControllerCNC.GUI
 {
-    class TrajectoryShapeItem : WorkspaceItem
+    class TrajectoryShapeItem :PointProviderItem
     {
         /// <summary>
         /// Trajectory of the shape.
@@ -31,12 +31,9 @@ namespace ControllerCNC.GUI
 
         private Size _workspaceSize;
 
-        internal IEnumerable<Point4D> TrajectoryPoints
+        internal override IEnumerable<Point4D> ItemPoints
         {
-            get
-            {
-                return _trajectory.Points.Select(p => new Point4D(p.U, p.V, p.X - _xStepMin + PositionX, p.Y - _yStepMin + PositionY));
-            }
+            get { return _trajectory.Points.Select(p => new Point4D(p.U, p.V, p.X - _xStepMin + PositionX, p.Y - _yStepMin + PositionY)); }
         }
 
         internal TrajectoryShapeItem(Trajectory4D trajectory, WorkspacePanel workspace)
