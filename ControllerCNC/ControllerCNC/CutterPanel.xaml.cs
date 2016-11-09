@@ -63,25 +63,26 @@ namespace ControllerCNC
             _workspace.Children.Add(_xyHead);
             _workspace.Children.Add(_uvHead);
 
-            //var coordinates = ShapeDrawing.LoadCoordinates("HT22.COR");
-            var coordinates1 = ShapeDrawing.CircleCoordinates(6000);
-            var coordinates2 = ShapeDrawing.CircleCoordinates(4000);
+            //var coordinates = ShapeDrawing.LoadCoordinatesCOR("HT22.COR");
+            //var coordinates1 = ShapeDrawing.CircleCoordinates(6000);
+            //var coordinates2 = ShapeDrawing.CircleCoordinates(4000);
             //var coordinates = ShapeDrawing.InterpolateImage("sun_green_mask.png",500,50,20);
-            //var coordinates = ShapeDrawing.InterpolateImage("snowflake.png", 1500, 50,20);
+            var coordinates = ShapeDrawing.InterpolateImage("snowflake2.png", 1500, 50, 20);
+            //var coordinates = ShapeDrawing.HeartCoordinates();
             //var coordinates = ShapeDrawing.InterpolateImage("snowflake3.png", 1500, 50, 100);
-            var shape1 = new TrajectoryShapeItem(new Trajectory4D(coordinates1), _workspace);
-            var yOffset = 10000;
-            shape1.PositionX = 15000;
-            shape1.PositionY = 10000 + yOffset;
+            var shape1 = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
+            var yOffset = 20000;
+            shape1.PositionX = 1000;
+            shape1.PositionY = yOffset;
 
-            var shape2 = new TrajectoryShapeItem(new Trajectory4D(coordinates2), _workspace);
-            shape2.PositionX = 17000;
-            shape2.PositionY = 12000 + yOffset;
+            var shape2 = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
+            shape2.PositionX = 25000;
+            shape2.PositionY = yOffset;
 
             _workspace.EntryPoint.PositionX = 21000;
-            _workspace.EntryPoint.PositionY = 5000 + yOffset;
-            _workspace.SetJoin(_workspace.EntryPoint, 0, shape1, 0);
-            _workspace.SetJoin(shape1, 0, shape2, 0);
+            _workspace.EntryPoint.PositionY = yOffset-5000;
+            _workspace.SetJoin(_workspace.EntryPoint, shape1);
+            _workspace.SetJoin(shape1, shape2);
 
 
             _motionCommands.Add(Calibration);

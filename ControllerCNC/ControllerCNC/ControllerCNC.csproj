@@ -75,6 +75,7 @@
     <Compile Include="Machine\StateInfo.cs" />
     <Compile Include="Machine\StateDataInstruction.cs" />
     <Compile Include="Machine\StepInstrution.cs" />
+    <Compile Include="Planning\ImageInterpolator.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />
     <Compile Include="Planning\AccelerationProfile.cs" />
     <Compile Include="Planning\PathTracer2D.cs" />

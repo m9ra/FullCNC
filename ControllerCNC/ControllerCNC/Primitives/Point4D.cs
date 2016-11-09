@@ -36,6 +36,20 @@ namespace ControllerCNC.Primitives
             Y = y;
         }
 
+
+        /// <summary>
+        /// Squared eclidian distance to given point
+        /// </summary>
+        public double DistanceSquaredTo(Point4D point)
+        {
+            var diffU = U - point.U;
+            var diffV = V - point.V;
+            var diffX = X - point.X;
+            var diffY = Y - point.Y;
+
+            return 1.0 * diffU * diffU + diffV * diffV + diffX * diffX + diffY * diffY;
+        }
+
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {

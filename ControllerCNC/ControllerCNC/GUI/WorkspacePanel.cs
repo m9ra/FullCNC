@@ -161,6 +161,35 @@ namespace ControllerCNC.GUI
             _itemJoins.Add(join);
         }
 
+
+        internal void SetJoin(PointProviderItem shape1, PointProviderItem shape2)
+        {
+            var points1 = shape1.ItemPoints.ToArray();
+            var points2 = shape2.ItemPoints.ToArray();
+
+            var best1 = 0;
+            var best2 = 0;
+            var bestDistance = double.PositiveInfinity;
+            for (var i = 0; i < points1.Length; ++i)
+            {
+                var point1 = points1[i];
+                for (var j = 0; j < points2.Length; ++j)
+                {
+                    var point2 = points2[j];
+                    var distance = point1.DistanceSquaredTo(point2);
+
+                    if (distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        best1 = i;
+                        best2 = j;
+                    }
+                }
+            }
+
+            SetJoin(shape1, best1, shape2, best2);
+        }
+
         #region Drag and drop handlers
 
         /// <summary>
