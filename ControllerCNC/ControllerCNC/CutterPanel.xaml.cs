@@ -67,7 +67,7 @@ namespace ControllerCNC
             //var coordinates1 = ShapeDrawing.CircleCoordinates(6000);
             //var coordinates2 = ShapeDrawing.CircleCoordinates(4000);
             //var coordinates = ShapeDrawing.InterpolateImage("sun_green_mask.png",500,50,20);
-            var coordinates = ShapeDrawing.InterpolateImage("snowflake2.png", 1500, 50, 20);
+            var coordinates = ShapeDrawing.InterpolateImage("small.png", 1500, 50, 50);
             //var coordinates = ShapeDrawing.HeartCoordinates();
             //var coordinates = ShapeDrawing.InterpolateImage("snowflake3.png", 1500, 50, 100);
             var shape1 = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
@@ -80,7 +80,7 @@ namespace ControllerCNC
             shape2.PositionY = yOffset;
 
             _workspace.EntryPoint.PositionX = 21000;
-            _workspace.EntryPoint.PositionY = yOffset-5000;
+            _workspace.EntryPoint.PositionY = yOffset - 5000;
             _workspace.SetJoin(_workspace.EntryPoint, shape1);
             _workspace.SetJoin(shape1, shape2);
 

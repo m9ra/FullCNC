@@ -29,9 +29,22 @@ namespace ControllerCNC.GUI
         {
             var polygon = new Polygon();
 
-            var yCoord = _isTopDown ? -60 : 60;
-            polygon.Points.Add(new Point(-10, yCoord));
-            polygon.Points.Add(new Point(10, yCoord));
+            var yCoord = 60;
+            var xCoord = _isTopDown ? -20 : 20;
+            polygon.Points.Add(new Point(0, yCoord));
+            polygon.Points.Add(new Point(xCoord, yCoord));
+            polygon.Points.Add(new Point(0, 0));
+
+            polygon.Points.Add(new Point(xCoord, -yCoord));
+            polygon.Points.Add(new Point(0, -yCoord));
+            polygon.Points.Add(new Point(0, 0));
+
+            polygon.Points.Add(new Point(yCoord, xCoord));
+            polygon.Points.Add(new Point(yCoord, 0));
+            polygon.Points.Add(new Point(0, 0));
+
+            polygon.Points.Add(new Point(-yCoord, xCoord));
+            polygon.Points.Add(new Point(-yCoord, 0));
             polygon.Points.Add(new Point(0, 0));
 
             var fillBrush = new SolidColorBrush(_fillColor);
