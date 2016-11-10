@@ -8,10 +8,13 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
+using System.Runtime.Serialization;
+
 using ControllerCNC.Primitives;
 
 namespace ControllerCNC.GUI
 {
+    [Serializable]
     class EntryPoint : PointProviderItem
     {
         /// <summary>
@@ -28,6 +31,16 @@ namespace ControllerCNC.GUI
         internal EntryPoint()
         {
             initialize();
+        }
+
+        internal EntryPoint(SerializationInfo info, StreamingContext context) : base(info, context) {
+            initialize();
+        }
+
+        /// <inheritdoc/>
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
         }
 
         /// <inheritdoc/>

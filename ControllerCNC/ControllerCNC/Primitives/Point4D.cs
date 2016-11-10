@@ -47,7 +47,7 @@ namespace ControllerCNC.Primitives
             var diffX = X - point.X;
             var diffY = Y - point.Y;
 
-            return 1.0 * diffU * diffU + diffV * diffV + diffX * diffX + diffY * diffY;
+            return 1.0 * diffU * diffU + 1.0 * diffV * diffV + 1.0 * diffX * diffX + 1.0 * diffY * diffY;
         }
 
         /// <inheritdoc/>

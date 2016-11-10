@@ -25,6 +25,12 @@ namespace ControllerCNC.GUI
         }
 
         /// <inheritdoc/>
+        public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <inheritdoc/>
         protected override object createContent()
         {
             var polygon = new Polygon();

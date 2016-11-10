@@ -66,7 +66,7 @@ namespace ControllerCNC.Planning
             _backgroundColor = _data[0];
         }
 
-        public IEnumerable<Point4D> InterpolateImage(int pointCount, int pointDistance, double scale)
+        public IEnumerable<System.Windows.Point> InterpolateCoordinates()
         {
             //initialize datastructures
             _contourPoints = new Dictionary<Tuple<int, int>, ContourPoint>();
@@ -117,17 +117,24 @@ namespace ControllerCNC.Planning
             }
 
             var orderedPoints = joinShapes(circlePaths);
+            orderedPoints = shrinkLines(orderedPoints);
+
+            //make the shape closed
+            orderedPoints = orderedPoints.Concat(new[] { orderedPoints.First() }).ToArray();
+
+            return orderedPoints.Select(p => new System.Windows.Point(p.X, p.Y));
+        }
 
 
-            orderedPoints = shrinkLines(orderedPoints).ToArray();
+        internal IEnumerable<Point4D> InterpolateCoordinates(double scale)
+        {
+            var points = InterpolateCoordinates();
+
             var result = new List<Point4D>();
-            foreach (var point in orderedPoints)
+            foreach (var point in points)
             {
                 result.Add(point2D(point.X, point.Y, scale));
             }
-            result.Add(result[0]);//make the shape closed
-
-
             return result;
         }
 
@@ -240,7 +247,9 @@ namespace ControllerCNC.Planning
             foreach (var shape in shapes)
             {
                 if (shape.First().Neighbours.Contains(shape.Last()))
+                {
                     closedShapes.Add(shape);
+                }
             }
 
             //fill table of join length between shapes

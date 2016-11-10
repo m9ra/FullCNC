@@ -9,6 +9,7 @@ using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
 
 using System.IO;
+using System.Windows;
 
 namespace ControllerCNC.Demos
 {
@@ -147,10 +148,19 @@ namespace ControllerCNC.Demos
         /// <summary>
         /// Interpolates coordinates from given image.
         /// </summary>
-        public static IEnumerable<Point4D> InterpolateImage(string filename, int pointCount, int pointDistance, double scale)
+        public static IEnumerable<Point4D> InterpolateImage(string filename,  double scale)
         {
             var interpolator = new ImageInterpolator(filename);
-            return interpolator.InterpolateImage(pointCount, pointDistance, scale);
+            return interpolator.InterpolateCoordinates(scale);
+        }
+
+        /// <summary>
+        /// Interpolates coordinates from given image.
+        /// </summary>
+        public static IEnumerable<Point> InterpolateImage(string filename)
+        {
+            var interpolator = new ImageInterpolator(filename);
+            return interpolator.InterpolateCoordinates();
         }
 
         /// <summary>

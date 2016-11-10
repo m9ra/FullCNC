@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
+using System.IO;
 using System.Threading;
 using System.Windows.Threading;
 
@@ -35,6 +36,8 @@ namespace ControllerCNC
         private readonly HashSet<Button> _motionCommands = new HashSet<Button>();
 
         private readonly DispatcherTimer _statusTimer = new DispatcherTimer();
+
+        private readonly DispatcherTimer _autosaveTime = new DispatcherTimer();
 
         private readonly WorkspacePanel _workspace;
 
@@ -60,30 +63,41 @@ namespace ControllerCNC
 
             _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
             WorkspaceSlot.Child = _workspace;
+
+            var workspaceFile = "workspace_autosave.bin";
+            if (!File.Exists(workspaceFile))
+            {
+                var coordinates = ShapeDrawing.InterpolateImage("square.bmp");
+                var shape1 = new TrajectoryShapeItem(coordinates);
+                var yOffset = 2000;
+                var xOffset = 65000;
+                shape1.PositionX = 1000 + xOffset;
+                shape1.PositionY = yOffset;
+                shape1.SetMetricWidth(15);
+
+              /*  var shape2 = new TrajectoryShapeItem(coordinates);
+                shape2.PositionX = -2000 + xOffset;
+                shape2.PositionY = yOffset + 8000;
+                shape2.SetMetricWidth(100);*/
+
+                _workspace.Children.Add(shape1);
+                //_workspace.Children.Add(shape2);
+
+                _workspace.EntryPoint.PositionX = xOffset-10000;
+                _workspace.EntryPoint.PositionY = yOffset+1000;
+
+                _workspace.SetJoin(_workspace.EntryPoint, shape1);
+                //_workspace.SetJoin(shape1, shape2);
+
+                //_workspace.SaveTo(workspaceFile);
+            }
+            else
+            {
+                _workspace.LoadFrom(workspaceFile);
+            }
+
             _workspace.Children.Add(_xyHead);
             _workspace.Children.Add(_uvHead);
-
-            //var coordinates = ShapeDrawing.LoadCoordinatesCOR("HT22.COR");
-            //var coordinates1 = ShapeDrawing.CircleCoordinates(6000);
-            //var coordinates2 = ShapeDrawing.CircleCoordinates(4000);
-            //var coordinates = ShapeDrawing.InterpolateImage("sun_green_mask.png",500,50,20);
-            var coordinates = ShapeDrawing.InterpolateImage("small.png", 1500, 50, 50);
-            //var coordinates = ShapeDrawing.HeartCoordinates();
-            //var coordinates = ShapeDrawing.InterpolateImage("snowflake3.png", 1500, 50, 100);
-            var shape1 = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
-            var yOffset = 20000;
-            shape1.PositionX = 1000;
-            shape1.PositionY = yOffset;
-
-            var shape2 = new TrajectoryShapeItem(new Trajectory4D(coordinates), _workspace);
-            shape2.PositionX = 25000;
-            shape2.PositionY = yOffset;
-
-            _workspace.EntryPoint.PositionX = 21000;
-            _workspace.EntryPoint.PositionY = yOffset - 5000;
-            _workspace.SetJoin(_workspace.EntryPoint, shape1);
-            _workspace.SetJoin(shape1, shape2);
-
 
             _motionCommands.Add(Calibration);
             _motionCommands.Add(GoToZeros);
@@ -102,7 +116,20 @@ namespace ControllerCNC
             _statusTimer.Interval = TimeSpan.FromMilliseconds(20);
             _statusTimer.Tick += _statusTimer_Tick;
             _statusTimer.IsEnabled = true;
+            _autosaveTime.IsEnabled = false;
+            _autosaveTime.Interval = TimeSpan.FromMilliseconds(1000);
+            _autosaveTime.Tick += _autosaveTime_Tick;
+            _workspace.OnSettingsChanged += () => { _autosaveTime.Stop(); _autosaveTime.Start(); };
         }
+
+        #region Workspace handling
+
+        void _autosaveTime_Tick(object sender, EventArgs e)
+        {
+            _autosaveTime.IsEnabled = false;
+        }
+
+        #endregion
 
         #region CNC machine status handling
 

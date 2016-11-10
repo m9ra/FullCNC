@@ -4,87 +4,139 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using ControllerCNC.Machine;
 using ControllerCNC.Primitives;
 
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
+using System.Runtime.Serialization;
+
 namespace ControllerCNC.GUI
 {
-    class TrajectoryShapeItem :PointProviderItem
+    [Serializable]
+    class TrajectoryShapeItem : PointProviderItem
     {
         /// <summary>
-        /// Trajectory of the shape.
+        /// Points defining the shape.
         /// </summary>
-        private readonly Trajectory4D _trajectory;
+        private readonly Point[] _shapeDefinition;
 
-        private readonly WorkspacePanel _workspace;
+        private double _shapeMinX;
 
-        private readonly int _xStepMin;
+        private double _shapeMinY;
 
-        private readonly int _yStepMin;
+        private double _shapeMaxX;
 
-        private readonly int _xStepMax;
+        private double _shapeMaxY;
 
-        private readonly int _yStepMax;
+        /// <summary>
+        /// Determine size of the shape in milimeters.
+        /// </summary>
+        private Size _shapeMetricSize;
 
-        private Size _workspaceSize;
+        /// <summary>
+        /// Factor which gives ratio between single step and visual size.
+        /// </summary>
+        private double _xStepToVisualFactor;
+
+        /// <summary>
+        /// Factor which gives ratio between single step and visual size.
+        /// </summary>
+        private double _yStepToVisualFactor;
 
         internal override IEnumerable<Point4D> ItemPoints
         {
-            get { return _trajectory.Points.Select(p => new Point4D(p.U, p.V, p.X - _xStepMin + PositionX, p.Y - _yStepMin + PositionY)); }
+            get
+            {
+                var ratioX = _shapeMaxX - _shapeMinX;
+                if (ratioX == 0)
+                    throw new NotImplementedException("Cannot stretch the width");
+
+                var ratioY = _shapeMaxY - _shapeMinY;
+                if (ratioY == 0)
+                    throw new NotImplementedException("Cannot stretch the width");
+
+                foreach (var point in _shapeDefinition)
+                {
+                    var x = (int)Math.Round((point.X - _shapeMinX) / ratioX * _shapeMetricSize.Width / Constants.MilimetersPerStep);
+                    var y = (int)Math.Round((point.Y - _shapeMinY) / ratioY * _shapeMetricSize.Height / Constants.MilimetersPerStep);
+                    yield return new Point4D(0, 0, x + PositionX, y + PositionY);
+                }
+            }
         }
 
-        internal TrajectoryShapeItem(Trajectory4D trajectory, WorkspacePanel workspace)
+        internal TrajectoryShapeItem(IEnumerable<Point> shapeDefinition)
         {
-            if (trajectory == null)
+            if (shapeDefinition == null)
                 throw new ArgumentNullException("trajectory");
 
-            if (workspace == null)
-                throw new ArgumentNullException("workspace");
+            _shapeDefinition = shapeDefinition.ToArray();
+            constructionInitialization();
+        }
+
+        internal TrajectoryShapeItem(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            _shapeDefinition = (Point[])info.GetValue("_shapeDefinition", typeof(Point[]));
+            _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));
+            constructionInitialization();
+        }
+
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue("_shapeDefinition", _shapeDefinition);
+            info.AddValue("_shapeMetricSize", _shapeMetricSize);
+        }
+
+        internal void constructionInitialization()
+        {
+            _shapeMinX = _shapeMinY = double.PositiveInfinity;
+            _shapeMaxX = _shapeMaxX = double.NegativeInfinity;
+
+            foreach (var point in _shapeDefinition)
+            {
+                _shapeMinX = Math.Min(point.X, _shapeMinX);
+                _shapeMinY = Math.Min(point.Y, _shapeMinY);
+                _shapeMaxX = Math.Max(point.X, _shapeMaxX);
+                _shapeMaxY = Math.Max(point.Y, _shapeMaxY);
+            }
 
             //Background = Brushes.Red;
             BorderThickness = new Thickness(0);
             Padding = new Thickness(0);
             Background = Brushes.Transparent;
 
-
-            _trajectory = trajectory;
-            _workspace = workspace;
-
-            _xStepMin = _yStepMin = int.MaxValue;
-            _xStepMax = _xStepMax = int.MinValue;
-
-            foreach (var point in _trajectory.Points)
-            {
-                _xStepMin = Math.Min(point.X, _xStepMin);
-                _yStepMin = Math.Min(point.Y, _yStepMin);
-                _xStepMax = Math.Max(point.X, _xStepMax);
-                _yStepMax = Math.Max(point.Y, _yStepMax);
-            }
-
             initialize();
+        }
 
-            _workspace.Children.Add(this);
+        internal void SetMetricWidth(double width)
+        {
+            _shapeMetricSize = new Size(width, width * (_shapeMaxY - _shapeMinY) / (_shapeMaxX - _shapeMinX));
+        }
+
+        internal void SetMetricHeight(double height)
+        {
+            _shapeMetricSize = new Size(height * (_shapeMaxX - _shapeMinX) / (_shapeMaxY - _shapeMinY), height);
         }
 
         /// <inheritdoc/>
         protected override object createContent()
         {
+            //the rendering is controlled directly by current object
             return null;
         }
 
         /// <inheritdoc/>
-        internal override void RegisterWorkspaceSize(Size size)
+        internal override void RecalculateToWorkspace(WorkspacePanel workspace, Size size)
         {
-            var widthStep = _xStepMax - _xStepMin;
-            var heightStep = _yStepMax - _yStepMin;
+            _xStepToVisualFactor = size.Width / workspace.StepCountX;
+            _yStepToVisualFactor = size.Height / workspace.StepCountY;
 
-
-            Width = widthStep * size.Width / _workspace.StepCountX;
-            Height = heightStep * size.Height / _workspace.StepCountY;
-            _workspaceSize = size;
+            Width = _shapeMetricSize.Width / Constants.MilimetersPerStep * _xStepToVisualFactor;
+            Height = _shapeMetricSize.Height / Constants.MilimetersPerStep * _yStepToVisualFactor;
         }
 
         /// <inheritdoc/>
@@ -94,13 +146,11 @@ namespace ControllerCNC.GUI
 
             var isFirst = true;
 
-            var workWidth = Math.Floor(_workspaceSize.Width);
-            var workHeight = Math.Floor(_workspaceSize.Height);
-            foreach (var point in _trajectory.Points)
+            foreach (var point in ItemPoints)
             {
-                var planePoint = getNormalizedPlanePoint(point);
-                planePoint.X = planePoint.X * workWidth;
-                planePoint.Y = planePoint.Y * workHeight;
+                var planePoint = new Point(point.X - PositionX, point.Y - PositionY);
+                planePoint.X = planePoint.X * _xStepToVisualFactor;
+                planePoint.Y = planePoint.Y * _yStepToVisualFactor;
 
                 pathSegments.Add(new LineSegment(planePoint, !isFirst));
                 isFirst = false;
@@ -112,16 +162,5 @@ namespace ControllerCNC.GUI
             drawingContext.DrawGeometry(Brushes.Transparent, pen, geometry);
         }
 
-        /// <summary>
-        /// Gets point in plane represented by current shape.
-        /// </summary>
-        private Point getNormalizedPlanePoint(Point4D point)
-        {
-            var x = (1.0 * point.X - _xStepMin) / _workspace.StepCountX;
-            var y = (1.0 * point.Y - _yStepMin) / _workspace.StepCountY;
-            if (x < 0 || y < 0)
-                throw new NotSupportedException();
-            return new Point(x, y);
-        }
     }
 }

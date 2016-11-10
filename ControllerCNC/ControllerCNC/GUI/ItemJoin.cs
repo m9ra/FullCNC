@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.GUI
 {
+    [Serializable]
     class ItemJoin
     {
         /// <summary>

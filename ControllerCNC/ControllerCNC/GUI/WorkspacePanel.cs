@@ -4,10 +4,13 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Input;
 using System.Windows.Controls;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
 
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
@@ -55,9 +58,11 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Where the plan starts.
         /// </summary>
-        private readonly EntryPoint _entryPoint;
+        private EntryPoint _entryPoint;
 
         private readonly Pen _joinPen = new Pen(Brushes.Blue, 1.0);
+
+        internal event Action OnSettingsChanged;
 
         internal WorkspacePanel(int stepCountX, int stepCountY)
         {
@@ -89,6 +94,46 @@ namespace ControllerCNC.GUI
             _changesDisabled = false;
         }
 
+        internal void SaveTo(string filename)
+        {
+            var itemsToSave = new List<PointProviderItem>();
+            foreach (var child in Children)
+            {
+                if (child is PointProviderItem)
+                    itemsToSave.Add(child as PointProviderItem);
+            }
+            var formatter = new BinaryFormatter();
+            var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
+
+            var workspaceRepresentation = Tuple.Create<List<PointProviderItem>, List<ItemJoin>>(itemsToSave, _itemJoins);
+            formatter.Serialize(stream, workspaceRepresentation);
+            stream.Close();
+        }
+
+        internal void LoadFrom(string filename)
+        {
+            var formatter = new BinaryFormatter();
+            var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
+            var workspaceRepresentation = (Tuple<List<PointProviderItem>, List<ItemJoin>>)formatter.Deserialize(stream);
+            stream.Close();
+
+            Children.Clear();
+            _itemJoins.Clear();
+
+            foreach (var item in workspaceRepresentation.Item1)
+            {
+                if (item is EntryPoint)
+                    _entryPoint = item as EntryPoint;
+
+                Children.Add(item);
+            }
+
+            foreach (var join in workspaceRepresentation.Item2)
+            {
+                _itemJoins.Add(join);
+            }
+        }
+
         /// <summary>
         /// Builds plan configured by the workspace. 
         /// ASSUMING the starting position be correctly set up on <see cref="EntryPoint"/>.
@@ -114,12 +159,16 @@ namespace ControllerCNC.GUI
                 throw new NotImplementedException("Plan non-closed shape items.");
 
             var outgoingJoins = findOutgoingJoins(item);
-            for (var i = incommingPointIndex; i < incommingPointIndex + points.Length; ++i)
+            //we have to go one point further (to have the shape closed)
+            for (var i = incommingPointIndex; i < incommingPointIndex + points.Length + 1; ++i)
             {
                 var currentIndex = i % points.Length;
                 var currentPoint = points[currentIndex];
-
                 planPoints.Add(currentPoint);
+                if (i == incommingPointIndex + points.Length)
+                    //the last point cannot be outgoing for anything
+                    break;
+
                 var currentOutgoingJoins = getOutgoingJoinsFrom(currentIndex, outgoingJoins);
                 foreach (var currentOutgoingJoin in currentOutgoingJoins)
                 {
@@ -273,13 +322,16 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Size ArrangeOverride(Size finalSize)
         {
+            if (OnSettingsChanged != null)
+                OnSettingsChanged();
+
             InvalidateVisual();
             finalSize = this.DesiredSize;
             foreach (WorkspaceItem child in Children)
             {
                 var positionX = projectToX(finalSize, child);
                 var positionY = projectToY(finalSize, child);
-                child.RegisterWorkspaceSize(finalSize);
+                child.RecalculateToWorkspace(this, finalSize);
                 child.Measure(finalSize);
                 child.Arrange(new Rect(new Point(positionX, positionY), child.DesiredSize));
             }

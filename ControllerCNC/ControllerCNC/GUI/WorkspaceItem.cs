@@ -4,12 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using System.Runtime.Serialization;
+
 using System.Windows;
 using System.Windows.Controls;
 
 namespace ControllerCNC.GUI
 {
-    abstract class WorkspaceItem : UserControl
+    [Serializable]
+    abstract class WorkspaceItem : UserControl, ISerializable
     {
         /// <summary>
         /// Actual position x in steps.
@@ -59,12 +62,25 @@ namespace ControllerCNC.GUI
         /// </summary>
         /// <returns></returns>
         protected abstract object createContent();
-        
+
+
         internal WorkspaceItem()
         {
         }
 
-        internal virtual void RegisterWorkspaceSize(Size size)
+        internal WorkspaceItem(SerializationInfo info, StreamingContext context)
+        {
+            _positionX = info.GetInt32("_positionX");
+            _positionY = info.GetInt32("_positionY");
+        }
+
+        public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            info.AddValue("_positionX", _positionX);
+            info.AddValue("_positionY", _positionY);
+        }
+
+        internal virtual void RecalculateToWorkspace(WorkspacePanel workspace, Size size)
         {
             //nothing to do by default
         }
