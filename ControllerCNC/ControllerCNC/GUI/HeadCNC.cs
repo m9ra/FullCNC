@@ -36,28 +36,46 @@ namespace ControllerCNC.GUI
         {
             var polygon = new Polygon();
 
-            var yCoord = 60;
-            var xCoord = _isTopDown ? -20 : 20;
-            polygon.Points.Add(new Point(0, yCoord));
-            polygon.Points.Add(new Point(xCoord, yCoord));
-            polygon.Points.Add(new Point(0, 0));
+            var yCoord = 50;
+            var xCoord = 50;
+            var crossWidth = 2;
 
-            polygon.Points.Add(new Point(xCoord, -yCoord));
-            polygon.Points.Add(new Point(0, -yCoord));
-            polygon.Points.Add(new Point(0, 0));
+            fillCrossArm(polygon, xCoord, crossWidth);
+            fillCrossArm(polygon, crossWidth, yCoord);
 
-            polygon.Points.Add(new Point(yCoord, xCoord));
-            polygon.Points.Add(new Point(yCoord, 0));
-            polygon.Points.Add(new Point(0, 0));
-
-            polygon.Points.Add(new Point(-yCoord, xCoord));
-            polygon.Points.Add(new Point(-yCoord, 0));
-            polygon.Points.Add(new Point(0, 0));
 
             var fillBrush = new SolidColorBrush(_fillColor);
             fillBrush.Opacity = 0.3;
             polygon.Fill = fillBrush;
             return polygon;
         }
+
+        private static void fillCrossArm(Polygon polygon, int xCoord, int width)
+        {
+            polygon.Points.Add(new Point(0, 0));
+            polygon.Points.Add(new Point(xCoord, 0));
+            polygon.Points.Add(new Point(xCoord, width));
+            polygon.Points.Add(new Point(0, width));
+            polygon.Points.Add(new Point(0, 0));
+
+            polygon.Points.Add(new Point(0, 0));
+            polygon.Points.Add(new Point(xCoord, 0));
+            polygon.Points.Add(new Point(xCoord, -width));
+            polygon.Points.Add(new Point(0, -width));
+            polygon.Points.Add(new Point(0, 0));
+
+            polygon.Points.Add(new Point(0, 0));
+            polygon.Points.Add(new Point(-xCoord, 0));
+            polygon.Points.Add(new Point(-xCoord, width));
+            polygon.Points.Add(new Point(0, width));
+            polygon.Points.Add(new Point(0, 0));
+
+            polygon.Points.Add(new Point(0, 0));
+            polygon.Points.Add(new Point(-xCoord, 0));
+            polygon.Points.Add(new Point(-xCoord, -width));
+            polygon.Points.Add(new Point(0, -width));
+            polygon.Points.Add(new Point(0, 0));
+        }
+
     }
 }

@@ -113,6 +113,7 @@ namespace ControllerCNC.GUI
             if (OnSettingsChanged != null)
                 OnSettingsChanged();
 
+            InvalidateVisual();
             var workspace = Parent as WorkspacePanel;
             if (workspace != null)
                 workspace.InvalidateArrange();

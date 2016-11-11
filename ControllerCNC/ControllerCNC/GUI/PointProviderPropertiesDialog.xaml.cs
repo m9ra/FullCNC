@@ -21,6 +21,9 @@ namespace ControllerCNC.GUI
     /// </summary>
     public partial class PointProviderPropertiesDialog : Window
     {
+        /// <summary>
+        /// Item which properties are handled.
+        /// </summary>
         private readonly PointProviderItem _item;
 
         internal PointProviderPropertiesDialog(PointProviderItem item)
@@ -40,6 +43,7 @@ namespace ControllerCNC.GUI
             ShapeLeft.TextChanged += ShapeLeft_TextChanged;
             ShapeWidth.TextChanged += ShapeWidth_TextChanged;
             ShapeHeight.TextChanged += ShapeHeight_TextChanged;
+            ShapeRotation.ValueChanged += ShapeRotation_ValueChanged;
 
             ShowDialog();
         }
@@ -59,6 +63,7 @@ namespace ControllerCNC.GUI
 
             ShapeWidth.Text = string.Format("{0:0.000}", 1.0 * shapeItem.MetricWidth);
             ShapeHeight.Text = string.Format("{0:0.000}", 1.0 * shapeItem.MetricHeight);
+            ShapeRotation.Value = shapeItem.RotationAngle;
         }
 
         #region Value change handlers
@@ -101,6 +106,12 @@ namespace ControllerCNC.GUI
                 shapeItem.MetricHeight = value;
 
             refreshWindow();
+        }
+
+        void ShapeRotation_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            var shapeItem = _item as ShapeItem;
+            shapeItem.RotationAngle = ShapeRotation.Value;
         }
 
         #endregion

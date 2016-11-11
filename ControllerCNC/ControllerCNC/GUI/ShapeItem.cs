@@ -46,6 +46,48 @@ namespace ControllerCNC.GUI
         /// </summary>
         private double _yStepToVisualFactor;
 
+        /// <summary>
+        /// Angle of rotation [0..360)degree
+        /// </summary>
+        private double _rotationAngle;
+
+        /// <summary>
+        /// Sin of the current rotation.
+        /// </summary>
+        private double _rotationSin;
+
+        /// <summary>
+        /// Cos of the current rotation.
+        /// </summary>
+        private double _rotationCos;
+
+        /// <summary>
+        /// Brush for the item fill.
+        /// </summary>
+        private Brush _itemBrush;
+
+        /// <summary>
+        /// Rotation in degrees.
+        /// </summary>
+        internal double RotationAngle
+        {
+            get
+            {
+                return _rotationAngle;
+            }
+
+            set
+            {
+                if (value == _rotationAngle)
+                    return;
+
+                _rotationAngle = value;
+                _rotationSin = Math.Sin(_rotationAngle / 360 * 2 * Math.PI);
+                _rotationCos = Math.Cos(_rotationAngle / 360 * 2 * Math.PI);
+                fireOnSettingsChanged();
+            }
+        }
+
         internal double MetricWidth
         {
             get
@@ -90,8 +132,9 @@ namespace ControllerCNC.GUI
                 if (ratioY == 0)
                     throw new NotImplementedException("Cannot stretch the width");
 
-                foreach (var point in _shapeDefinition)
+                foreach (var definitionPoint in _shapeDefinition)
                 {
+                    var point = rotate(definitionPoint);
                     var x = (int)Math.Round((point.X - _shapeMinX) / ratioX * _shapeMetricSize.Width / Constants.MilimetersPerStep);
                     var y = (int)Math.Round((point.Y - _shapeMinY) / ratioY * _shapeMetricSize.Height / Constants.MilimetersPerStep);
                     yield return new Point4D(0, 0, x + PositionX, y + PositionY);
@@ -114,6 +157,7 @@ namespace ControllerCNC.GUI
         {
             _shapeDefinition = (Point[])info.GetValue("_shapeDefinition", typeof(Point[]));
             _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));
+            _rotationAngle = info.GetDouble("_rotationAngle");
             constructionInitialization();
         }
 
@@ -122,6 +166,7 @@ namespace ControllerCNC.GUI
             base.GetObjectData(info, context);
             info.AddValue("_shapeDefinition", _shapeDefinition);
             info.AddValue("_shapeMetricSize", _shapeMetricSize);
+            info.AddValue("_rotationAngle", _rotationAngle);
         }
 
         internal void constructionInitialization()
@@ -140,8 +185,14 @@ namespace ControllerCNC.GUI
             //Background = Brushes.Red;
             BorderThickness = new Thickness(0);
             Padding = new Thickness(0);
-            Background = Brushes.Transparent;
+            Background = null;
+            _itemBrush = new SolidColorBrush(Colors.LightGray);
+            _itemBrush.Opacity = 0.4;
 
+            //reset rotation
+            var desiredAngle = _rotationAngle;
+            RotationAngle = desiredAngle + 1;
+            RotationAngle = desiredAngle;
             initialize();
         }
 
@@ -180,10 +231,24 @@ namespace ControllerCNC.GUI
             }
 
             var figure = new PathFigure(new Point(0, 0), pathSegments, false);
-            var geometry = new PathGeometry(new[] { figure });
+            var geometry = new PathGeometry(new[] { figure }, FillRule.EvenOdd, Transform.Identity);
             var pen = new Pen(Brushes.Black, 1.0);
-            drawingContext.DrawGeometry(Brushes.Transparent, pen, geometry);
+            drawingContext.DrawGeometry(_itemBrush, pen, geometry);
         }
 
+        /// <summary>
+        /// Rotates given point according to current rotation angle.
+        /// </summary>
+        private Point rotate(Point point)
+        {
+            var cX = _shapeMinX + _shapeMaxX / 2;
+            var cY = _shapeMinY + _shapeMaxY / 2;
+            var centeredX = point.X - cX;
+            var centeredY = point.Y - cY;
+
+            var rotatedX = centeredX * _rotationCos - centeredY * _rotationSin;
+            var rotatedY = centeredY * _rotationCos + centeredX * _rotationSin;
+            return new Point(rotatedX + cX, rotatedY + cY);
+        }
     }
 }
