@@ -116,9 +116,15 @@ namespace ControllerCNC.Planning
                 _coloredPoints.UnionWith(circlePath);
             }
 
-            var orderedPoints = joinShapes(circlePaths);
-            orderedPoints = shrinkLines(orderedPoints);
+            var shrinkIterationCount = 5;
+            var shrinkedPaths = circlePaths.ToList();
+            for (var i = 0; i < shrinkedPaths.Count; ++i)
+            {
+                for (var j = 0; j < shrinkIterationCount; ++j)
+                    shrinkedPaths[i] = shrinkLines(shrinkedPaths[i]).ToArray();
+            }
 
+            var orderedPoints = joinShapes(shrinkedPaths);
             //make the shape closed
             orderedPoints = orderedPoints.Concat(new[] { orderedPoints.First() }).ToArray();
 
@@ -379,21 +385,44 @@ namespace ControllerCNC.Planning
             var result = new List<ContourPoint>();
             result.Add(points.First());
 
+            var lastPointIndex = 0;
             var pointsArray = points.ToArray();
             for (var i = 1; i < pointsArray.Length - 1; ++i)
             {
-                var lastPoint = pointsArray[i - 1];
+                var lastPoint = pointsArray[lastPointIndex];
                 var point = pointsArray[i];
                 var nextPoint = pointsArray[i + 1];
-                var diffX = lastPoint.X - point.X;
-                var diffY = lastPoint.Y - point.Y;
+                var totalDiffX = nextPoint.X - lastPoint.X;
+                var totalDiffY = nextPoint.Y - lastPoint.Y;
 
-                var nextDiffX = point.X - nextPoint.X;
-                var nextDiffY = point.Y - nextPoint.Y;
-                if (nextDiffX == diffX && nextDiffY == diffY)
+                var isLineGoodAproximation = true;
+
+                var isXaproximation = Math.Abs(totalDiffX) < Math.Abs(totalDiffY);
+                var lineLength = i + 1 - lastPointIndex;
+                var ratioX = 1.0 * totalDiffX / lineLength;
+                var ratioY = 1.0 * totalDiffY / lineLength;
+
+                for (var j = lastPointIndex; j < i + 1; ++j)
+                {
+                    //check whether line is good aproximator
+                    var approximatedPoint = pointsArray[j];
+                    var currentLineLength = j - lastPointIndex;
+                    var approxX = lastPoint.X + ratioX * currentLineLength;
+                    var approxY = lastPoint.Y + ratioY * currentLineLength;
+
+                    var threshold = 0.85;
+                    if (Math.Abs(approxX - approximatedPoint.X) > threshold || Math.Abs(approxY - approximatedPoint.Y) > threshold)
+                    {
+                        isLineGoodAproximation = false;
+                        break;
+                    }
+                }
+
+                if (isLineGoodAproximation)
                     //point can be skipped (it will be approximated by the line)
                     continue;
 
+                lastPointIndex = i;
                 result.Add(point);
             }
 
