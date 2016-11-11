@@ -17,6 +17,7 @@ namespace ControllerCNC.GUI
         private readonly bool _isTopDown;
 
         internal HeadCNC(Color fillColor, bool isTopDown)
+            : base("HEAD")
         {
             _fillColor = fillColor;
             _isTopDown = isTopDown;

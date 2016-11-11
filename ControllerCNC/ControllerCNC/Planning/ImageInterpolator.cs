@@ -366,7 +366,7 @@ namespace ControllerCNC.Planning
                 throw new NotSupportedException("Startpoint not found");
 
             var result = new List<ContourPoint>();
-            for (var i = startIndex; i < shape.Length + startIndex; ++i)
+            for (var i = startIndex; i < shape.Length + startIndex + 1; ++i)
             {
                 result.Add(shape[i % shape.Length]);
             }

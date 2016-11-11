@@ -60,9 +60,11 @@ namespace ControllerCNC.GUI
         /// </summary>
         private EntryPoint _entryPoint;
 
-        private readonly Pen _joinPen = new Pen(Brushes.Blue, 1.0);
+        private readonly Pen _joinPen = new Pen(Brushes.Red, 2.0);
 
         internal event Action OnSettingsChanged;
+
+        internal event Action OnWorkItemListChanged;
 
         internal WorkspacePanel(int stepCountX, int stepCountY)
         {
@@ -132,6 +134,9 @@ namespace ControllerCNC.GUI
             {
                 _itemJoins.Add(join);
             }
+
+            fireOnWorkItemListChanged();
+            fireOnSettingsChanged();
         }
 
         /// <summary>
@@ -204,12 +209,30 @@ namespace ControllerCNC.GUI
             return result;
         }
 
-        internal void SetJoin(PointProviderItem shape1, int joinPointIndex1, PointProviderItem shape2, int joinPointIndex2)
+        internal IEnumerable<ItemJoin> GetIncomingJoins(WorkspaceItem item)
         {
-            var join = new ItemJoin(shape1, joinPointIndex1, shape2, joinPointIndex2);
-            _itemJoins.Add(join);
+            foreach (var join in _itemJoins)
+                if (join.Item2 == item)
+                    yield return join;
         }
 
+        internal void SetJoin(PointProviderItem shape1, int joinPointIndex1, PointProviderItem shape2, int joinPointIndex2)
+        {
+            var joinCopy = _itemJoins.ToArray();
+            foreach (var join in joinCopy)
+            {
+                if (join.Item2 == shape2)
+                    //shape can have only one target join
+                    _itemJoins.Remove(join);
+            }
+
+            var newJoin = new ItemJoin(shape1, joinPointIndex1, shape2, joinPointIndex2);
+            _itemJoins.Add(newJoin);
+
+            InvalidateVisual();
+            fireOnSettingsChanged();
+            fireOnWorkItemListChanged();
+        }
 
         internal void SetJoin(PointProviderItem shape1, PointProviderItem shape2)
         {
@@ -237,6 +260,23 @@ namespace ControllerCNC.GUI
             }
 
             SetJoin(shape1, best1, shape2, best2);
+        }
+
+        internal void RemoveJoin(ItemJoin join)
+        {
+            _itemJoins.Remove(join);
+
+            InvalidateVisual();
+            fireOnWorkItemListChanged();
+            fireOnSettingsChanged();
+        }
+
+        internal void RefreshJoins()
+        {
+            foreach (var join in _itemJoins.ToArray())
+            {
+                SetJoin(join.Item1, join.Item2);
+            }
         }
 
         #region Drag and drop handlers
@@ -287,15 +327,51 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override void OnVisualChildrenChanged(DependencyObject visualAdded, DependencyObject visualRemoved)
         {
+
+            if (visualRemoved != null)
+            {
+                //TODO cleanup handlers 
+                foreach (var join in _itemJoins.ToArray())
+                {
+                    if (join.Item1 == visualRemoved || join.Item2 == visualRemoved)
+                        _itemJoins.Remove(join);
+                }
+            }
+
             if (visualAdded != null)
             {
-                var shapeItem = visualAdded as PointProviderItem;
-                if (shapeItem != null)
+                var pointProvider = visualAdded as PointProviderItem;
+                if (pointProvider != null)
                 {
-                    shapeItem.PreviewMouseDown += (s, e) => _draggedItem = shapeItem;
+                    //enable drag 
+                    pointProvider.PreviewMouseLeftButtonDown += (s, e) => _draggedItem = pointProvider;
+                    //enable properties dialog
+                    pointProvider.MouseRightButtonUp += (s, e) => new PointProviderPropertiesDialog(pointProvider);
+                }
+
+                //setup change listener to work items
+                var workItem = visualAdded as WorkspaceItem;
+                if (workItem != null)
+                {
+                    workItem.OnSettingsChanged += fireOnSettingsChanged;
                 }
             }
             base.OnVisualChildrenChanged(visualAdded, visualRemoved);
+
+            fireOnWorkItemListChanged();
+            fireOnSettingsChanged();
+        }
+
+        private void fireOnWorkItemListChanged()
+        {
+            if (OnWorkItemListChanged != null)
+                OnWorkItemListChanged();
+        }
+
+        private void fireOnSettingsChanged()
+        {
+            if (OnSettingsChanged != null)
+                OnSettingsChanged();
         }
 
         /// <inheritdoc/>
@@ -322,9 +398,6 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Size ArrangeOverride(Size finalSize)
         {
-            if (OnSettingsChanged != null)
-                OnSettingsChanged();
-
             InvalidateVisual();
             finalSize = this.DesiredSize;
             foreach (WorkspaceItem child in Children)

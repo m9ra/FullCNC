@@ -18,7 +18,8 @@ namespace ControllerCNC.GUI
         /// </summary>
         internal abstract IEnumerable<Point4D> ItemPoints { get; }
 
-        internal PointProviderItem()
+        internal PointProviderItem(string name)
+            :base(name)
         {
         }
 

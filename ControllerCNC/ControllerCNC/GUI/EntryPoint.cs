@@ -29,11 +29,16 @@ namespace ControllerCNC.GUI
         }
 
         internal EntryPoint()
+            : base("START")
         {
+            PositionX = 5000;
+            PositionY = 5000;
             initialize();
         }
 
-        internal EntryPoint(SerializationInfo info, StreamingContext context) : base(info, context) {
+        internal EntryPoint(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
             initialize();
         }
 

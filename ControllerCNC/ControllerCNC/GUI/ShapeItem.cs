@@ -16,7 +16,7 @@ using System.Runtime.Serialization;
 namespace ControllerCNC.GUI
 {
     [Serializable]
-    class TrajectoryShapeItem : PointProviderItem
+    class ShapeItem : PointProviderItem
     {
         /// <summary>
         /// Points defining the shape.
@@ -46,6 +46,38 @@ namespace ControllerCNC.GUI
         /// </summary>
         private double _yStepToVisualFactor;
 
+        internal double MetricWidth
+        {
+            get
+            {
+                return _shapeMetricSize.Width;
+            }
+
+            set
+            {
+                if (value == _shapeMetricSize.Width)
+                    return;
+                _shapeMetricSize = new Size(value, value * (_shapeMaxY - _shapeMinY) / (_shapeMaxX - _shapeMinX));
+                fireOnSettingsChanged();
+            }
+        }
+
+        internal double MetricHeight
+        {
+            get
+            {
+                return _shapeMetricSize.Height;
+            }
+
+            set
+            {
+                if (value == _shapeMetricSize.Width)
+                    return;
+                _shapeMetricSize = new Size(value * (_shapeMaxX - _shapeMinX) / (_shapeMaxY - _shapeMinY), value);
+                fireOnSettingsChanged();
+            }
+        }
+
         internal override IEnumerable<Point4D> ItemPoints
         {
             get
@@ -67,7 +99,8 @@ namespace ControllerCNC.GUI
             }
         }
 
-        internal TrajectoryShapeItem(IEnumerable<Point> shapeDefinition)
+        internal ShapeItem(string name, IEnumerable<Point> shapeDefinition)
+            : base(name)
         {
             if (shapeDefinition == null)
                 throw new ArgumentNullException("trajectory");
@@ -76,7 +109,7 @@ namespace ControllerCNC.GUI
             constructionInitialization();
         }
 
-        internal TrajectoryShapeItem(SerializationInfo info, StreamingContext context)
+        internal ShapeItem(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
             _shapeDefinition = (Point[])info.GetValue("_shapeDefinition", typeof(Point[]));
@@ -110,16 +143,6 @@ namespace ControllerCNC.GUI
             Background = Brushes.Transparent;
 
             initialize();
-        }
-
-        internal void SetMetricWidth(double width)
-        {
-            _shapeMetricSize = new Size(width, width * (_shapeMaxY - _shapeMinY) / (_shapeMaxX - _shapeMinX));
-        }
-
-        internal void SetMetricHeight(double height)
-        {
-            _shapeMetricSize = new Size(height * (_shapeMaxX - _shapeMinX) / (_shapeMaxY - _shapeMinY), height);
         }
 
         /// <inheritdoc/>

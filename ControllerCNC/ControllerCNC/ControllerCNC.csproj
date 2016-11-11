@@ -66,7 +66,10 @@
     <Compile Include="GUI\HeadCNC.cs" />
     <Compile Include="GUI\PointProviderItem.cs" />
     <Compile Include="GUI\ItemJoin.cs" />
-    <Compile Include="GUI\TrajectoryShapeItem.cs" />
+    <Compile Include="GUI\PointProviderPropertiesDialog.xaml.cs">
+      <DependentUpon>PointProviderPropertiesDialog.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="GUI\ShapeItem.cs" />
     <Compile Include="GUI\WorkspaceItem.cs" />
     <Compile Include="GUI\WorkspacePanel.cs" />
     <Compile Include="Machine\Axes.cs" />
@@ -93,6 +96,10 @@
     <Compile Include="Simulation\ChannelTrace.cs" />
     <Compile Include="Simulation\CncSimulator.cs" />
     <Compile Include="SpeedController.cs" />
+    <Page Include="GUI\PointProviderPropertiesDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="TestPanel.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

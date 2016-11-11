@@ -29,6 +29,8 @@ namespace ControllerCNC
     /// </summary>
     public partial class CutterPanel : Window
     {
+        private readonly string _autosaveFile = "workspace_autosave.bin";
+
         private readonly DriverCNC _cnc;
 
         private readonly Coord2DController _coordController;
@@ -61,44 +63,6 @@ namespace ControllerCNC
 
             InitializeComponent();
 
-            _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
-            WorkspaceSlot.Child = _workspace;
-
-            var workspaceFile = "workspace_autosave.bin";
-            if (!File.Exists(workspaceFile))
-            {
-                var coordinates = ShapeDrawing.InterpolateImage("square.bmp");
-                var shape1 = new TrajectoryShapeItem(coordinates);
-                var yOffset = 2000;
-                var xOffset = 65000;
-                shape1.PositionX = 1000 + xOffset;
-                shape1.PositionY = yOffset;
-                shape1.SetMetricWidth(15);
-
-              /*  var shape2 = new TrajectoryShapeItem(coordinates);
-                shape2.PositionX = -2000 + xOffset;
-                shape2.PositionY = yOffset + 8000;
-                shape2.SetMetricWidth(100);*/
-
-                _workspace.Children.Add(shape1);
-                //_workspace.Children.Add(shape2);
-
-                _workspace.EntryPoint.PositionX = xOffset-10000;
-                _workspace.EntryPoint.PositionY = yOffset+1000;
-
-                _workspace.SetJoin(_workspace.EntryPoint, shape1);
-                //_workspace.SetJoin(shape1, shape2);
-
-                //_workspace.SaveTo(workspaceFile);
-            }
-            else
-            {
-                _workspace.LoadFrom(workspaceFile);
-            }
-
-            _workspace.Children.Add(_xyHead);
-            _workspace.Children.Add(_uvHead);
-
             _motionCommands.Add(Calibration);
             _motionCommands.Add(GoToZeros);
             _motionCommands.Add(AlignHeads);
@@ -119,14 +83,101 @@ namespace ControllerCNC
             _autosaveTime.IsEnabled = false;
             _autosaveTime.Interval = TimeSpan.FromMilliseconds(1000);
             _autosaveTime.Tick += _autosaveTime_Tick;
-            _workspace.OnSettingsChanged += () => { _autosaveTime.Stop(); _autosaveTime.Start(); };
+
+            KeyUp += keyUp;
+
+
+            //setup workspace
+            _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
+            WorkspaceSlot.Child = _workspace;
+
+            if (File.Exists(_autosaveFile))
+                _workspace.LoadFrom(_autosaveFile);
+
+            _workspace.Children.Add(_xyHead);
+            _workspace.Children.Add(_uvHead);
+            _workspace.OnWorkItemListChanged += refreshItemList;
+            _workspace.OnSettingsChanged += onSettingsChanged;
+
+            refreshItemList();
+            onSettingsChanged();
         }
 
         #region Workspace handling
 
+        private void onSettingsChanged()
+        {
+            //reset autosave timer
+            _autosaveTime.Stop();
+            _autosaveTime.Start();
+        }
+
+        private void refreshItemList()
+        {
+            WorkItemList.Items.Clear();
+
+            foreach (var child in _workspace.Children)
+            {
+                var workItem = child as WorkspaceItem;
+                if (workItem == null || workItem is HeadCNC)
+                    continue;
+
+                var item = createListItem(workItem);
+                foreach (var join in _workspace.GetIncomingJoins(workItem))
+                {
+                    var joinItem = createListItem(join);
+                    WorkItemList.Items.Add(joinItem);
+                }
+                WorkItemList.Items.Add(item);
+            }
+        }
+
+        private ListBoxItem createListItem(ItemJoin join)
+        {
+            var item = new ListBoxItem();
+            item.Content = join.Item1.Name + " --> " + join.Item2.Name;
+            item.Tag = join;
+            item.Foreground = Brushes.Red;
+            return item;
+        }
+
+        private ListBoxItem createListItem(WorkspaceItem workItem)
+        {
+            var item = new ListBoxItem();
+            item.Content = workItem.Name;
+            item.Tag = workItem;
+
+            return item;
+        }
+
+        void keyUp(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Delete)
+            {
+                //delete all selected items
+                var itemsCopy = WorkItemList.SelectedItems.OfType<object>().ToArray();
+                foreach (ListBoxItem item in itemsCopy)
+                {
+                    var join = item.Tag as ItemJoin;
+                    if (join != null)
+                    {
+                        _workspace.RemoveJoin(join);
+                    }
+
+                    var workItem = item.Tag as WorkspaceItem;
+                    if (workItem == null || workItem is EntryPoint)
+                        continue;
+
+                    _workspace.Children.Remove(workItem);
+                }
+            }
+        }
+
+
         void _autosaveTime_Tick(object sender, EventArgs e)
         {
             _autosaveTime.IsEnabled = false;
+            _workspace.SaveTo(_autosaveFile);
         }
 
         #endregion
@@ -315,6 +366,63 @@ namespace ControllerCNC
         {
             executePlan();
         }
+
+        private void AddShape_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.Filter = "Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.cor";
+
+            var result = dlg.ShowDialog();
+            if (result == true)
+            {
+                string filename = dlg.FileName;
+                var extension = System.IO.Path.GetExtension(filename);
+                var name = System.IO.Path.GetFileNameWithoutExtension(filename);
+
+                IEnumerable<Point> coordinates;
+                switch (extension.ToLower())
+                {
+                    case ".cor":
+                        throw new NotImplementedException();
+                    default:
+                        var interpolator = new ImageInterpolator(filename);
+                        coordinates = interpolator.InterpolateCoordinates();
+                        break;
+                }
+
+                var shape = new ShapeItem(name, coordinates);
+                shape.MetricWidth = 50;
+                _workspace.Children.Add(shape);
+            }
+        }
+
+        private void JoinSelected_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = WorkItemList.SelectedItems.OfType<ListBoxItem>().ToArray();
+            if (selectedItems.Length < 2)
+                //nothing to do
+                return;
+
+            if (selectedItems.Length > 2)
+                throw new NotImplementedException();
+
+
+            var item1 = selectedItems[0].Tag as PointProviderItem;
+            var item2 = selectedItems[1].Tag as PointProviderItem;
+
+            if (item1 == null || item2 == null || item1 == item2 || item2 is EntryPoint)
+                throw new NotImplementedException();
+
+            _workspace.SetJoin(item1, item2);
+            WorkItemList.SelectedItems.Clear();
+        }
+
+        private void RefreshJoins_Click(object sender, RoutedEventArgs e)
+        {
+            _workspace.RefreshJoins();
+        }
+
         #endregion
+
     }
 }

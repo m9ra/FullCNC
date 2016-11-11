@@ -125,14 +125,17 @@
                 </Border>
 
                 <DockPanel DockPanel.Dock="Right" Margin="0 0 20 0" LastChildFill="True">
-                    <StackPanel DockPanel.Dock="Right" Width="220">
-                        <Button Style="{StaticResource CommandButton}">Add shape</Button>
-                        <Button Style="{StaticResource CommandButton}">Add join</Button>
-                        <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
+                    <StackPanel DockPanel.Dock="Right" Width="400" Orientation="Horizontal">
+                        <StackPanel Width="200">
+                            <Button Name="AddShape" Style="{StaticResource CommandButton}" Click="AddShape_Click">Add shape</Button>
+                            <Button Name="JoinSelected" Style="{StaticResource CommandButton}" Click="JoinSelected_Click">Join selected</Button>
+                            <Button Name="RefreshJoins" Style="{StaticResource CommandButton}" Click="RefreshJoins_Click" >Refresh joins</Button>
+                        </StackPanel>
+                        <StackPanel Width="200">
+                            <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
+                        </StackPanel>
                     </StackPanel>
-                    <ListBox DockPanel.Dock="Left" MinWidth="300" FontSize="30"  BorderBrush="Gray">
-                        <ListBoxItem>START --> Shape1</ListBoxItem>
-                        <ListBoxItem>Shape1</ListBoxItem>
+                    <ListBox Name="WorkItemList" SelectionMode="Multiple" DockPanel.Dock="Left" FontSize="30"  BorderBrush="Gray">
                     </ListBox>
                 </DockPanel>
             </DockPanel>
