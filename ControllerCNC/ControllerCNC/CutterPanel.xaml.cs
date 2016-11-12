@@ -201,22 +201,25 @@ namespace ControllerCNC
 
         void _statusTimer_Tick(object sender, EventArgs e)
         {
-            var state = _cnc.CompletedState;
-            var positionU = Constants.MilimetersPerStep * (state.U - _positionOffsetU);
-            var positionV = Constants.MilimetersPerStep * (state.V - _positionOffsetV);
-            var positionX = Constants.MilimetersPerStep * (state.X - _positionOffsetX);
-            var positionY = Constants.MilimetersPerStep * (state.Y - _positionOffsetY);
+            var currentU = _cnc.EstimationU;
+            var currentV = _cnc.EstimationV;
+            var currentX = _cnc.EstimationX;
+            var currentY = _cnc.EstimationY;
+            var positionU = Constants.MilimetersPerStep * (currentU - _positionOffsetU);
+            var positionV = Constants.MilimetersPerStep * (currentV - _positionOffsetV);
+            var positionX = Constants.MilimetersPerStep * (currentX - _positionOffsetX);
+            var positionY = Constants.MilimetersPerStep * (currentY - _positionOffsetY);
 
             PositionU.Text = positionU.ToString("0.000");
             PositionV.Text = positionV.ToString("0.000");
             PositionX.Text = positionX.ToString("0.000");
             PositionY.Text = positionY.ToString("0.000");
 
-            _uvHead.PositionX = state.U;
-            _uvHead.PositionY = state.V;
+            _uvHead.PositionX = currentU;
+            _uvHead.PositionY = currentV;
 
-            _xyHead.PositionX = state.X;
-            _xyHead.PositionY = state.Y;
+            _xyHead.PositionX = currentX;
+            _xyHead.PositionY = currentY;
         }
 
 

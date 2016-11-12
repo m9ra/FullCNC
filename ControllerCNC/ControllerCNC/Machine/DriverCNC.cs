@@ -37,6 +37,16 @@ namespace ControllerCNC.Machine
         private readonly int _instructionLength = 59;
 
         /// <summary>
+        /// Delay between finish and next instruction fetch.
+        /// </summary>
+        private readonly double _startDelay = 0.001;
+
+        /// <summary>
+        /// Ration between machine and real clock.
+        /// </summary>
+        private readonly double _clockRatio = 1.0 / 1.004;
+
+        /// <summary>
         /// Baud rate for serial communication.
         /// </summary>
         private readonly int _communicationBaudRate = 128000;
@@ -97,6 +107,26 @@ namespace ControllerCNC.Machine
         private int _stateDataRemainingBytes = 0;
 
         /// <summary>
+        /// How many steps is estimated from last instruction completion.
+        /// </summary>
+        private volatile int _uEstimation;
+
+        /// <summary>
+        /// How many steps is estimated from last instruction completion.
+        /// </summary>
+        private volatile int _vEstimation;
+
+        /// <summary>
+        /// How many steps is estimated from last instruction completion.
+        /// </summary>
+        private volatile int _xEstimation;
+
+        /// <summary>
+        /// How many steps is estimated from last instruction completion.
+        /// </summary>
+        private volatile int _yEstimation;
+
+        /// <summary>
         /// How many plans are not complete yet.
         /// </summary>
         private volatile int _incompleteInstructions;
@@ -107,10 +137,19 @@ namespace ControllerCNC.Machine
         private volatile bool _resetConnection;
 
         /// <summary>
+        /// When last finished instruction was encountered.
+        /// </summary>
+        private DateTime _lastInstructionStartTime;
+
+        /// <summary>
         /// Worker that handles communication with the machine.
         /// </summary>
         private Thread _communicationWorker;
 
+        /// <summary>
+        /// Thread estimationg actual position (via known timing profiles).
+        /// </summary>
+        private Thread _positionEstimator;
 
         /// <summary>
         /// State which was already completed by the machine.
@@ -148,6 +187,26 @@ namespace ControllerCNC.Machine
         public int IncompletePlanCount { get { return _incompleteInstructions + _sendQueue.Count; } }
 
         /// <summary>
+        /// Position estimation.
+        /// </summary>
+        public int EstimationU { get { return CompletedState.U + _uEstimation; } }
+
+        /// <summary>
+        /// Position estimation.
+        /// </summary>
+        public int EstimationV { get { return CompletedState.V + _vEstimation; } }
+
+        /// <summary>
+        /// Position estimation.
+        /// </summary>
+        public int EstimationX { get { return CompletedState.X + _xEstimation; } }
+
+        /// <summary>
+        /// Position estimation.
+        /// </summary>
+        public int EstimationY { get { return CompletedState.Y + _yEstimation; } }
+
+        /// <summary>
         /// Determine whether machine is connected.
         /// </summary>
         public bool IsConnected { get; private set; }
@@ -159,6 +218,10 @@ namespace ControllerCNC.Machine
 
         public DriverCNC()
         {
+            _positionEstimator = new Thread(runPositionEstimation);
+            _positionEstimator.IsBackground = true;
+            _positionEstimator.Priority = ThreadPriority.Lowest;
+
             _communicationWorker = new Thread(SERIAL_worker);
             _communicationWorker.IsBackground = true;
             _communicationWorker.Priority = ThreadPriority.Highest;
@@ -169,6 +232,7 @@ namespace ControllerCNC.Machine
             System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
             myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;
 
+            _positionEstimator.Start();
             _communicationWorker.Start();
         }
 
@@ -210,6 +274,55 @@ namespace ControllerCNC.Machine
             send(part);
             return true;
         }
+
+        #region Position estimation utilities
+
+        private void runPositionEstimation()
+        {
+            var uEstimator = new PositionEstimator();
+            var vEstimator = new PositionEstimator();
+            var xEstimator = new PositionEstimator();
+            var yEstimator = new PositionEstimator();
+
+            while (true)
+            {
+                Thread.Sleep(10);
+                if (_incompleteInstructionQueue.Count == 0)
+                    continue;
+
+                var currentInstruction = _incompleteInstructionQueue.Peek() as Axes;
+                if (currentInstruction == null)
+                    continue;
+
+                uEstimator.RegisterInstruction(currentInstruction.InstructionU);
+                vEstimator.RegisterInstruction(currentInstruction.InstructionV);
+                xEstimator.RegisterInstruction(currentInstruction.InstructionX);
+                yEstimator.RegisterInstruction(currentInstruction.InstructionY);
+
+                var realTargetTime = (DateTime.Now - _lastInstructionStartTime).TotalSeconds;
+                var targetTime = realTargetTime * _clockRatio + _startDelay;
+                var targetTicks = (long)Math.Round(targetTime * Constants.TimerFrequency);
+
+                var uSteps = uEstimator.GetSteps(targetTicks);
+                var vSteps = vEstimator.GetSteps(targetTicks);
+                var xSteps = xEstimator.GetSteps(targetTicks);
+                var ySteps = yEstimator.GetSteps(targetTicks);
+
+                lock (_L_instructionCompletition)
+                {
+                    if (_incompleteInstructionQueue.Count == 0 || _incompleteInstructionQueue.Peek() != currentInstruction)
+                        //we missed the instruction
+                        continue;
+
+                    _uEstimation += uSteps;
+                    _vEstimation += vSteps;
+                    _xEstimation += xSteps;
+                    _yEstimation += ySteps;
+                }
+            }
+        }
+
+        #endregion
 
         #region Communication utilities
 
@@ -303,6 +416,9 @@ namespace ControllerCNC.Machine
                         var incompleteInstrutionCount = 0;
                         lock (_L_instructionCompletition)
                         {
+                            var now = DateTime.Now;
+                            _lastInstructionStartTime = now;
+                            _uEstimation = _vEstimation = _xEstimation = _yEstimation = 0;
                             onInstructionCompleted();
                             --_incompleteInstructions;
                             incompleteInstrutionCount = _incompleteInstructionQueue.Count;
@@ -341,6 +457,9 @@ namespace ControllerCNC.Machine
         /// </summary>
         private void onInstructionCompleted()
         {
+            if (_incompleteInstructionQueue.Count == 0)
+                //TODO probably garbage from buffer
+                return;
             var instruction = _incompleteInstructionQueue.Dequeue();
             _completedState.Completed(instruction);
         }
@@ -456,6 +575,9 @@ namespace ControllerCNC.Machine
                     while (_incompleteInstructions >= MaxIncompletePlanCount)
                         Monitor.Wait(_L_instructionCompletition);
 
+                    if (_incompleteInstructions == 0)
+                        _lastInstructionStartTime = DateTime.Now;
+
                     _incompleteInstructions += 1;
                 }
 
@@ -511,9 +633,13 @@ namespace ControllerCNC.Machine
 
             data.AddRange(InstructionCNC.ToBytes(checksum));
             var dataBuffer = data.ToArray();
-            lock (_L_sendQueue)
+
+            lock (_L_instructionCompletition)
             {
                 _incompleteInstructionQueue.Enqueue(instruction);
+            }
+            lock (_L_sendQueue)
+            {
                 _sendQueue.Enqueue(dataBuffer);
                 Monitor.Pulse(_L_sendQueue);
             }

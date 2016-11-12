@@ -270,7 +270,7 @@ void ConstantPlan::loadFrom(byte * data)
 
 void ConstantPlan::initForHoming()
 {
-	//TODO refactore homing settings somewhere
+	//TODO refactor homing settings somewhere
 	int16_t stepCount = -200;
 	this->stepCount = abs(stepCount);
 	this->remainingSteps = this->stepCount;

@@ -39,6 +39,31 @@ namespace ControllerCNC.Machine
         }
 
         /// </inheritdoc>
+        internal override int[] GetStepTimings()
+        {
+            var result = new int[Math.Abs(StepCount)];
+            var periodAccumulator = PeriodNumerator / 2;
+            for (var i = 0; i < Math.Abs(StepCount); ++i)
+            {
+                var activationTime = BaseDeltaT;
+                if (PeriodNumerator > 0)
+                {
+                    periodAccumulator += PeriodNumerator;
+                    if (PeriodDenominator >= periodAccumulator)
+                    {
+                        periodAccumulator -= PeriodDenominator;
+                        activationTime += 1;
+                    }
+                }
+
+                result[i] = activationTime;
+                if (StepCount < 0)
+                    result[i] *= -1;
+            }
+            return result;
+        }
+
+        /// </inheritdoc>
         public override string ToString()
         {
             return string.Format("C({0},{1},{2},{3}", StepCount, BaseDeltaT, PeriodNumerator, PeriodDenominator);

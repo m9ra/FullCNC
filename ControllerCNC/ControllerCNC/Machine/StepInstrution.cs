@@ -13,6 +13,8 @@ namespace ControllerCNC.Machine
         /// </summary>
         internal readonly Int16 StepCount;
 
+        internal abstract int[] GetStepTimings();
+
         protected StepInstrution(Int16 stepCount)
         {
             StepCount = stepCount;

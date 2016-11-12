@@ -17,7 +17,7 @@ namespace ControllerCNC.Machine
         public readonly Int16 BaseRemainder;
 
         public AccelerationInstruction(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 baseRemainder, int startN)
-            :base(stepCount)
+            : base(stepCount)
         {
             InitialDeltaT = initialDeltaT;
             StartN = startN;
@@ -50,6 +50,58 @@ namespace ControllerCNC.Machine
             sendBuffer.AddRange(ToBytes(BaseRemainder));
 
             return sendBuffer.ToArray();
+        }
+
+        /// </inheritdoc>
+        internal override int[] GetStepTimings()
+        {
+            var absStepCount = Math.Abs(StepCount);
+            var isDeceleration = StartN < 0;
+            var baseDeltaT = BaseDelta;
+            var baseRemainder = Math.Abs(BaseRemainder);
+            var baseRemainderBuffer = baseRemainder / 2;
+            var currentDeltaT = InitialDeltaT;
+            var current4N = 4 * Math.Abs(StartN);
+            var currentDeltaTBuffer2 = 0;
+
+            var timing = new int[absStepCount];
+            for (var i = 0; i < absStepCount; ++i)
+            {
+                var nextActivationTime = currentDeltaT + baseDeltaT;
+                if (baseRemainder > 0)
+                {
+                    baseRemainderBuffer += baseRemainder;
+                    if (baseRemainderBuffer > absStepCount)
+                    {
+                        baseRemainderBuffer -= absStepCount;
+                        nextActivationTime += 1;
+                    }
+                }
+
+                if (current4N == 0)
+                    //compensate for error at c0
+                    currentDeltaT = currentDeltaT * 676 / 1000;
+
+                var nextDeltaT = currentDeltaT;
+                var nextDeltaTChange = 0;
+                currentDeltaTBuffer2 += nextDeltaT * 2;
+
+                if (isDeceleration)
+                    current4N -= 4;
+                else
+                    current4N += 4;
+
+                nextDeltaTChange = currentDeltaTBuffer2 / (current4N + 1);
+                currentDeltaTBuffer2 = currentDeltaTBuffer2 % (current4N + 1);
+                nextDeltaT = isDeceleration ? nextDeltaT + nextDeltaTChange : nextDeltaT - nextDeltaTChange;
+                currentDeltaT = nextDeltaT;
+
+                timing[i] = nextActivationTime;
+                if (StepCount < 0)
+                    timing[i] *= -1;
+            }
+
+            return timing;
         }
 
         /// </inheritdoc>

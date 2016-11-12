@@ -75,6 +75,7 @@
     <Compile Include="Machine\Axes.cs" />
     <Compile Include="Machine\HomingInstruction.cs" />
     <Compile Include="Machine\InitializationInstruction.cs" />
+    <Compile Include="Machine\PositionEstimator.cs" />
     <Compile Include="Machine\StateInfo.cs" />
     <Compile Include="Machine\StateDataInstruction.cs" />
     <Compile Include="Machine\StepInstrution.cs" />
