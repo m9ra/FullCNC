@@ -16,32 +16,35 @@
         </Style>
     </Window.Resources>
 
-
-    <StackPanel Background="LightGreen">
-        <StackPanel Orientation="Horizontal">
-            <TextBlock Style="{StaticResource ValueLabel}">Top pos. [mm]:</TextBlock>
-            <TextBox Style="{StaticResource ValueInput}" Name="ShapeTop">125</TextBox>
-        </StackPanel>
-
-        <StackPanel Orientation="Horizontal">
-            <TextBlock Style="{StaticResource ValueLabel}">Left pos. [mm]:</TextBlock>
-            <TextBox Style="{StaticResource ValueInput}" Name="ShapeLeft">125</TextBox>
-        </StackPanel>
-
-        <Border Name="ShapeProperties" BorderBrush="Green" BorderThickness="2" Margin="0 10">
-            <StackPanel>
+    <Viewbox Stretch="Uniform">
+        <Grid Width="332" Height="230">
+            <StackPanel Background="LightGreen">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource ValueLabel}">Width [mm]:</TextBlock>
-                    <TextBox Style="{StaticResource ValueInput}" Name="ShapeWidth">125</TextBox>
-                </StackPanel>
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Style="{StaticResource ValueLabel}">Height [mm]:</TextBlock>
-                    <TextBox Style="{StaticResource ValueInput}" Name="ShapeHeight">876</TextBox>
+                    <TextBlock Style="{StaticResource ValueLabel}">Top pos. [mm]:</TextBlock>
+                    <TextBox Style="{StaticResource ValueInput}" Name="ShapeTop">125</TextBox>
                 </StackPanel>
 
-                <TextBlock Margin="0 10 0 0" Style="{StaticResource ValueLabel}">Angle [deg.]</TextBlock>
-                <Slider Value="0" Minimum="0" Maximum="359" Name="ShapeRotation"/>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Style="{StaticResource ValueLabel}">Left pos. [mm]:</TextBlock>
+                    <TextBox Style="{StaticResource ValueInput}" Name="ShapeLeft">125</TextBox>
+                </StackPanel>
+
+                <Border Name="ShapeProperties" BorderBrush="Green" BorderThickness="2" Margin="0 10">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ValueLabel}">Width [mm]:</TextBlock>
+                            <TextBox Style="{StaticResource ValueInput}" Name="ShapeWidth">125</TextBox>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ValueLabel}">Height [mm]:</TextBlock>
+                            <TextBox Style="{StaticResource ValueInput}" Name="ShapeHeight">876</TextBox>
+                        </StackPanel>
+
+                        <TextBlock Margin="0 10 0 0" Style="{StaticResource ValueLabel}">Angle [deg.]</TextBlock>
+                        <Slider Value="0" Minimum="0" Maximum="359" Name="ShapeRotation"/>
+                    </StackPanel>
+                </Border>
             </StackPanel>
-        </Border>
-    </StackPanel>
+        </Grid>
+    </Viewbox>
 </Window>

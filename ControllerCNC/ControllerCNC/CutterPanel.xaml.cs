@@ -91,6 +91,7 @@ namespace ControllerCNC
             _autosaveTime.Tick += _autosaveTime_Tick;
 
             KeyUp += keyUp;
+            KeyDown += keyDown;
 
 
             //setup workspace
@@ -232,6 +233,14 @@ namespace ControllerCNC
             return item;
         }
 
+        void keyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.LeftAlt || e.Key == Key.RightAlt || e.Key == Key.System)
+            {
+                JoinMode.IsChecked = true;
+            }
+        }
+
         void keyUp(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Delete)
@@ -252,6 +261,11 @@ namespace ControllerCNC
 
                     _workspace.Children.Remove(workItem);
                 }
+            }
+
+            if (e.Key == Key.LeftAlt || e.Key == Key.RightAlt || e.Key == Key.System)
+            {
+                JoinMode.IsChecked = false;
             }
         }
 
@@ -486,13 +500,13 @@ namespace ControllerCNC
             _workspace.RefreshJoins();
         }
 
-        private void AddJoins_Checked(object sender, RoutedEventArgs e)
+        private void JoinMode_Checked(object sender, RoutedEventArgs e)
         {
             _addJoinsEnabled = true;
             _joinItemCandidate = null;
         }
 
-        private void AddJoins_Unchecked(object sender, RoutedEventArgs e)
+        private void JoinMode_Unchecked(object sender, RoutedEventArgs e)
         {
             _addJoinsEnabled = false;
             if (_joinItemCandidate != null)

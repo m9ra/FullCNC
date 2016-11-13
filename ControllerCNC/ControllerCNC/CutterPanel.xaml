@@ -105,115 +105,116 @@
             </DrawingBrush.Drawing>
         </DrawingBrush>
     </Window.Resources>
+    <Viewbox Stretch="Uniform">
+        <Grid Width="1920" Height="1080">
+            <DockPanel>
+                <DockPanel Background="Aqua" DockPanel.Dock="Bottom" LastChildFill="True" Height="200">
+                    <Border DockPanel.Dock="Left" BorderBrush="Black" BorderThickness="1">
+                        <StackPanel Orientation="Horizontal">
+                            <StackPanel Margin="10 30 20 0" Width="200">
+                                <Button Name="ResetCoordinates" Style="{StaticResource CommandButton}" Click="ResetCoordinates_Click">Reset</Button>
+                                <Button Name="GoToZeros" Style="{StaticResource CommandButton}" Click="GoToZeros_Click">Go to zeros</Button>
+                                <Button Name="AlignHeads" Style="{StaticResource CommandButton}" Click="AlignHeads_Click">Align heads</Button>
+                            </StackPanel>
+                            <StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Label Style="{StaticResource CoordinateName}">U:</Label>
+                                    <TextBlock Name="PositionU" Style="{StaticResource Coordinate}">
+                                    0.000
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Label Style="{StaticResource CoordinateName}">V:</Label>
+                                    <TextBlock Name="PositionV" Style="{StaticResource Coordinate}">
+                                    0.000
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                            <StackPanel Margin="0 0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Label Style="{StaticResource CoordinateName}">X:</Label>
+                                    <TextBlock Name="PositionX" Style="{StaticResource Coordinate}">
+                                    0.000
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Label Style="{StaticResource CoordinateName}">Y:</Label>
+                                    <TextBlock Name="PositionY" Style="{StaticResource Coordinate}">
+                                    0.000
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
-    <Grid>
-        <DockPanel>
-            <DockPanel Background="Aqua" DockPanel.Dock="Bottom" LastChildFill="True" Height="200">
-                <Border DockPanel.Dock="Left" BorderBrush="Black" BorderThickness="1">
-                    <StackPanel Orientation="Horizontal">
-                        <StackPanel Margin="10 30 20 0" Width="200">
-                            <Button Name="ResetCoordinates" Style="{StaticResource CommandButton}" Click="ResetCoordinates_Click">Reset</Button>
-                            <Button Name="GoToZeros" Style="{StaticResource CommandButton}" Click="GoToZeros_Click">Go to zeros</Button>
-                            <Button Name="AlignHeads" Style="{StaticResource CommandButton}" Click="AlignHeads_Click">Align heads</Button>
-                        </StackPanel>
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <Label Style="{StaticResource CoordinateName}">U:</Label>
-                                <TextBlock Name="PositionU" Style="{StaticResource Coordinate}">
-                                    0.000
-                                </TextBlock>
+                    <DockPanel DockPanel.Dock="Right" Margin="0 0 20 0" LastChildFill="True">
+                        <StackPanel DockPanel.Dock="Right" Width="400" Orientation="Horizontal">
+                            <StackPanel Width="200">
+                                <Button Name="AddShape" Style="{StaticResource CommandButton}" Click="AddShape_Click">Add shape</Button>
+                                <ToggleButton Name="JoinMode" Style="{StaticResource CommandToggleButton}" Checked="JoinMode_Checked" Unchecked="JoinMode_Unchecked" >Join mode</ToggleButton>
+                                <Button Name="RefreshJoins" Style="{StaticResource CommandButton}" Click="RefreshJoins_Click" >Refresh joins</Button>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <Label Style="{StaticResource CoordinateName}">V:</Label>
-                                <TextBlock Name="PositionV" Style="{StaticResource Coordinate}">
-                                    0.000
-                                </TextBlock>
+                            <StackPanel Width="200">
+                                <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
                             </StackPanel>
                         </StackPanel>
-                        <StackPanel Margin="0 0">
-                            <StackPanel Orientation="Horizontal">
-                                <Label Style="{StaticResource CoordinateName}">X:</Label>
-                                <TextBlock Name="PositionX" Style="{StaticResource Coordinate}">
-                                    0.000
-                                </TextBlock>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <Label Style="{StaticResource CoordinateName}">Y:</Label>
-                                <TextBlock Name="PositionY" Style="{StaticResource Coordinate}">
-                                    0.000
-                                </TextBlock>
-                            </StackPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-
-                <DockPanel DockPanel.Dock="Right" Margin="0 0 20 0" LastChildFill="True">
-                    <StackPanel DockPanel.Dock="Right" Width="400" Orientation="Horizontal">
-                        <StackPanel Width="200">
-                            <Button Name="AddShape" Style="{StaticResource CommandButton}" Click="AddShape_Click">Add shape</Button>
-                            <ToggleButton Name="AddJoins" Style="{StaticResource CommandToggleButton}" Checked="AddJoins_Checked" Unchecked="AddJoins_Unchecked" >Add joins</ToggleButton>
-                            <Button Name="RefreshJoins" Style="{StaticResource CommandButton}" Click="RefreshJoins_Click" >Refresh joins</Button>
-                        </StackPanel>
-                        <StackPanel Width="200">
-                            <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
-                        </StackPanel>
-                    </StackPanel>
-                    <g:ListBoxOverride x:Name="WorkItemList" SelectionMode="Multiple" DockPanel.Dock="Left" FontSize="30"  BorderBrush="Gray"/>
+                        <g:ListBoxOverride x:Name="WorkItemList" SelectionMode="Multiple" DockPanel.Dock="Left" FontSize="30"  BorderBrush="Gray"/>
+                    </DockPanel>
                 </DockPanel>
+                <StackPanel Background="LightCyan" DockPanel.Dock="Left" Width="210">
+                    <Border BorderBrush="Black" BorderThickness="1">
+                        <TextBlock Name="ConnectionStatus" FontSize="50" FontWeight="Bold" Background="Red" TextAlignment="Center">Offline</TextBlock>
+                    </Border>
+                    <Border BorderBrush="Black" BorderThickness="1">
+                        <StackPanel DockPanel.Dock="Right" Margin="0 20 0 0">
+                            <StackPanel Orientation="Vertical">
+                                <CheckBox Name="MoveUV"  IsChecked="True">
+                                    <TextBlock FontWeight="Bold" Text="UV"/>
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="2" ScaleY="2" />
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+
+                                <CheckBox Name="MoveXY" IsChecked="True">
+                                    <TextBlock FontWeight="Bold" Text="XY"/>
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="2" ScaleY="2" />
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+
+                                <CheckBox Name="SetSlowTransition">
+                                    <TextBlock Text="Slow"/>
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="2" ScaleY="2" />
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource MovementArrow}" Name="LeftUpB" Content="LU"/>
+                                <Button Style="{StaticResource MovementArrow}" Name="UpB" Content="U"/>
+                                <Button Style="{StaticResource MovementArrow}" Name="UpRightB" Content="UR"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource MovementArrow}" Name="LeftB" Content="L"/>
+                                <Border Height="70" Width="70"></Border>
+                                <Button Style="{StaticResource MovementArrow}" Name="RightB" Content="R"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Style="{StaticResource MovementArrow}" Name="LeftBottomB" DockPanel.Dock="Bottom" Content="LD"/>
+                                <Button Style="{StaticResource MovementArrow}" Name="BottomB" DockPanel.Dock="Bottom" Content="D"/>
+                                <Button Style="{StaticResource MovementArrow}" Name="BottomRightB" DockPanel.Dock="Bottom" Content="DR"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border BorderBrush="Black" Margin="0 50 0 0" BorderThickness="1">
+                        <StackPanel>
+                            <Button Name="Calibration" Style="{StaticResource CommandButton}" Click="CalibrationButton_Click">Calibrate</Button>
+                            <Button Name="ExitButton" Style="{StaticResource CommandButton}" Click="ExitButton_Click">Exit</Button>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <Border Background="Gray" Name="WorkspaceSlot" BorderBrush="Black" BorderThickness="2"></Border>
             </DockPanel>
-            <StackPanel Background="LightCyan" DockPanel.Dock="Left" Width="210">
-                <Border BorderBrush="Black" BorderThickness="1">
-                    <TextBlock Name="ConnectionStatus" FontSize="50" FontWeight="Bold" Background="Red" TextAlignment="Center">Offline</TextBlock>
-                </Border>
-                <Border BorderBrush="Black" BorderThickness="1">
-                    <StackPanel DockPanel.Dock="Right" Margin="0 20 0 0">
-                        <StackPanel Orientation="Vertical">
-                            <CheckBox Name="MoveUV"  IsChecked="True">
-                                <TextBlock FontWeight="Bold" Text="UV"/>
-                                <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="2" ScaleY="2" />
-                                </CheckBox.LayoutTransform>
-                            </CheckBox>
-
-                            <CheckBox Name="MoveXY" IsChecked="True">
-                                <TextBlock FontWeight="Bold" Text="XY"/>
-                                <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="2" ScaleY="2" />
-                                </CheckBox.LayoutTransform>
-                            </CheckBox>
-
-                            <CheckBox Name="SetSlowTransition">
-                                <TextBlock Text="Slow"/>
-                                <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="2" ScaleY="2" />
-                                </CheckBox.LayoutTransform>
-                            </CheckBox>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource MovementArrow}" Name="LeftUpB" Content="LU"/>
-                            <Button Style="{StaticResource MovementArrow}" Name="UpB" Content="U"/>
-                            <Button Style="{StaticResource MovementArrow}" Name="UpRightB" Content="UR"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource MovementArrow}" Name="LeftB" Content="L"/>
-                            <Border Height="70" Width="70"></Border>
-                            <Button Style="{StaticResource MovementArrow}" Name="RightB" Content="R"/>
-                        </StackPanel>
-                        <StackPanel Orientation="Horizontal">
-                            <Button Style="{StaticResource MovementArrow}" Name="LeftBottomB" DockPanel.Dock="Bottom" Content="LD"/>
-                            <Button Style="{StaticResource MovementArrow}" Name="BottomB" DockPanel.Dock="Bottom" Content="D"/>
-                            <Button Style="{StaticResource MovementArrow}" Name="BottomRightB" DockPanel.Dock="Bottom" Content="DR"/>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-                <Border BorderBrush="Black" Margin="0 50 0 0" BorderThickness="1">
-                    <StackPanel>
-                        <Button Name="Calibration" Style="{StaticResource CommandButton}" Click="CalibrationButton_Click">Calibrate</Button>
-                        <Button Name="ExitButton" Style="{StaticResource CommandButton}" Click="ExitButton_Click">Exit</Button>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-            <Border Background="Gray" Name="WorkspaceSlot" BorderBrush="Black" BorderThickness="2"></Border>
-        </DockPanel>
-    </Grid>
+        </Grid>
+    </Viewbox>
 </Window>

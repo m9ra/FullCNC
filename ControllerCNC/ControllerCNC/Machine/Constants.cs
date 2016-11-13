@@ -77,7 +77,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Speed which is OK for cutting foam (TODO will be refactored as different foams needs different speeds).
         /// </summary>
-        public static readonly Speed FoamCuttingSpeed = Speed.FromDelta(3000);
+        public static readonly Speed FoamCuttingSpeed = Speed.FromDelta(7000);
 
         /// <summary>
         /// Maximal speed for head moving in a plane (X,Y or U,V).
