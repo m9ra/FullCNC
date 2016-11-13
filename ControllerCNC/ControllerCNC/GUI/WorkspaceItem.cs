@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 using System.Runtime.Serialization;
 
+using System.Windows.Media;
+using System.Windows.Media.Effects;
+
 using System.Windows;
 using System.Windows.Controls;
 
@@ -25,6 +28,11 @@ namespace ControllerCNC.GUI
         private int _positionY;
 
         /// <summary>
+        /// Determine whether item is highlighted.
+        /// </summary>
+        private bool _isHighlighted;
+
+        /// <summary>
         /// Event fired when settings of the item changes.
         /// </summary>
         internal event Action OnSettingsChanged;
@@ -33,6 +41,36 @@ namespace ControllerCNC.GUI
         /// Name of the item.
         /// </summary>
         new internal readonly string Name;
+
+        /// <summary>
+        /// 
+        /// </summary>
+        internal bool IsHighlighted
+        {
+            get { return _isHighlighted; }
+            set
+            {
+                if (_isHighlighted == value)
+                    //nothing happened
+                    return;
+
+                _isHighlighted = value;
+                if (_isHighlighted)
+                {
+                    var effect = new DropShadowEffect();
+                    effect.Color = Colors.Blue;
+                    effect.BlurRadius = 10;
+                    effect.ShadowDepth = 0;
+                    this.Effect = effect;
+                }
+                else
+                {
+                    this.Effect = null;
+                }
+
+                fireOnSettingsChanged();
+            }
+        }
 
         /// <summary>
         /// Position of the item in steps.

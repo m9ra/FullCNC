@@ -64,6 +64,7 @@
     <Compile Include="Demos\ShapeDrawing.cs" />
     <Compile Include="GUI\EntryPoint.cs" />
     <Compile Include="GUI\HeadCNC.cs" />
+    <Compile Include="GUI\ListBoxOverride.cs" />
     <Compile Include="GUI\PointProviderItem.cs" />
     <Compile Include="GUI\ItemJoin.cs" />
     <Compile Include="GUI\PointProviderPropertiesDialog.xaml.cs">

@@ -16,6 +16,8 @@ using System.IO;
 using System.Threading;
 using System.Windows.Threading;
 
+using System.Windows.Media.Effects;
+
 using ControllerCNC.GUI;
 using ControllerCNC.Demos;
 using ControllerCNC.Machine;
@@ -54,6 +56,10 @@ namespace ControllerCNC
         private int _positionOffsetX = 0;
 
         private int _positionOffsetY = 0;
+
+        private bool _addJoinsEnabled = false;
+
+        private PointProviderItem _joinItemCandidate;
 
         public CutterPanel()
         {
@@ -98,12 +104,42 @@ namespace ControllerCNC
             _workspace.Children.Add(_uvHead);
             _workspace.OnWorkItemListChanged += refreshItemList;
             _workspace.OnSettingsChanged += onSettingsChanged;
+            _workspace.OnWorkItemClicked += onItemClicked;
 
             refreshItemList();
             onSettingsChanged();
         }
 
         #region Workspace handling
+
+        private void onItemClicked(WorkspaceItem item)
+        {
+            if (!_addJoinsEnabled || !(item is PointProviderItem))
+                //nothing to do
+                return;
+
+            if (_joinItemCandidate != null)
+                _joinItemCandidate.IsHighlighted = false;
+
+            if (item == _joinItemCandidate)
+            {
+                //selection was discarded
+                _joinItemCandidate = null;
+                return;
+            }
+
+            var pointProvider = item as PointProviderItem;
+            pointProvider.IsHighlighted = true;
+            if (_joinItemCandidate == null || pointProvider is EntryPoint)
+            {
+                //first item is set (entry point has to be first)
+                _joinItemCandidate = pointProvider;
+                return;
+            }
+
+            _workspace.SetJoin(_joinItemCandidate, pointProvider);
+            _joinItemCandidate = pointProvider;
+        }
 
         private void onSettingsChanged()
         {
@@ -138,6 +174,29 @@ namespace ControllerCNC
             item.Content = join.Item1.Name + " --> " + join.Item2.Name;
             item.Tag = join;
             item.Foreground = Brushes.Red;
+
+            var menu = new ContextMenu();
+
+            var refreshItem = new MenuItem();
+            refreshItem.Header = "Refresh";
+            refreshItem.Click += (e, s) =>
+            {
+                _workspace.SetJoin(join.Item1, join.Item2);
+            };
+            menu.Items.Add(refreshItem);
+
+            var deleteItem = new MenuItem();
+            deleteItem.Header = "Delete";
+            deleteItem.Click += (e, s) =>
+            {
+                _workspace.RemoveJoin(join);
+            };
+            menu.Items.Add(deleteItem);
+
+            item.ContextMenu = menu;
+
+
+
             return item;
         }
 
@@ -147,6 +206,29 @@ namespace ControllerCNC
             item.Content = workItem.Name;
             item.Tag = workItem;
 
+            var shapeItem = workItem as ShapeItem;
+            if (shapeItem != null)
+            {
+                var menu = new ContextMenu();
+
+                var copyItem = new MenuItem();
+                copyItem.Header = "Copy";
+                copyItem.Click += (e, s) =>
+                {
+                    _workspace.Children.Add(shapeItem.Clone());
+                };
+                menu.Items.Add(copyItem);
+
+                var deleteItem = new MenuItem();
+                deleteItem.Header = "Delete";
+                deleteItem.Click += (e, s) =>
+                {
+                    _workspace.Children.Remove(shapeItem);
+                };
+                menu.Items.Add(deleteItem);
+
+                item.ContextMenu = menu;
+            }
             return item;
         }
 
@@ -399,33 +481,25 @@ namespace ControllerCNC
             }
         }
 
-        private void JoinSelected_Click(object sender, RoutedEventArgs e)
-        {
-            var selectedItems = WorkItemList.SelectedItems.OfType<ListBoxItem>().ToArray();
-            if (selectedItems.Length < 2)
-                //nothing to do
-                return;
-
-            if (selectedItems.Length > 2)
-                throw new NotImplementedException();
-
-
-            var item1 = selectedItems[0].Tag as PointProviderItem;
-            var item2 = selectedItems[1].Tag as PointProviderItem;
-
-            if (item1 == null || item2 == null || item1 == item2 || item2 is EntryPoint)
-                throw new NotImplementedException();
-
-            _workspace.SetJoin(item1, item2);
-            WorkItemList.SelectedItems.Clear();
-        }
-
         private void RefreshJoins_Click(object sender, RoutedEventArgs e)
         {
             _workspace.RefreshJoins();
         }
 
-        #endregion
+        private void AddJoins_Checked(object sender, RoutedEventArgs e)
+        {
+            _addJoinsEnabled = true;
+            _joinItemCandidate = null;
+        }
 
+        private void AddJoins_Unchecked(object sender, RoutedEventArgs e)
+        {
+            _addJoinsEnabled = false;
+            if (_joinItemCandidate != null)
+                _joinItemCandidate.IsHighlighted = false;
+            _joinItemCandidate = null;
+        }
+
+        #endregion
     }
 }

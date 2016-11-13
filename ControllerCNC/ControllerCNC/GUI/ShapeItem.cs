@@ -169,6 +169,15 @@ namespace ControllerCNC.GUI
             info.AddValue("_rotationAngle", _rotationAngle);
         }
 
+        internal ShapeItem Clone()
+        {
+            var shapeItem = new ShapeItem(Name, _shapeDefinition);
+            shapeItem.MetricWidth = MetricWidth;
+            shapeItem.RotationAngle = RotationAngle;
+            shapeItem.MetricHeight = MetricHeight;
+            return shapeItem;
+        }
+
         internal void constructionInitialization()
         {
             _shapeMinX = _shapeMinY = double.PositiveInfinity;

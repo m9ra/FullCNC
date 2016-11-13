@@ -8,9 +8,11 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Input;
+using System.Windows.Shapes;
 using System.Windows.Controls;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+
 
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
@@ -18,6 +20,8 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC.GUI
 {
+    internal delegate void WorkspaceItemEvent(WorkspaceItem item);
+
     class WorkspacePanel : Panel
     {
         /// <summary>
@@ -65,6 +69,8 @@ namespace ControllerCNC.GUI
         internal event Action OnSettingsChanged;
 
         internal event Action OnWorkItemListChanged;
+
+        internal event WorkspaceItemEvent OnWorkItemClicked;
 
         internal WorkspacePanel(int stepCountX, int stepCountY)
         {
@@ -224,6 +230,10 @@ namespace ControllerCNC.GUI
                 if (join.Item2 == shape2)
                     //shape can have only one target join
                     _itemJoins.Remove(join);
+
+                if (join.Item1 == shape2 && join.Item2 == shape1)
+                    //cyclic joins are not allowes
+                    _itemJoins.Remove(join);
             }
 
             var newJoin = new ItemJoin(shape1, joinPointIndex1, shape2, joinPointIndex2);
@@ -320,7 +330,8 @@ namespace ControllerCNC.GUI
                 var startPoint = getJoinPointProjected(join.Item1, join.JoinPointIndex1);
                 var endPoint = getJoinPointProjected(join.Item2, join.JoinPointIndex2);
 
-                dc.DrawLine(_joinPen, startPoint, endPoint);
+                var geometry = createLinkArrow(startPoint, endPoint);
+                dc.DrawGeometry(null, _joinPen, geometry);
             }
         }
 
@@ -354,6 +365,7 @@ namespace ControllerCNC.GUI
                 if (workItem != null)
                 {
                     workItem.OnSettingsChanged += fireOnSettingsChanged;
+                    workItem.MouseUp += (s, e) => fireOnWorkitemClicked(workItem);
                 }
             }
             base.OnVisualChildrenChanged(visualAdded, visualRemoved);
@@ -372,6 +384,12 @@ namespace ControllerCNC.GUI
         {
             if (OnSettingsChanged != null)
                 OnSettingsChanged();
+        }
+
+        private void fireOnWorkitemClicked(WorkspaceItem item)
+        {
+            if (OnWorkItemClicked != null)
+                OnWorkItemClicked(item);
         }
 
         /// <inheritdoc/>
@@ -432,6 +450,45 @@ namespace ControllerCNC.GUI
             var coordY = ActualHeight * point4D.Y / StepCountY;
 
             return new Point(coordX, coordY);
+        }
+
+        private Geometry createLinkArrow(Point p1, Point p2)
+        {
+            var lineGroup = new GeometryGroup();
+            var theta = Math.Atan2((p2.Y - p1.Y), (p2.X - p1.X)) * 180 / Math.PI;
+
+            var pathGeometry = new PathGeometry();
+            var pathFigure = new PathFigure();
+            var p = new Point(p1.X + ((p2.X - p1.X) / 1.35), p1.Y + ((p2.Y - p1.Y) / 1.35));
+            pathFigure.StartPoint = p;
+
+            var lpoint = new Point(p.X + 6, p.Y + 15);
+            var rpoint = new Point(p.X - 6, p.Y + 15);
+            var seg1 = new LineSegment();
+            seg1.Point = lpoint;
+            pathFigure.Segments.Add(seg1);
+
+            var seg2 = new LineSegment();
+            seg2.Point = rpoint;
+            pathFigure.Segments.Add(seg2);
+
+            var seg3 = new LineSegment();
+            seg3.Point = p;
+            pathFigure.Segments.Add(seg3);
+
+            pathGeometry.Figures.Add(pathFigure);
+            var transform = new RotateTransform();
+            transform.Angle = theta + 90;
+            transform.CenterX = p.X;
+            transform.CenterY = p.Y;
+            pathGeometry.Transform = transform;
+            lineGroup.Children.Add(pathGeometry);
+
+            var connectorGeometry = new LineGeometry();
+            connectorGeometry.StartPoint = p1;
+            connectorGeometry.EndPoint = p2;
+            lineGroup.Children.Add(connectorGeometry);
+            return lineGroup;
         }
     }
 }
