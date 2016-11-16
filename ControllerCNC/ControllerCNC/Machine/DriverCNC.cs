@@ -286,7 +286,7 @@ namespace ControllerCNC.Machine
 
             while (true)
             {
-                Thread.Sleep(10);
+                Thread.Sleep(20);
                 if (_incompleteInstructionQueue.Count == 0)
                     continue;
 

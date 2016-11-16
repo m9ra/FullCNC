@@ -49,11 +49,11 @@ namespace ControllerCNC
             {
                 if (_stop)
                 {
-                    Thread.Sleep(100);
+                    Thread.Sleep(50);
                 }
                 else
                 {
-                    if (_cnc.IncompletePlanCount < 3)
+                    if (_cnc.IncompletePlanCount < 4)
                         sendNextPlan();
                     else
                         Thread.Sleep(1);
@@ -97,7 +97,7 @@ namespace ControllerCNC
                 return;
             }
 
-
+            velocityReached();
             if (_deltaTX == 0 && _deltaTY == 0)
             {
                 _stop = true;
@@ -142,8 +142,10 @@ namespace ControllerCNC
             var canSkipAcceleration = speed == desiredSpeed;
             canSkipAcceleration |= Math.Abs(speed) >= Constants.StartDeltaT && Math.Abs(desiredSpeed) >= Constants.StartDeltaT;
             if (canSkipAcceleration)
+            {
                 //no acceleration is required
                 return new AccelerationInstruction[0];
+            }
 
             if (Math.Abs(Math.Sign(speed) - Math.Sign(desiredSpeed)) > 1)
             {

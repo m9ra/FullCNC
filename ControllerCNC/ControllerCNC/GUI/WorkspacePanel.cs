@@ -40,6 +40,28 @@ namespace ControllerCNC.GUI
         internal EntryPoint EntryPoint { get { return _entryPoint; } }
 
         /// <summary>
+        /// Speed that will be used for cutting.
+        /// </summary>
+        internal Speed CuttingSpeed
+        {
+            get { return _cuttingSpeed; }
+            set
+            {
+                if (_cuttingSpeed == value)
+                    //nothing to do
+                    return;
+
+                _cuttingSpeed = value;
+                fireOnSettingsChanged();
+            }
+        }
+
+        /// <summary>
+        /// Speed that will be used for cutting.
+        /// </summary>
+        private Speed _cuttingSpeed;
+
+        /// <summary>
         /// Item that is moved by using drag and drop
         /// </summary>
         private PointProviderItem _draggedItem = null;
@@ -81,6 +103,7 @@ namespace ControllerCNC.GUI
 
             PreviewMouseUp += _mouseUp;
             PreviewMouseMove += _mouseMove;
+            CuttingSpeed = Speed.FromDeltaT(6000);
 
             _entryPoint = new EntryPoint();
             Children.Add(_entryPoint);
@@ -113,7 +136,9 @@ namespace ControllerCNC.GUI
             var formatter = new BinaryFormatter();
             var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
 
-            var workspaceRepresentation = Tuple.Create<List<PointProviderItem>, List<ItemJoin>>(itemsToSave, _itemJoins);
+            var configuration = new Dictionary<string, object>();
+            configuration.Add("CuttingSpeed", CuttingSpeed);
+            var workspaceRepresentation = Tuple.Create<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>(itemsToSave, _itemJoins, configuration);
             formatter.Serialize(stream, workspaceRepresentation);
             stream.Close();
         }
@@ -122,7 +147,7 @@ namespace ControllerCNC.GUI
         {
             var formatter = new BinaryFormatter();
             var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var workspaceRepresentation = (Tuple<List<PointProviderItem>, List<ItemJoin>>)formatter.Deserialize(stream);
+            var workspaceRepresentation = (Tuple<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
             stream.Close();
 
             Children.Clear();
@@ -141,6 +166,9 @@ namespace ControllerCNC.GUI
                 _itemJoins.Add(join);
             }
 
+            var configuration = workspaceRepresentation.Item3;
+            _cuttingSpeed = (Speed)configuration["CuttingSpeed"];
+
             fireOnWorkItemListChanged();
             fireOnSettingsChanged();
         }
@@ -156,7 +184,7 @@ namespace ControllerCNC.GUI
             //the plan starts from entry point (recursively)
             fillPlanBy(planPoints, _entryPoint, 0);
 
-            var scheduler = new StraightLinePlanner(Constants.FoamCuttingSpeed);
+            var scheduler = new StraightLinePlanner(CuttingSpeed);
             var trajectoryPlan = scheduler.CreateConstantPlan(new Trajectory4D(planPoints));
 
             plan.Add(trajectoryPlan.Build());

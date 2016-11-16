@@ -51,8 +51,8 @@ namespace ControllerCNC.GUI
         private void refreshWindow()
         {
             Title = _item.Name;
-            ShapeTop.Text = string.Format("{0:0.000}", 1.0 * _item.PositionY * Constants.MilimetersPerStep);
-            ShapeLeft.Text = string.Format("{0:0.000}", 1.0 * _item.PositionX * Constants.MilimetersPerStep);
+            writeNumber(ShapeTop, _item.PositionY * Constants.MilimetersPerStep);
+            writeNumber(ShapeLeft, _item.PositionX * Constants.MilimetersPerStep);
 
             var shapeItem = _item as ShapeItem;
             if (shapeItem == null)
@@ -61,9 +61,17 @@ namespace ControllerCNC.GUI
                 return;
             }
 
-            ShapeWidth.Text = string.Format("{0:0.000}", 1.0 * shapeItem.MetricWidth);
-            ShapeHeight.Text = string.Format("{0:0.000}", 1.0 * shapeItem.MetricHeight);
+            writeNumber(ShapeWidth, shapeItem.MetricWidth);
+            writeNumber(ShapeHeight, shapeItem.MetricHeight);
             ShapeRotation.Value = shapeItem.RotationAngle;
+        }
+
+        private void writeNumber(TextBox box, double number)
+        {
+            var start = box.SelectionStart;
+            box.Text = string.Format("{0:0.000}", number);
+            box.SelectionStart = start;
+            box.SelectionLength = 0;
         }
 
         #region Value change handlers

@@ -195,8 +195,8 @@ namespace ControllerCNC.Planning
             var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, reachedX, accelerationStepsX, accelerationTime);
             var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, reachedY, accelerationStepsY, accelerationTime);
 
-            var reachedSpeedX = Speed.FromDelta(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
-            var reachedSpeedY = Speed.FromDelta(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
+            var reachedSpeedX = Speed.FromDeltaT(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
+            var reachedSpeedY = Speed.FromDeltaT(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
             var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
 
             var decelerationProfileX = AccelerationProfile.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
@@ -243,8 +243,8 @@ namespace ControllerCNC.Planning
             var accelerationProfileX = AccelerationProfile.FromTo(initialSpeedX, reachedX, accelerationStepsX, accelerationTime);
             var accelerationProfileY = AccelerationProfile.FromTo(initialSpeedY, reachedY, accelerationStepsY, accelerationTime);
 
-            var reachedSpeedX = Speed.FromDelta(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
-            var reachedSpeedY = Speed.FromDelta(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
+            var reachedSpeedX = Speed.FromDeltaT(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
+            var reachedSpeedY = Speed.FromDeltaT(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
             var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
 
             var remainingX = xSteps - accelerationProfileX.StepCount;

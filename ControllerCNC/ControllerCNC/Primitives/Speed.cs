@@ -9,6 +9,7 @@ namespace ControllerCNC.Primitives
     /// <summary>
     /// Speed is defined as number of steps that has to be made in specified time.
     /// </summary>
+    [Serializable]
     public class Speed
     {
         /// <summary>
@@ -37,7 +38,7 @@ namespace ControllerCNC.Primitives
         /// </summary>
         /// <param name="deltaT">The delta T in microseconds.</param>
         /// <returns>The speed.</returns>
-        public static Speed FromDelta(int deltaT)
+        public static Speed FromDeltaT(int deltaT)
         {
             if (deltaT < 0)
                 throw new NotSupportedException("DeltaT has to be positive");
@@ -46,6 +47,14 @@ namespace ControllerCNC.Primitives
                 return Speed.Zero;
 
             return new Speed(1, (uint)deltaT);
+        }
+
+        /// <summary>
+        /// Converts speed to deltaT.
+        /// </summary>
+        internal int ToDeltaT()
+        {
+            return (int)(Ticks / StepCount);
         }
     }
 }

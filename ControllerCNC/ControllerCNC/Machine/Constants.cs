@@ -67,17 +67,12 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Speed which is safe to turn around without any additional delays.
         /// </summary>
-        public static readonly Speed ReverseSafeSpeed = Speed.FromDelta(StartDeltaT);
+        public static readonly Speed ReverseSafeSpeed = Speed.FromDeltaT(StartDeltaT);
 
         /// <summary>
         /// Maximal speed for head moving in a plane (X,Y or U,V).
         /// </summary>
-        public static readonly Speed MaxPlaneSpeed = Speed.FromDelta(FastestDeltaT);
-
-        /// <summary>
-        /// Speed which is OK for cutting foam (TODO will be refactored as different foams needs different speeds).
-        /// </summary>
-        public static readonly Speed FoamCuttingSpeed = Speed.FromDelta(7000);
+        public static readonly Speed MaxPlaneSpeed = Speed.FromDeltaT(FastestDeltaT);
 
         /// <summary>
         /// Maximal speed for head moving in a plane (X,Y or U,V).

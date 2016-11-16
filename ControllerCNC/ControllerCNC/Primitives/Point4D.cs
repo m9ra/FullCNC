@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Primitives
 {
+    [Serializable]
     public class Point4D
     {
         /// <summary>

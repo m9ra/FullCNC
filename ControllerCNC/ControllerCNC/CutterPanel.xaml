@@ -4,7 +4,7 @@
         xmlns:g="clr-namespace:ControllerCNC.GUI"
         Title="CutterPane" Height="1000" Width="1500" WindowState="Maximized" WindowStyle="None">
     <Window.Resources>
-        <Style x:Key="MovementArrow" TargetType="{x:Type Button}">
+        <Style x:Key="MovementArrow" TargetType="{x:Type ToggleButton}">
             <Setter Property="FontSize" Value="30" />
             <Setter Property="Width" Value="70"/>
             <Setter Property="Height" Value="70"/>
@@ -12,7 +12,7 @@
 
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="Button">
+                    <ControlTemplate TargetType="ToggleButton">
                         <Border Name="border" 
                             BorderThickness="1"
                             Padding="4,2" 
@@ -26,10 +26,17 @@
                                 <Setter Property="Background" Value="Gold" />
                             </Trigger>
 
+                            <Trigger Property="IsChecked" Value="False">
+                                <Setter Property="Background" Value="Gold" />
+                            </Trigger>
+
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter Property="Background" Value="OrangeRed" />
                             </Trigger>
 
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Background" Value="Green" />
+                            </Trigger>
 
                             <Trigger Property="IsPressed" Value="True">
                                 <Setter Property="Background" Value="Green" />
@@ -182,28 +189,43 @@
                                     </CheckBox.LayoutTransform>
                                 </CheckBox>
 
-                                <CheckBox Name="SetSlowTransition">
-                                    <TextBlock Text="Slow"/>
+                                <CheckBox Name="HoldMovement">
+                                    <TextBlock Text="Hold"/>
+                                    <CheckBox.LayoutTransform>
+                                        <ScaleTransform ScaleX="2" ScaleY="2" />
+                                    </CheckBox.LayoutTransform>
+                                </CheckBox>
+
+                                <CheckBox Name="MoveByCuttingSpeed">
+                                    <TextBlock Text="Cutting speed"/>
                                     <CheckBox.LayoutTransform>
                                         <ScaleTransform ScaleX="2" ScaleY="2" />
                                     </CheckBox.LayoutTransform>
                                 </CheckBox>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <Button Style="{StaticResource MovementArrow}" Name="LeftUpB" Content="LU"/>
-                                <Button Style="{StaticResource MovementArrow}" Name="UpB" Content="U"/>
-                                <Button Style="{StaticResource MovementArrow}" Name="UpRightB" Content="UR"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftUpB" Content="LU"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="UpB" Content="U"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="UpRightB" Content="UR"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <Button Style="{StaticResource MovementArrow}" Name="LeftB" Content="L"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftB" Content="L"/>
                                 <Border Height="70" Width="70"></Border>
-                                <Button Style="{StaticResource MovementArrow}" Name="RightB" Content="R"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="RightB" Content="R"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
-                                <Button Style="{StaticResource MovementArrow}" Name="LeftBottomB" DockPanel.Dock="Bottom" Content="LD"/>
-                                <Button Style="{StaticResource MovementArrow}" Name="BottomB" DockPanel.Dock="Bottom" Content="D"/>
-                                <Button Style="{StaticResource MovementArrow}" Name="BottomRightB" DockPanel.Dock="Bottom" Content="DR"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftBottomB" DockPanel.Dock="Bottom" Content="LD"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomB" DockPanel.Dock="Bottom" Content="D"/>
+                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomRightB" DockPanel.Dock="Bottom" Content="DR"/>
                             </StackPanel>
+
+                            <Border Margin="0 10">
+                                <StackPanel>
+                                    <TextBlock FontSize="30" FontWeight="Bold">Cutting speed</TextBlock>
+                                    <TextBlock Name="CuttingSpeed" FontSize="30" TextAlignment="Center">0mm/s</TextBlock>
+                                    <Slider IsDirectionReversed="True" Name="CuttingDeltaT" Minimum="2000" Maximum="15000" ValueChanged="CuttingDeltaT_ValueChanged"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                     <Border BorderBrush="Black" Margin="0 50 0 0" BorderThickness="1">

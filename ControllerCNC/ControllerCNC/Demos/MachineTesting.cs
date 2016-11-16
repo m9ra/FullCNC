@@ -68,13 +68,13 @@ namespace ControllerCNC.Demos
                 if (i % 2 == 0)
                 {
                     builder.AddXY(acceleration, null);
-                    builder.AddConstantSpeedTransitionXY(distance, 0, Speed.FromDelta(traverseDelta));
+                    builder.AddConstantSpeedTransitionXY(distance, 0, Speed.FromDeltaT(traverseDelta));
                     builder.AddXY(deceleration, null);
                 }
                 else
                 {
                     builder.AddXY(acceleration.WithReversedDirection(), null);
-                    builder.AddConstantSpeedTransitionXY(-distance, 0, Speed.FromDelta(traverseDelta));
+                    builder.AddConstantSpeedTransitionXY(-distance, 0, Speed.FromDeltaT(traverseDelta));
                     builder.AddXY(deceleration.WithReversedDirection(), null);
                 }
             }

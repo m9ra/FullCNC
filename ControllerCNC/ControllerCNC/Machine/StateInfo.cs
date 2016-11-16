@@ -81,6 +81,12 @@ namespace ControllerCNC.Machine
 
         internal bool CheckBoundaries()
         {
+            if (!IsHomeCalibrated)
+            {
+                //if calibration is missing it is allowed to move only towards the home switches
+                return U <= 0 && V <= 0 && X <= 0 && Y <= 0;
+            }
+
             if (U < 0 || V < 0 || X < 0 || Y < 0)
                 return false;
 

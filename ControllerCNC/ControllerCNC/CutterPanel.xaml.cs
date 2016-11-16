@@ -12,6 +12,8 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 
+using System.Windows.Controls.Primitives;
+
 using System.IO;
 using System.Threading;
 using System.Windows.Threading;
@@ -37,7 +39,9 @@ namespace ControllerCNC
 
         private readonly Coord2DController _coordController;
 
-        private readonly HashSet<Button> _motionCommands = new HashSet<Button>();
+        private readonly HashSet<Control> _motionCommands = new HashSet<Control>();
+
+        private readonly HashSet<ToggleButton> _transitionToggles = new HashSet<ToggleButton>();
 
         private readonly DispatcherTimer _statusTimer = new DispatcherTimer();
 
@@ -73,6 +77,7 @@ namespace ControllerCNC
             _motionCommands.Add(GoToZeros);
             _motionCommands.Add(AlignHeads);
             _motionCommands.Add(StartPlan);
+            _motionCommands.Add(CuttingDeltaT);
 
             _cnc = new DriverCNC();
             _cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
@@ -81,7 +86,7 @@ namespace ControllerCNC
             _cnc.Initialize();
 
             _coordController = new Coord2DController(_cnc);
-            initializeTransitionHandlers();
+
 
             _statusTimer.Interval = TimeSpan.FromMilliseconds(20);
             _statusTimer.Tick += _statusTimer_Tick;
@@ -103,12 +108,15 @@ namespace ControllerCNC
 
             _workspace.Children.Add(_xyHead);
             _workspace.Children.Add(_uvHead);
+            //_workspace.Children.Add(heart);
             _workspace.OnWorkItemListChanged += refreshItemList;
             _workspace.OnSettingsChanged += onSettingsChanged;
             _workspace.OnWorkItemClicked += onItemClicked;
 
             refreshItemList();
             onSettingsChanged();
+
+            initializeTransitionHandlers();
         }
 
         #region Workspace handling
@@ -316,6 +324,23 @@ namespace ControllerCNC
 
             _xyHead.PositionX = currentX;
             _xyHead.PositionY = currentY;
+
+            if (_cnc.CompletedState.IsHomeCalibrated)
+            {
+                Calibration.Foreground = Brushes.Black;
+            }
+            else
+            {
+                var blinkFrequency = 1000;
+                if (DateTime.Now.Millisecond % blinkFrequency > blinkFrequency / 2)
+                {
+                    Calibration.Foreground = Brushes.Red;
+                }
+                else
+                {
+                    Calibration.Foreground = Brushes.Green;
+                }
+            }
         }
 
 
@@ -336,7 +361,7 @@ namespace ControllerCNC
             var initY = point.PositionY - state.Y;
             builder.AddRampedLineXY(initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             _workspace.BuildPlan(builder);
-            builder.AddRampedLineXY(-initX, -initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            // builder.AddRampedLineXY(-initX, -initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             builder.DuplicateXYtoUV();
             var plan = builder.Build();
             if (!_cnc.SEND(plan))
@@ -389,27 +414,56 @@ namespace ControllerCNC
             initializeTransitionHandlers(UpRightB, 1, -1);
             initializeTransitionHandlers(LeftBottomB, -1, 1);
             initializeTransitionHandlers(BottomRightB, 1, 1);
+
+            HoldMovement.Unchecked += (s, e) => setTransition(null, 0, 0);
+            CuttingDeltaT.Value = _workspace.CuttingSpeed.ToDeltaT();
+            MoveByCuttingSpeed.Checked += (s, e) => refreshTransitionSpeed();
+            MoveByCuttingSpeed.Unchecked += (s, e) => refreshTransitionSpeed();
+            refreshTransitionSpeed();
         }
 
-        private void initializeTransitionHandlers(Button button, int dirX, int dirY)
+        private void initializeTransitionHandlers(ToggleButton button, int dirX, int dirY)
         {
-            button.PreviewMouseDown += (s, o) => setTransition(dirX, dirY);
-            button.PreviewMouseUp += (s, o) => setTransition(0, 0);
-            _motionCommands.Add(button);
-        }
-
-        private void setTransition(int dirX, int dirY)
-        {
-            if (SetSlowTransition.IsChecked.Value)
+            button.PreviewMouseDown += (s, e) => setTransition(button, dirX, dirY);
+            button.Checked += (s, e) =>
             {
-                _coordController.SetSpeed((int)(Constants.FoamCuttingSpeed.Ticks / Constants.FoamCuttingSpeed.StepCount));
+                if (!HoldMovement.IsChecked.Value)
+                {
+                    button.IsChecked = false;
+                }
+            };
+            button.Unchecked += (s, e) => setTransition(null, 0, 0);
+            _motionCommands.Add(button);
+            _transitionToggles.Add(button);
+        }
+
+        private void setTransition(ToggleButton button, int dirX, int dirY)
+        {
+            foreach (var buttonToDisable in _transitionToggles)
+            {
+                if (buttonToDisable == button)
+                    continue;
+
+                buttonToDisable.IsChecked = false;
+            }
+
+            _coordController.SetPlanes(MoveUV.IsChecked.Value, MoveXY.IsChecked.Value);
+            _coordController.SetMovement(dirX, dirY);
+        }
+
+        private void refreshTransitionSpeed()
+        {
+            if (_coordController == null)
+                return;
+
+            if (MoveByCuttingSpeed.IsChecked.Value)
+            {
+                _coordController.SetSpeed(_workspace.CuttingSpeed.ToDeltaT());
             }
             else
             {
                 _coordController.SetSpeed(Constants.FastestDeltaT);
             }
-            _coordController.SetPlanes(MoveUV.IsChecked.Value, MoveXY.IsChecked.Value);
-            _coordController.SetMovement(dirX, dirY);
         }
 
         private void ExitButton_Click(object sender, RoutedEventArgs e)
@@ -512,6 +566,18 @@ namespace ControllerCNC
             if (_joinItemCandidate != null)
                 _joinItemCandidate.IsHighlighted = false;
             _joinItemCandidate = null;
+        }
+
+        private void CuttingDeltaT_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            var deltaT = (int)Math.Round(CuttingDeltaT.Value);
+            refreshTransitionSpeed();
+
+            if (_workspace != null)
+                _workspace.CuttingSpeed = Speed.FromDeltaT(deltaT);
+
+            var speed = Constants.MilimetersPerStep * Constants.TimerFrequency / deltaT;
+            CuttingSpeed.Text = string.Format("{0:0.000}mm/s", speed);
         }
 
         #endregion

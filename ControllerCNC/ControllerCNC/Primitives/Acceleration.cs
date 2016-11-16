@@ -6,9 +6,11 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Primitives
 {
+    
     /// <summary>
     /// Determines how many steps per second will be accelerated per second
     /// </summary>
+    [Serializable]
     public class Acceleration
     {
         /// <summary>
