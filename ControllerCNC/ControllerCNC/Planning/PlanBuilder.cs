@@ -65,6 +65,19 @@ namespace ControllerCNC.Planning
         }
 
         /// <summary>
+        /// Adds a plan instruction for simultaneous controll of all axes.
+        /// The instruction type has to be same for the axes.
+        /// </summary>
+        /// <param name="instructionU">instruction for the u axis.</param>
+        /// <param name="instructionV">instruction for the v axis.</param>
+        /// <param name="instructionX">instruction for the x axis.</param>
+        /// <param name="instructionY">instruction for the y axis.</param>
+        public void AddUVXY(StepInstrution instructionU, StepInstrution instructionV, StepInstrution instructionX, StepInstrution instructionY)
+        {
+            _plan.Add(Axes.UVXY(instructionU, instructionV, instructionX, instructionY));
+        }
+
+        /// <summary>
         /// Add given instructions.
         /// </summary>
         public void Add(IEnumerable<InstructionCNC> plan)
@@ -81,6 +94,15 @@ namespace ControllerCNC.Planning
         {
             AddXY(accelerationProfileX.ToInstruction(), accelerationProfileY.ToInstruction());
         }
+
+        /// <summary>
+        /// Adds acceleration for u, v, x and y axes.
+        /// </summary>
+        public void AddAccelerationUVXY(AccelerationProfile accelerationProfileU, AccelerationProfile accelerationProfileV, AccelerationProfile accelerationProfileX, AccelerationProfile accelerationProfileY)
+        {
+            AddUVXY(accelerationProfileU.ToInstruction(), accelerationProfileV.ToInstruction(), accelerationProfileX.ToInstruction(), accelerationProfileY.ToInstruction());
+        }
+
 
         /// <summary>
         /// Adds transition with specified entry, cruise and leaving speeds by RPM.
@@ -167,6 +189,98 @@ namespace ControllerCNC.Planning
         }
 
         /// <summary>
+        /// Adds 4D transition with constant speed.
+        /// </summary>
+        /// <param name="distanceU">Distance along U axis in steps.</param>
+        /// <param name="distanceV">Distance along V axis in steps.</param>
+        /// <param name="transitionSpeedUV">Speed of the transition in uv plane.</param>
+        /// <param name="distanceX">Distance along X axis in steps.</param>
+        /// <param name="distanceY">Distance along Y axis in steps.</param>
+        /// <param name="transitionSpeedXY">Speed of the transition in xy plane.</param>
+        public void AddConstantSpeedTransitionUVXY(int distanceU, int distanceV, Speed transitionSpeedUV, int distanceX, int distanceY, Speed transitionSpeedXY)
+        {
+            checked
+            {
+                var sqrtUV = Math.Sqrt(1.0 * distanceU * distanceU + 1.0 * distanceV * distanceV);
+                var sqrtXY = Math.Sqrt(1.0 * distanceX * distanceX + 1.0 * distanceY * distanceY);
+                var transitionTimeUV = sqrtUV == 0 ? 0 : (long)(sqrtUV * transitionSpeedUV.Ticks / transitionSpeedUV.StepCount);
+                var transitionTimeXY = sqrtXY == 0 ? 0 : (long)(sqrtXY * transitionSpeedXY.Ticks / transitionSpeedXY.StepCount);
+                var transitionTime = Math.Max(transitionTimeUV, transitionTimeXY);
+
+                var remainingStepsU = distanceU;
+                var remainingStepsV = distanceV;
+                var remainingStepsX = distanceX;
+                var remainingStepsY = distanceY;
+
+                var chunkLengthLimit = 31500;
+                var maxUV = Math.Max(Math.Abs(distanceU), Math.Abs(distanceV));
+                var maxXY = Math.Max(Math.Abs(distanceX), Math.Abs(distanceY));
+                var chunkCount = 1.0 * Math.Max(maxUV, maxXY) / chunkLengthLimit;
+                chunkCount = Math.Max(1, chunkCount);
+
+
+                var doneDistanceU = 0L;
+                var doneDistanceV = 0L;
+                var doneDistanceX = 0L;
+                var doneDistanceY = 0L;
+                var doneTime = 0.0;
+
+                var i = Math.Min(1.0, chunkCount);
+                while (Math.Abs(remainingStepsU) > 0 || Math.Abs(remainingStepsV) > 0 || Math.Abs(remainingStepsX) > 0 || Math.Abs(remainingStepsY) > 0)
+                {
+                    var chunkDistanceU = distanceU * i / chunkCount;
+                    var chunkDistanceV = distanceV * i / chunkCount;
+                    var chunkDistanceX = distanceX * i / chunkCount;
+                    var chunkDistanceY = distanceY * i / chunkCount;
+                    var chunkTime = transitionTime * i / chunkCount;
+
+                    var stepCountUD = chunkDistanceU - doneDistanceU;
+                    var stepCountVD = chunkDistanceV - doneDistanceV;
+                    var stepCountXD = chunkDistanceX - doneDistanceX;
+                    var stepCountYD = chunkDistanceY - doneDistanceY;
+                    var stepsTime = chunkTime - doneTime;
+
+                    var stepCountU = (Int16)Math.Round(stepCountUD);
+                    var stepCountV = (Int16)Math.Round(stepCountVD);
+                    var stepCountX = (Int16)Math.Round(stepCountXD);
+                    var stepCountY = (Int16)Math.Round(stepCountYD);
+
+                    doneDistanceU += stepCountU;
+                    doneDistanceV += stepCountV;
+                    doneDistanceX += stepCountX;
+                    doneDistanceY += stepCountY;
+
+                    //we DON'T want to round here - this way we can distribute time precisely
+                    var stepTimeU = stepCountU == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountU));
+                    var stepTimeV = stepCountV == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountV));
+                    var stepTimeX = stepCountX == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountX));
+                    var stepTimeY = stepCountY == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountY));
+
+                    var timeRemainderU = Math.Abs(stepCountUD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountUD));
+                    var timeRemainderV = Math.Abs(stepCountVD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountVD));
+                    var timeRemainderX = Math.Abs(stepCountXD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountXD));
+                    var timeRemainderY = Math.Abs(stepCountYD) <= 1 ? (UInt16)0 : (UInt16)(stepsTime % Math.Abs(stepCountYD));
+
+                    if (stepTimeU == 0 && stepTimeV == 0 && stepTimeX == 0 && stepTimeY == 0)
+                    {
+                        if (doneDistanceU == distanceU && doneDistanceV == distanceV && doneDistanceX == distanceX && doneDistanceY == distanceY)
+                            break;
+                        throw new NotImplementedException("Send wait signal");
+                    }
+
+                    doneTime += stepsTime;
+
+                    var uPart = createConstant(stepCountU, stepTimeU, timeRemainderU);
+                    var vPart = createConstant(stepCountV, stepTimeV, timeRemainderV);
+                    var xPart = createConstant(stepCountX, stepTimeX, timeRemainderX);
+                    var yPart = createConstant(stepCountY, stepTimeY, timeRemainderY);
+                    AddUVXY(uPart, vPart, xPart, yPart);
+                    i = i + 1 > chunkCount ? chunkCount : i + 1;
+                }
+            }
+        }
+
+        /// <summary>
         /// Adds ramped line with specified number of steps.
         /// </summary>
         /// <param name="xSteps">Number of steps along x.</param>
@@ -197,7 +311,7 @@ namespace ControllerCNC.Planning
 
             var reachedSpeedX = Speed.FromDeltaT(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
             var reachedSpeedY = Speed.FromDeltaT(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
-            var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
+            var reachedSpeed = ComposeSpeeds(reachedSpeedX, reachedSpeedY);
 
             var decelerationProfileX = AccelerationProfile.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
             var decelerationProfileY = AccelerationProfile.FromTo(reachedY, Speed.Zero, accelerationStepsY, accelerationTime);
@@ -210,6 +324,73 @@ namespace ControllerCNC.Planning
             AddConstantSpeedTransitionXY(remainingX, remainingY, reachedSpeed);
             AddAccelerationXY(decelerationProfileX, decelerationProfileY);
         }
+
+        /// <summary>
+        /// Adds ramped line with specified number of steps.
+        /// </summary>
+        /// <param name="uSteps">Number of steps along u.</param>
+        /// <param name="vSteps">Numer of steps along v.</param>
+        /// <param name="xSteps">Number of steps along x.</param>
+        /// <param name="ySteps">Numer of steps along y.</param>
+        /// <param name="planeAcceleration">Acceleration used for ramping - calculated for both axis combined.</param>
+        /// <param name="planeSpeedLimit">Maximal speed that could be achieved for both axis combined.</param>
+        public void AddRampedLineUVXY(int uSteps, int vSteps, int xSteps, int ySteps, Acceleration planeAcceleration, Speed planeSpeedLimit)
+        {
+            if (uSteps == 0 && vSteps == 0 && xSteps == 0 && ySteps == 0)
+                //nothing to do
+                return;
+
+            Speed speedLimitU, speedLimitV;
+            DecomposeXY(uSteps, vSteps, planeSpeedLimit, out speedLimitU, out speedLimitV);
+
+            Acceleration accelerationU, accelerationV;
+            DecomposeXY(uSteps, vSteps, planeAcceleration, out accelerationU, out accelerationV);
+
+            Speed speedLimitX, speedLimitY;
+            DecomposeXY(xSteps, ySteps, planeSpeedLimit, out speedLimitX, out speedLimitY);
+
+            Acceleration accelerationX, accelerationY;
+            DecomposeXY(xSteps, ySteps, planeAcceleration, out accelerationX, out accelerationY);
+
+            Speed reachedU, reachedV, reachedX, reachedY;
+            int accelerationStepsU, accelerationStepsV, accelerationStepsX, accelerationStepsY;
+            var timeU = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitU, accelerationU, uSteps / 2, out reachedU, out accelerationStepsU);
+            var timeV = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitV, accelerationV, vSteps / 2, out reachedV, out accelerationStepsV);
+            var timeX = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitX, accelerationX, xSteps / 2, out reachedX, out accelerationStepsX);
+            var timeY = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitY, accelerationY, ySteps / 2, out reachedY, out accelerationStepsY);
+
+            //take acceleration time according to axis with more precision
+            var accelerationTime = Math.Max(Math.Max(timeU, timeV), Math.Max(timeX, timeY));
+
+            var accelerationProfileU = AccelerationProfile.FromTo(Speed.Zero, reachedU, accelerationStepsU, accelerationTime);
+            var accelerationProfileV = AccelerationProfile.FromTo(Speed.Zero, reachedV, accelerationStepsV, accelerationTime);
+            var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, reachedX, accelerationStepsX, accelerationTime);
+            var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, reachedY, accelerationStepsY, accelerationTime);
+
+            var reachedSpeedU = Speed.FromDeltaT(accelerationProfileU.EndDelta + accelerationProfileU.BaseDeltaT);
+            var reachedSpeedV = Speed.FromDeltaT(accelerationProfileV.EndDelta + accelerationProfileV.BaseDeltaT);
+            var reachedSpeedX = Speed.FromDeltaT(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
+            var reachedSpeedY = Speed.FromDeltaT(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
+
+            var reachedSpeedUV = ComposeSpeeds(reachedSpeedU, reachedSpeedV);
+            var reachedSpeedXY = ComposeSpeeds(reachedSpeedX, reachedSpeedY);
+
+            var decelerationProfileU = AccelerationProfile.FromTo(reachedU, Speed.Zero, accelerationStepsU, accelerationTime);
+            var decelerationProfileV = AccelerationProfile.FromTo(reachedV, Speed.Zero, accelerationStepsV, accelerationTime);
+            var decelerationProfileX = AccelerationProfile.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
+            var decelerationProfileY = AccelerationProfile.FromTo(reachedY, Speed.Zero, accelerationStepsY, accelerationTime);
+
+            var remainingU = uSteps - accelerationProfileU.StepCount - decelerationProfileU.StepCount;
+            var remainingV = vSteps - accelerationProfileV.StepCount - decelerationProfileV.StepCount;
+            var remainingX = xSteps - accelerationProfileX.StepCount - decelerationProfileX.StepCount;
+            var remainingY = ySteps - accelerationProfileY.StepCount - decelerationProfileY.StepCount;
+
+            //send ramp
+            AddAccelerationUVXY(accelerationProfileU, accelerationProfileV, accelerationProfileX, accelerationProfileY);
+            AddConstantSpeedTransitionUVXY(remainingU, remainingV, reachedSpeedUV, remainingX, remainingY, reachedSpeedXY);
+            AddAccelerationUVXY(decelerationProfileU, decelerationProfileV, decelerationProfileX, decelerationProfileY);
+        }
+
 
         /// <summary>
         /// Adds line with specified initial and desired speed.
@@ -245,7 +426,7 @@ namespace ControllerCNC.Planning
 
             var reachedSpeedX = Speed.FromDeltaT(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
             var reachedSpeedY = Speed.FromDeltaT(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
-            var reachedSpeed = ComposeXY(reachedSpeedX, reachedSpeedY);
+            var reachedSpeed = ComposeSpeeds(reachedSpeedX, reachedSpeedY);
 
             var remainingX = xSteps - accelerationProfileX.StepCount;
             var remainingY = ySteps - accelerationProfileY.StepCount;
@@ -268,7 +449,7 @@ namespace ControllerCNC.Planning
         /// <param name="speedX">Speed for x axis.</param>
         /// <param name="speedY">Speed for y axis.</param>
         /// <returns>The composed speed.</returns>
-        public Speed ComposeXY(Speed speedX, Speed speedY)
+        public Speed ComposeSpeeds(Speed speedX, Speed speedY)
         {
             checked
             {
@@ -290,6 +471,13 @@ namespace ControllerCNC.Planning
             //TODO verify/improve precision
             checked
             {
+                if (stepsX == 0 && stepsY == 0)
+                {
+                    speedX = Speed.Zero;
+                    speedY = Speed.Zero;
+                    return;
+                }
+
                 var direction = new Vector(stepsX, stepsY);
                 direction.Normalize();
 

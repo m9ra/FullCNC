@@ -506,12 +506,7 @@ namespace ControllerCNC
             var stepsY = _positionOffsetY - state.Y;
 
             var planner = new PlanBuilder();
-            planner.AddRampedLineXY(stepsU, stepsV, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
-            planner.ChangeXYtoUV();
-            _cnc.SEND(planner.Build());
-
-            planner = new PlanBuilder();
-            planner.AddRampedLineXY(stepsX, stepsY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            planner.AddRampedLineUVXY(stepsU, stepsV, stepsX, stepsY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             _cnc.SEND(planner.Build());
         }
 

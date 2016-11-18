@@ -218,10 +218,14 @@ namespace ControllerCNC.GUI
             _xStepToVisualFactor = size.Width / workspace.StepCountX;
             _yStepToVisualFactor = size.Height / workspace.StepCountY;
 
-            Width = _shapeMetricSize.Width / Constants.MilimetersPerStep * _xStepToVisualFactor;
+            Width =  _shapeMetricSize.Width / Constants.MilimetersPerStep * _xStepToVisualFactor;
             Height = _shapeMetricSize.Height / Constants.MilimetersPerStep * _yStepToVisualFactor;
         }
 
+        protected override Size ArrangeOverride(Size arrangeBounds)
+        {
+            return arrangeBounds;
+        }
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
