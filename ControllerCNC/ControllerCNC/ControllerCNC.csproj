@@ -82,9 +82,13 @@
     <Compile Include="Machine\StepInstrution.cs" />
     <Compile Include="Planning\ImageInterpolator.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />
-    <Compile Include="Planning\AccelerationProfile.cs" />
+    <Compile Include="Planning\AccelerationBuilder.cs" />
     <Compile Include="Planning\PathTracer2D.cs" />
+    <Compile Include="Planning\PointTracer4D.cs" />
+    <Compile Include="Planning\TraceProfiles\ProfileBase.cs" />
+    <Compile Include="Planning\TraceProfiles\TargetPlaneSpeedOptimizer.cs" />
     <Compile Include="Planning\StraightLinePlanner2D.cs" />
+    <Compile Include="Planning\TraceProfiles\TraceContext.cs" />
     <Compile Include="PositionController.cs" />
     <Compile Include="Primitives\Acceleration.cs" />
     <Compile Include="Machine\AccelerationInstruction.cs" />

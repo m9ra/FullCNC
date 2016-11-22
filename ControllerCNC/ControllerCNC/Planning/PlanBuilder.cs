@@ -90,7 +90,7 @@ namespace ControllerCNC.Planning
         /// </summary>
         /// <param name="accelerationProfileX">Profile for x axis acceleration.</param>
         /// <param name="accelerationProfileY">Profile for y axis acceleration.</param>
-        public void AddAccelerationXY(AccelerationProfile accelerationProfileX, AccelerationProfile accelerationProfileY)
+        public void AddAccelerationXY(AccelerationBuilder accelerationProfileX, AccelerationBuilder accelerationProfileY)
         {
             AddXY(accelerationProfileX.ToInstruction(), accelerationProfileY.ToInstruction());
         }
@@ -98,7 +98,7 @@ namespace ControllerCNC.Planning
         /// <summary>
         /// Adds acceleration for u, v, x and y axes.
         /// </summary>
-        public void AddAccelerationUVXY(AccelerationProfile accelerationProfileU, AccelerationProfile accelerationProfileV, AccelerationProfile accelerationProfileX, AccelerationProfile accelerationProfileY)
+        public void AddAccelerationUVXY(AccelerationBuilder accelerationProfileU, AccelerationBuilder accelerationProfileV, AccelerationBuilder accelerationProfileX, AccelerationBuilder accelerationProfileY)
         {
             AddUVXY(accelerationProfileU.ToInstruction(), accelerationProfileV.ToInstruction(), accelerationProfileX.ToInstruction(), accelerationProfileY.ToInstruction());
         }
@@ -300,21 +300,21 @@ namespace ControllerCNC.Planning
 
             Speed reachedX, reachedY;
             int accelerationStepsX, accelerationStepsY;
-            var timeX = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitX, accelerationX, xSteps / 2, out reachedX, out accelerationStepsX);
-            var timeY = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitY, accelerationY, ySteps / 2, out reachedY, out accelerationStepsY);
+            var timeX = AccelerationBuilder.CalculateTime(Speed.Zero, speedLimitX, accelerationX, xSteps / 2, out reachedX, out accelerationStepsX);
+            var timeY = AccelerationBuilder.CalculateTime(Speed.Zero, speedLimitY, accelerationY, ySteps / 2, out reachedY, out accelerationStepsY);
 
             //take acceleration time according to axis with more precision
             var accelerationTime = Math.Max(timeX, timeY);
 
-            var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, reachedX, accelerationStepsX, accelerationTime);
-            var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, reachedY, accelerationStepsY, accelerationTime);
+            var accelerationProfileX = AccelerationBuilder.FromTo(Speed.Zero, reachedX, accelerationStepsX, accelerationTime);
+            var accelerationProfileY = AccelerationBuilder.FromTo(Speed.Zero, reachedY, accelerationStepsY, accelerationTime);
 
             var reachedSpeedX = Speed.FromDeltaT(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
             var reachedSpeedY = Speed.FromDeltaT(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);
             var reachedSpeed = ComposeSpeeds(reachedSpeedX, reachedSpeedY);
 
-            var decelerationProfileX = AccelerationProfile.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
-            var decelerationProfileY = AccelerationProfile.FromTo(reachedY, Speed.Zero, accelerationStepsY, accelerationTime);
+            var decelerationProfileX = AccelerationBuilder.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
+            var decelerationProfileY = AccelerationBuilder.FromTo(reachedY, Speed.Zero, accelerationStepsY, accelerationTime);
 
             var remainingX = xSteps - accelerationProfileX.StepCount - decelerationProfileX.StepCount;
             var remainingY = ySteps - accelerationProfileY.StepCount - decelerationProfileY.StepCount;
@@ -354,18 +354,18 @@ namespace ControllerCNC.Planning
 
             Speed reachedU, reachedV, reachedX, reachedY;
             int accelerationStepsU, accelerationStepsV, accelerationStepsX, accelerationStepsY;
-            var timeU = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitU, accelerationU, uSteps / 2, out reachedU, out accelerationStepsU);
-            var timeV = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitV, accelerationV, vSteps / 2, out reachedV, out accelerationStepsV);
-            var timeX = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitX, accelerationX, xSteps / 2, out reachedX, out accelerationStepsX);
-            var timeY = AccelerationProfile.CalculateTime(Speed.Zero, speedLimitY, accelerationY, ySteps / 2, out reachedY, out accelerationStepsY);
+            var timeU = AccelerationBuilder.CalculateTime(Speed.Zero, speedLimitU, accelerationU, uSteps / 2, out reachedU, out accelerationStepsU);
+            var timeV = AccelerationBuilder.CalculateTime(Speed.Zero, speedLimitV, accelerationV, vSteps / 2, out reachedV, out accelerationStepsV);
+            var timeX = AccelerationBuilder.CalculateTime(Speed.Zero, speedLimitX, accelerationX, xSteps / 2, out reachedX, out accelerationStepsX);
+            var timeY = AccelerationBuilder.CalculateTime(Speed.Zero, speedLimitY, accelerationY, ySteps / 2, out reachedY, out accelerationStepsY);
 
             //take acceleration time according to axis with more precision
             var accelerationTime = Math.Max(Math.Max(timeU, timeV), Math.Max(timeX, timeY));
 
-            var accelerationProfileU = AccelerationProfile.FromTo(Speed.Zero, reachedU, accelerationStepsU, accelerationTime);
-            var accelerationProfileV = AccelerationProfile.FromTo(Speed.Zero, reachedV, accelerationStepsV, accelerationTime);
-            var accelerationProfileX = AccelerationProfile.FromTo(Speed.Zero, reachedX, accelerationStepsX, accelerationTime);
-            var accelerationProfileY = AccelerationProfile.FromTo(Speed.Zero, reachedY, accelerationStepsY, accelerationTime);
+            var accelerationProfileU = AccelerationBuilder.FromTo(Speed.Zero, reachedU, accelerationStepsU, accelerationTime);
+            var accelerationProfileV = AccelerationBuilder.FromTo(Speed.Zero, reachedV, accelerationStepsV, accelerationTime);
+            var accelerationProfileX = AccelerationBuilder.FromTo(Speed.Zero, reachedX, accelerationStepsX, accelerationTime);
+            var accelerationProfileY = AccelerationBuilder.FromTo(Speed.Zero, reachedY, accelerationStepsY, accelerationTime);
 
             var reachedSpeedU = Speed.FromDeltaT(accelerationProfileU.EndDelta + accelerationProfileU.BaseDeltaT);
             var reachedSpeedV = Speed.FromDeltaT(accelerationProfileV.EndDelta + accelerationProfileV.BaseDeltaT);
@@ -375,10 +375,10 @@ namespace ControllerCNC.Planning
             var reachedSpeedUV = ComposeSpeeds(reachedSpeedU, reachedSpeedV);
             var reachedSpeedXY = ComposeSpeeds(reachedSpeedX, reachedSpeedY);
 
-            var decelerationProfileU = AccelerationProfile.FromTo(reachedU, Speed.Zero, accelerationStepsU, accelerationTime);
-            var decelerationProfileV = AccelerationProfile.FromTo(reachedV, Speed.Zero, accelerationStepsV, accelerationTime);
-            var decelerationProfileX = AccelerationProfile.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
-            var decelerationProfileY = AccelerationProfile.FromTo(reachedY, Speed.Zero, accelerationStepsY, accelerationTime);
+            var decelerationProfileU = AccelerationBuilder.FromTo(reachedU, Speed.Zero, accelerationStepsU, accelerationTime);
+            var decelerationProfileV = AccelerationBuilder.FromTo(reachedV, Speed.Zero, accelerationStepsV, accelerationTime);
+            var decelerationProfileX = AccelerationBuilder.FromTo(reachedX, Speed.Zero, accelerationStepsX, accelerationTime);
+            var decelerationProfileY = AccelerationBuilder.FromTo(reachedY, Speed.Zero, accelerationStepsY, accelerationTime);
 
             var remainingU = uSteps - accelerationProfileU.StepCount - decelerationProfileU.StepCount;
             var remainingV = vSteps - accelerationProfileV.StepCount - decelerationProfileV.StepCount;
@@ -415,14 +415,14 @@ namespace ControllerCNC.Planning
 
             Speed reachedX, reachedY;
             int accelerationStepsX, accelerationStepsY;
-            var timeX = AccelerationProfile.CalculateTime(initialSpeedX, speedLimitX, accelerationX, xSteps, out reachedX, out accelerationStepsX);
-            var timeY = AccelerationProfile.CalculateTime(initialSpeedY, speedLimitY, accelerationY, ySteps, out reachedY, out accelerationStepsY);
+            var timeX = AccelerationBuilder.CalculateTime(initialSpeedX, speedLimitX, accelerationX, xSteps, out reachedX, out accelerationStepsX);
+            var timeY = AccelerationBuilder.CalculateTime(initialSpeedY, speedLimitY, accelerationY, ySteps, out reachedY, out accelerationStepsY);
 
             //take acceleration time according to axis with more precision
             var accelerationTime = Math.Max(timeX, timeY);
 
-            var accelerationProfileX = AccelerationProfile.FromTo(initialSpeedX, reachedX, accelerationStepsX, accelerationTime);
-            var accelerationProfileY = AccelerationProfile.FromTo(initialSpeedY, reachedY, accelerationStepsY, accelerationTime);
+            var accelerationProfileX = AccelerationBuilder.FromTo(initialSpeedX, reachedX, accelerationStepsX, accelerationTime);
+            var accelerationProfileY = AccelerationBuilder.FromTo(initialSpeedY, reachedY, accelerationStepsY, accelerationTime);
 
             var reachedSpeedX = Speed.FromDeltaT(accelerationProfileX.EndDelta + accelerationProfileX.BaseDeltaT);
             var reachedSpeedY = Speed.FromDeltaT(accelerationProfileY.EndDelta + accelerationProfileY.BaseDeltaT);

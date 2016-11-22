@@ -124,7 +124,7 @@ namespace ControllerCNC.Planning
         {
             checked
             {
-                var profile = AccelerationProfile.FromTo(initialSpeed, endSpeed, (int)Math.Round(distance), exactDuration);
+                var profile = AccelerationBuilder.FromTo(initialSpeed, endSpeed, (int)Math.Round(distance), exactDuration);
                 var timeDiff = Math.Abs(profile.TotalTickCount - exactDuration * Constants.TimerFrequency);
                 System.Diagnostics.Debug.WriteLine("Acceleration time diff: " + timeDiff);
                 System.Diagnostics.Debug.WriteLine("\t" + profile);

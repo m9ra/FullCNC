@@ -504,6 +504,8 @@ namespace ControllerCNC.Machine
                     try
                     {
                         _port = new SerialPort(portName);
+                        _port.DtrEnable = false;
+                        _port.RtsEnable = false;
                         _port.BaudRate = _communicationBaudRate;
                         _port.Open();
 

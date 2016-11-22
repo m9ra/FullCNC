@@ -432,6 +432,13 @@ namespace ControllerCNC
                     button.IsChecked = false;
                 }
             };
+            button.PreviewMouseUp += (s, e) =>
+            {
+                if (!HoldMovement.IsChecked.Value)
+                {
+                    setTransition(null, 0, 0);
+                }
+            };
             button.Unchecked += (s, e) => setTransition(null, 0, 0);
             _motionCommands.Add(button);
             _transitionToggles.Add(button);
