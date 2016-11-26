@@ -110,11 +110,21 @@
     <Compile Include="Primitives\ReadableIdentifier.cs" />
     <Compile Include="Primitives\Trajectory4D.cs" />
     <Compile Include="Primitives\Speed.cs" />
+    <Compile Include="ShapeEditor\EditorWindow.xaml.cs">
+      <DependentUpon>EditorWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ShapeEditor\FacetShape.cs" />
+    <Compile Include="ShapeEditor\TrackballDecorator.cs" />
+    <Compile Include="ShapeEditor\Triangulation.cs" />
     <Compile Include="Simulation\ChannelPlotter.cs" />
     <Compile Include="Simulation\ChannelTrace.cs" />
     <Compile Include="Simulation\CncSimulator.cs" />
     <Compile Include="SpeedController.cs" />
     <Page Include="GUI\PointProviderPropertiesDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ShapeEditor\EditorWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
