@@ -66,7 +66,7 @@ namespace ControllerCNC.Planning
             _backgroundColor = _data[0];
         }
 
-        public IEnumerable<System.Windows.Point> InterpolateCoordinates()
+        public IEnumerable<Point2Df> InterpolateCoordinates()
         {
             //initialize datastructures
             _contourPoints = new Dictionary<Tuple<int, int>, ContourPoint>();
@@ -128,7 +128,7 @@ namespace ControllerCNC.Planning
             //make the shape closed
             orderedPoints = orderedPoints.Concat(new[] { orderedPoints.First() }).ToArray();
 
-            return orderedPoints.Select(p => new System.Windows.Point(p.X, p.Y));
+            return orderedPoints.Select(p => new Point2Df(p.X, p.Y));
         }
 
 
@@ -139,7 +139,7 @@ namespace ControllerCNC.Planning
             var result = new List<Point4D>();
             foreach (var point in points)
             {
-                result.Add(point2D(point.X, point.Y, scale));
+                result.Add(point2D(point.C1, point.C2, scale));
             }
             return result;
         }

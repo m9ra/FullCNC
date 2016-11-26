@@ -62,15 +62,18 @@
     </Compile>
     <Compile Include="Demos\MachineTesting.cs" />
     <Compile Include="Demos\ShapeDrawing.cs" />
+    <Compile Include="GUI\ShapeItem.cs" />
     <Compile Include="GUI\EntryPoint.cs" />
     <Compile Include="GUI\HeadCNC.cs" />
     <Compile Include="GUI\ListBoxOverride.cs" />
+    <Compile Include="GUI\PlaneShape.cs" />
     <Compile Include="GUI\PointProviderItem.cs" />
     <Compile Include="GUI\ItemJoin.cs" />
     <Compile Include="GUI\PointProviderPropertiesDialog.xaml.cs">
       <DependentUpon>PointProviderPropertiesDialog.xaml</DependentUpon>
     </Compile>
-    <Compile Include="GUI\ShapeItem.cs" />
+    <Compile Include="GUI\ShapeItem2D.cs" />
+    <Compile Include="GUI\ShapeItem4D.cs" />
     <Compile Include="GUI\WorkspaceItem.cs" />
     <Compile Include="GUI\WorkspacePanel.cs" />
     <Compile Include="Machine\Axes.cs" />
@@ -80,22 +83,31 @@
     <Compile Include="Machine\StateInfo.cs" />
     <Compile Include="Machine\StateDataInstruction.cs" />
     <Compile Include="Machine\StepInstrution.cs" />
+    <Compile Include="Planning\StraightLinePlanner4D.cs" />
     <Compile Include="Planning\ImageInterpolator.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />
     <Compile Include="Planning\AccelerationBuilder.cs" />
     <Compile Include="Planning\PathTracer2D.cs" />
+    <Compile Include="Planning\PlaneProjector.cs" />
     <Compile Include="Planning\PointTracer4D.cs" />
     <Compile Include="Planning\TraceProfiles\ProfileBase.cs" />
     <Compile Include="Planning\TraceProfiles\TargetPlaneSpeedOptimizer.cs" />
     <Compile Include="Planning\StraightLinePlanner2D.cs" />
     <Compile Include="Planning\TraceProfiles\TraceContext.cs" />
+    <Compile Include="Planning\TraceProfiles\TraceExpansionProtocol.cs" />
+    <Compile Include="Planning\TraceProfiles\TraceProfileData.cs" />
     <Compile Include="PositionController.cs" />
     <Compile Include="Primitives\Acceleration.cs" />
     <Compile Include="Machine\AccelerationInstruction.cs" />
     <Compile Include="Machine\ConstantInstruction.cs" />
     <Compile Include="Machine\Constants.cs" />
     <Compile Include="Machine\InstructionCNC.cs" />
+    <Compile Include="Primitives\Extensions.cs" />
+    <Compile Include="Primitives\Point2Df.cs" />
+    <Compile Include="Primitives\Point4Df.cs" />
+    <Compile Include="Primitives\Point2D.cs" />
     <Compile Include="Primitives\Point4D.cs" />
+    <Compile Include="Primitives\ReadableIdentifier.cs" />
     <Compile Include="Primitives\Trajectory4D.cs" />
     <Compile Include="Primitives\Speed.cs" />
     <Compile Include="Simulation\ChannelPlotter.cs" />

@@ -84,7 +84,7 @@ namespace ControllerCNC
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-            Execute(new HomingInstruction());
+            Execute(new HomingInstruction(),false);
         }
 
         private void Button_Click_1(object sender, RoutedEventArgs e)
@@ -104,7 +104,8 @@ namespace ControllerCNC
 
         private void Button_Click_4(object sender, RoutedEventArgs e)
         {
-            Execute(ShapeDrawing.DrawContinuousLines(ShapeDrawing.HeartCoordinates));
+            // Execute(ShapeDrawing.DrawContinuousLines(ShapeDrawing.HeartCoordinates));
+            Execute(MachineTesting.Shape4dTest, false);
         }
 
         private void Button_Click_5(object sender, RoutedEventArgs e)
@@ -112,27 +113,34 @@ namespace ControllerCNC
             Execute(ShapeDrawing.DrawSquareWithDiagonals);
         }
 
-        private void Execute(Func<PlanBuilder> planProvider)
+        private void Execute(Func<PlanBuilder> planProvider, bool duplicateUV = true)
         {
-            Execute(planProvider());
+            Execute(planProvider(), duplicateUV);
         }
 
-        private void Execute(PlanBuilder plan)
+        private void Execute(PlanBuilder plan, bool duplicateUV = true)
         {
-            Execute(plan.Build());
+            Execute(plan.Build(), duplicateUV);
         }
 
-        private void Execute(InstructionCNC instruction)
+        private void Execute(InstructionCNC instruction, bool duplicateUV = true)
         {
-            Execute(new[] { instruction });
+            Execute(new[] { instruction }, duplicateUV);
         }
 
-        private void Execute(IEnumerable<InstructionCNC> plan)
+        private void Execute(IEnumerable<InstructionCNC> plan, bool duplicateUV = true)
         {
-            var builder = new PlanBuilder();
-            builder.Add(plan);
-            builder.DuplicateXYtoUV();
-            _cnc.SEND(builder.Build());
+            if (duplicateUV)
+            {
+                var builder = new PlanBuilder();
+                builder.Add(plan);
+                builder.DuplicateXYtoUV();
+                _cnc.SEND(builder.Build());
+            }
+            else
+            {
+                _cnc.SEND(plan);
+            }
         }
 
         #endregion

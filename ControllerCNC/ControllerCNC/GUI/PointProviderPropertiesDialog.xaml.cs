@@ -43,16 +43,18 @@ namespace ControllerCNC.GUI
             ShapeLeft.TextChanged += ShapeLeft_TextChanged;
             ShapeWidth.TextChanged += ShapeWidth_TextChanged;
             ShapeHeight.TextChanged += ShapeHeight_TextChanged;
+            BlockThickness.TextChanged += BlockThickness_TextChanged;
             ShapeRotation.ValueChanged += ShapeRotation_ValueChanged;
+
 
             ShowDialog();
         }
 
         private void refreshWindow()
         {
-            Title = _item.Name;
-            writeNumber(ShapeTop, _item.PositionY * Constants.MilimetersPerStep);
-            writeNumber(ShapeLeft, _item.PositionX * Constants.MilimetersPerStep);
+            Title = _item.Name.ToString();
+            writeNumber(ShapeTop, _item.PositionC2 * Constants.MilimetersPerStep);
+            writeNumber(ShapeLeft, _item.PositionC1 * Constants.MilimetersPerStep);
 
             var shapeItem = _item as ShapeItem;
             if (shapeItem == null)
@@ -61,8 +63,15 @@ namespace ControllerCNC.GUI
                 return;
             }
 
+            var shapeItem4D = shapeItem as ShapeItem4D;
+            if (shapeItem4D == null)
+            {
+                BlockProperties.Visibility = Visibility.Hidden;
+            }
+
             writeNumber(ShapeWidth, shapeItem.MetricWidth);
             writeNumber(ShapeHeight, shapeItem.MetricHeight);
+            writeNumber(BlockThickness, shapeItem4D.MetricThickness);
             ShapeRotation.Value = shapeItem.RotationAngle;
         }
 
@@ -80,7 +89,7 @@ namespace ControllerCNC.GUI
         {
             double value;
             if (double.TryParse(ShapeTop.Text, out value))
-                _item.PositionY = (int)Math.Round(value / Constants.MilimetersPerStep);
+                _item.PositionC2 = (int)Math.Round(value / Constants.MilimetersPerStep);
 
             refreshWindow();
         }
@@ -89,7 +98,7 @@ namespace ControllerCNC.GUI
         {
             double value;
             if (double.TryParse(ShapeLeft.Text, out value))
-                _item.PositionX = (int)Math.Round(value / Constants.MilimetersPerStep);
+                _item.PositionC1 = (int)Math.Round(value / Constants.MilimetersPerStep);
 
             refreshWindow();
         }
@@ -112,6 +121,17 @@ namespace ControllerCNC.GUI
             double value;
             if (double.TryParse(ShapeHeight.Text, out value))
                 shapeItem.MetricHeight = value;
+
+            refreshWindow();
+        }
+
+        private void BlockThickness_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+
+            double value;
+            if (double.TryParse(BlockThickness.Text, out value))
+                shapeItem.MetricThickness = value;
 
             refreshWindow();
         }

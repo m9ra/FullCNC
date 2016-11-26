@@ -12,6 +12,8 @@ using System.Windows.Media.Effects;
 using System.Windows;
 using System.Windows.Controls;
 
+using ControllerCNC.Primitives;
+
 namespace ControllerCNC.GUI
 {
     [Serializable]
@@ -40,7 +42,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Name of the item.
         /// </summary>
-        new internal readonly string Name;
+        new internal readonly ReadableIdentifier Name;
 
         /// <summary>
         /// 
@@ -75,7 +77,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Position of the item in steps.
         /// </summary>
-        internal int PositionX
+        internal int PositionC1
         {
             get { return _positionX; }
             set
@@ -92,7 +94,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Position of the item in steps.
         /// </summary>
-        internal int PositionY
+        internal int PositionC2
         {
             get { return _positionY; }
             set
@@ -111,7 +113,7 @@ namespace ControllerCNC.GUI
         /// <returns></returns>
         protected abstract object createContent();
 
-        internal WorkspaceItem(string name)
+        internal WorkspaceItem(ReadableIdentifier name)
         {
             Name = name;
         }
@@ -120,7 +122,7 @@ namespace ControllerCNC.GUI
         {
             _positionX = info.GetInt32("_positionX");
             _positionY = info.GetInt32("_positionY");
-            Name = info.GetString("Name");
+            Name = (ReadableIdentifier)info.GetValue("Name", typeof(ReadableIdentifier));
         }
 
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)

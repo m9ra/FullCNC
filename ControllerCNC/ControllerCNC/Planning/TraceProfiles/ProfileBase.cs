@@ -13,12 +13,12 @@ namespace ControllerCNC.Planning.TraceProfiles
         /// <summary>
         /// How much of the time is required for the profile.
         /// </summary>
-        protected abstract int requiresTicks();
+        protected abstract TraceExpansionProtocol requiresTicks();
 
         /// <summary>
         /// Minimal time which will bring profile to next step.
         /// </summary>
-        protected abstract int nextStepTicks();
+        protected abstract TraceExpansionProtocol nextStepTicks();
 
         /// <summary>
         /// How many ticks is allocated for the profile already.
@@ -54,7 +54,9 @@ namespace ControllerCNC.Planning.TraceProfiles
             try
             {
                 _actualContext = context;
-                return nextStepTicks() != 0;
+                var protocol = nextStepTicks();
+
+                return protocol != null && protocol.ExpansionTicks > 0;
             }
             finally
             {
@@ -71,7 +73,8 @@ namespace ControllerCNC.Planning.TraceProfiles
             try
             {
                 _actualContext = context;
-                return requiresTicks() == 0;
+                var protocol = requiresTicks();
+                return protocol == null || protocol.ExpansionTicks == 0;
             }
             finally
             {
@@ -89,11 +92,11 @@ namespace ControllerCNC.Planning.TraceProfiles
             {
                 _actualContext = context;
 
-                var expansionTicks = requiresTicks();
-                if (expansionTicks == 0)
-                    expansionTicks = nextStepTicks();
+                var protocol = requiresTicks();
+                if (protocol==null || protocol.ExpansionTicks == 0)
+                    protocol = nextStepTicks();
 
-                applyExpansionTicks(expansionTicks);
+                applyExpansionTicks(protocol);
             }
             finally
             {
@@ -107,8 +110,11 @@ namespace ControllerCNC.Planning.TraceProfiles
                 throw new InvalidOperationException("Nested context operation detected.");
         }
 
-        private void applyExpansionTicks(int expansionTicks)
+        private void applyExpansionTicks(TraceExpansionProtocol protocol)
         {
+            if (protocol == null || protocol.ExpansionTicks == 0)
+                //there is nothing to do
+                return;
             throw new NotImplementedException();
         }
     }

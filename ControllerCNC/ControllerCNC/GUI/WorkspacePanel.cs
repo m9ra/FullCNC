@@ -34,6 +34,10 @@ namespace ControllerCNC.GUI
         /// </summary>
         internal readonly int StepCountY;
 
+        internal readonly int StepCountU;
+
+        internal readonly int StepCountV;
+
         /// <summary>
         /// Entry point of the plan.
         /// </summary>
@@ -86,7 +90,9 @@ namespace ControllerCNC.GUI
         /// </summary>
         private EntryPoint _entryPoint;
 
-        private readonly Pen _joinPen = new Pen(Brushes.Red, 2.0);
+        private readonly Pen _joinPenUV = new Pen(Brushes.Blue, 2.0);
+
+        private readonly Pen _joinPenXY = new Pen(Brushes.Red, 2.0);
 
         internal event Action OnSettingsChanged;
 
@@ -94,10 +100,10 @@ namespace ControllerCNC.GUI
 
         internal event WorkspaceItemEvent OnWorkItemClicked;
 
-        internal WorkspacePanel(int stepCountX, int stepCountY)
+        internal WorkspacePanel(int stepCountC1, int stepCountC2)
         {
-            StepCountX = stepCountX;
-            StepCountY = stepCountY;
+            StepCountU = StepCountX = stepCountC1;
+            StepCountV = StepCountY = stepCountC2;
 
             Background = Brushes.White;
 
@@ -173,6 +179,26 @@ namespace ControllerCNC.GUI
             fireOnSettingsChanged();
         }
 
+        internal ReadableIdentifier UnusedVersion(ReadableIdentifier name)
+        {
+            var names = new HashSet<ReadableIdentifier>();
+            foreach (var child in Children)
+            {
+                var item = child as WorkspaceItem;
+                if (item == null)
+                    continue;
+
+                names.Add(item.Name);
+            }
+
+            var currentVersion = name;
+            while (names.Contains(currentVersion))
+            {
+                currentVersion = currentVersion.NextVersion();
+            }
+            return currentVersion;
+        }
+
         /// <summary>
         /// Builds plan configured by the workspace. 
         /// ASSUMING the starting position be correctly set up on <see cref="EntryPoint"/>.
@@ -184,7 +210,7 @@ namespace ControllerCNC.GUI
             //the plan starts from entry point (recursively)
             fillPlanBy(planPoints, _entryPoint, 0);
 
-            var scheduler = new StraightLinePlanner(CuttingSpeed);
+            var scheduler = new StraightLinePlanner4D(CuttingSpeed);
             var trajectoryPlan = scheduler.CreateConstantPlan(new Trajectory4D(planPoints));
 
             plan.Add(trajectoryPlan.Build());
@@ -192,7 +218,7 @@ namespace ControllerCNC.GUI
 
         private void fillPlanBy(List<Point4D> planPoints, PointProviderItem item, int incommingPointIndex)
         {
-            var points = item.ItemPoints.ToArray();
+            var points = item.CutPoints.ToArray();
             var isClosedShape = points.First().Equals(points.Last());
             if (!isClosedShape)
                 throw new NotImplementedException("Plan non-closed shape items.");
@@ -274,8 +300,8 @@ namespace ControllerCNC.GUI
 
         internal void SetJoin(PointProviderItem shape1, PointProviderItem shape2)
         {
-            var points1 = shape1.ItemPoints.ToArray();
-            var points2 = shape2.ItemPoints.ToArray();
+            var points1 = shape1.CutPoints.ToArray();
+            var points2 = shape2.CutPoints.ToArray();
 
             var best1 = 0;
             var best2 = 0;
@@ -333,8 +359,8 @@ namespace ControllerCNC.GUI
 
             if (_draggedItem != null)
             {
-                _draggedItem.PositionX += (int)(mouseDelta.X / ActualWidth * StepCountX);
-                _draggedItem.PositionY += (int)(mouseDelta.Y / ActualHeight * StepCountY);
+                _draggedItem.PositionC1 += (int)(mouseDelta.X / ActualWidth * StepCountX);
+                _draggedItem.PositionC2 += (int)(mouseDelta.Y / ActualHeight * StepCountY);
             }
         }
 
@@ -355,11 +381,15 @@ namespace ControllerCNC.GUI
             //render join lines
             foreach (var join in _itemJoins)
             {
-                var startPoint = getJoinPointProjected(join.Item1, join.JoinPointIndex1);
-                var endPoint = getJoinPointProjected(join.Item2, join.JoinPointIndex2);
+                var startPointUV = getJoinPointProjectedUV(join.Item1, join.JoinPointIndex1);
+                var endPointUV = getJoinPointProjectedUV(join.Item2, join.JoinPointIndex2);
+                var startPointXY = getJoinPointProjectedXY(join.Item1, join.JoinPointIndex1);
+                var endPointXY = getJoinPointProjectedXY(join.Item2, join.JoinPointIndex2);
 
-                var geometry = createLinkArrow(startPoint, endPoint);
-                dc.DrawGeometry(null, _joinPen, geometry);
+                var geometryUV = createLinkArrow(startPointUV, endPointUV);
+                var geometryXY = createLinkArrow(startPointXY, endPointXY);
+                dc.DrawGeometry(null, _joinPenUV, geometryUV);
+                dc.DrawGeometry(null, _joinPenXY, geometryXY);
             }
         }
 
@@ -460,19 +490,29 @@ namespace ControllerCNC.GUI
 
         private double projectToX(Size finalSize, WorkspaceItem child)
         {
-            var positionX = finalSize.Width * child.PositionX / StepCountX;
+            var positionX = finalSize.Width * child.PositionC1 / StepCountX;
             return positionX;
         }
 
         private double projectToY(Size finalSize, WorkspaceItem child)
         {
-            var positionX = finalSize.Height * child.PositionY / StepCountY;
+            var positionX = finalSize.Height * child.PositionC2 / StepCountY;
             return positionX;
         }
 
-        private Point getJoinPointProjected(PointProviderItem item, int pointIndex)
+        private Point getJoinPointProjectedUV(PointProviderItem item, int pointIndex)
         {
-            var point4D = item.ItemPoints.Skip(pointIndex).First();
+            var point4D = item.CutPoints.Skip(pointIndex).First();
+
+            var coordU = ActualWidth * point4D.U / StepCountU;
+            var coordV = ActualHeight * point4D.V / StepCountV;
+
+            return new Point(coordU, coordV);
+        }
+
+        private Point getJoinPointProjectedXY(PointProviderItem item, int pointIndex)
+        {
+            var point4D = item.CutPoints.Skip(pointIndex).First();
 
             var coordX = ActualWidth * point4D.X / StepCountX;
             var coordY = ActualHeight * point4D.Y / StepCountY;

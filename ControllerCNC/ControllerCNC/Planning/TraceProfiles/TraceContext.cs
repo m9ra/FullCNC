@@ -10,6 +10,8 @@ namespace ControllerCNC.Planning.TraceProfiles
     {
         private readonly List<TraceProfileBase> _profiles = new List<TraceProfileBase>();
 
+        private readonly Dictionary<TraceProfileBase, TraceProfileData> _data = new Dictionary<TraceProfileBase, TraceProfileData>();
+
         internal IEnumerable<TraceProfileBase> Profiles { get { return _profiles; } }
 
         internal IEnumerable<TraceProfileBase> NonSatisfiedProfiles { get { return _profiles.Where(p => !p.IsSatisfied(this)); } }
@@ -30,9 +32,21 @@ namespace ControllerCNC.Planning.TraceProfiles
             }
         }
 
+        internal TraceContext(TraceContext previousContext)
+        {
+            if (previousContext == null)
+            {
+                //starting at zero speed
+                return;
+            }
+
+            throw new NotImplementedException("fetch previous context data");
+        }
+
         internal void Register(TraceProfileBase profile)
         {
             _profiles.Add(profile);
+            _data[profile] = new TraceProfileData();
             throw new NotImplementedException();
         }
     }

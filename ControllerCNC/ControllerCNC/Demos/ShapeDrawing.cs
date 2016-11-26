@@ -119,6 +119,97 @@ namespace ControllerCNC.Demos
 
         #endregion
 
+        #region Smooth shape functions
+
+        public static Point4D Rectangle(double percentage, double width)
+        {
+            var threshold = 0.25;
+            if (percentage < threshold)
+            {
+                percentage = percentage - threshold + 0.25;
+                percentage *= 4;
+                return point2D(percentage - 0.5, 0 - 0.5, width);
+            }
+
+            threshold = 0.5;
+            if (percentage < threshold)
+            {
+                percentage = percentage - threshold + 0.25;
+                percentage *= 4;
+                return point2D(1.0 - 0.5, percentage - 0.5, width);
+            }
+
+            threshold = 0.75;
+            if (percentage < threshold)
+            {
+                percentage = percentage - threshold + 0.25;
+                percentage *= 4;
+                return point2D(1.0 - percentage - 0.5, 1.0 - 0.5, width);
+            }
+
+            threshold = 1.0;
+            percentage = percentage - threshold + 0.25;
+            percentage *= 4;
+            return point2D(0.0 - 0.5, 1.0 - percentage - 0.5, width);
+        }
+
+        public static Point4D Circle(double percentage, double width)
+        {
+            var x = Math.Sin(Math.PI * 2 * percentage);
+            var y = Math.Cos(Math.PI * 2 * percentage);
+
+            var scale = width / 2;
+            return point2D(x, y, scale);
+        }
+
+        #endregion
+
+        #region 4D drawing
+
+        public static IEnumerable<Point4D> CircleToSquare()
+        {
+            var metricWidth = 30;
+            var size = metricWidth / Constants.MilimetersPerStep;
+            var sizeDiscrete = (int)Math.Round(size);
+            var points = new List<Point4D>();
+            for (var i = 0; i <= 100; ++i)
+            {
+                var percentage = i / 100.0;
+
+                var rectPercentage = percentage + 1.0 / 8;
+                if (rectPercentage > 1.0)
+                    rectPercentage -= 1;
+                var circleCoord = ShapeDrawing.Circle(percentage, size);
+                var rectCoord = ShapeDrawing.Rectangle(rectPercentage, size);
+
+                var combinedCoord = new Point4D(-circleCoord.X + sizeDiscrete, circleCoord.Y + sizeDiscrete, -rectCoord.X + sizeDiscrete, -rectCoord.Y + sizeDiscrete);
+                points.Add(combinedCoord);
+            }
+
+            return points;
+        }
+
+        public static IEnumerable<Point4D> CircleToPoint()
+        {
+            var metricWidth = 30;
+            var size = metricWidth / Constants.MilimetersPerStep;
+            var sizeDiscrete = (int)Math.Round(size);
+            var points = new List<Point4D>();
+            for (var i = 0; i <= 100; ++i)
+            {
+                var percentage = i / 100.0;
+
+                var point = new Point4D(0, 0, 0, 0);
+                var rectCoord = ShapeDrawing.Circle(percentage, size);
+                var combinedCoord = new Point4D(-point.X + sizeDiscrete, point.Y + sizeDiscrete, -rectCoord.X + sizeDiscrete, -rectCoord.Y + sizeDiscrete);
+                points.Add(combinedCoord);
+            }
+
+            return points;
+        }
+
+        #endregion
+
         #region Shape coordinate providers.
 
         /// <summary>
@@ -148,7 +239,7 @@ namespace ControllerCNC.Demos
         /// <summary>
         /// Interpolates coordinates from given image.
         /// </summary>
-        public static IEnumerable<Point4D> InterpolateImage(string filename,  double scale)
+        public static IEnumerable<Point4D> InterpolateImage(string filename, double scale)
         {
             var interpolator = new ImageInterpolator(filename);
             return interpolator.InterpolateCoordinates(scale);
@@ -157,7 +248,7 @@ namespace ControllerCNC.Demos
         /// <summary>
         /// Interpolates coordinates from given image.
         /// </summary>
-        public static IEnumerable<Point> InterpolateImage(string filename)
+        public static IEnumerable<Point2Df> InterpolateImage(string filename)
         {
             var interpolator = new ImageInterpolator(filename);
             return interpolator.InterpolateCoordinates();
@@ -205,7 +296,7 @@ namespace ControllerCNC.Demos
         /// <summary>
         /// Coordinates of a circle.
         /// </summary>
-        public static IEnumerable<Point4D> CircleCoordinates(double r=4000)
+        public static IEnumerable<Point4D> CircleCoordinates(double r = 4000)
         {
             var circlePoints = new List<Point4D>();
             var smoothness = 1;

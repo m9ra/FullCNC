@@ -30,6 +30,11 @@ namespace ControllerCNC.Machine
         public static readonly double MilimetersPerStep = 1.25 / StepsPerRevolution;
 
         /// <summary>
+        /// Distance betwee UV XY towers in mm.
+        /// </summary>
+        public static readonly double TowerMetricDistance = 605;
+
+        /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
         public static readonly int MaxAcceleration = 200 * StepsPerRevolution;

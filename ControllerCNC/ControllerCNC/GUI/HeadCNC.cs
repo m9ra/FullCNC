@@ -8,6 +8,8 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
+using ControllerCNC.Primitives;
+
 namespace ControllerCNC.GUI
 {
     class HeadCNC : WorkspaceItem
@@ -17,7 +19,7 @@ namespace ControllerCNC.GUI
         private readonly bool _isTopDown;
 
         internal HeadCNC(Color fillColor, bool isTopDown)
-            : base("HEAD")
+            : base(new ReadableIdentifier("HEAD"))
         {
             _fillColor = fillColor;
             _isTopDown = isTopDown;
@@ -45,7 +47,7 @@ namespace ControllerCNC.GUI
 
 
             var fillBrush = new SolidColorBrush(_fillColor);
-            fillBrush.Opacity = 0.3;
+            fillBrush.Opacity = 0.8;
             polygon.Fill = fillBrush;
             return polygon;
         }

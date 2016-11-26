@@ -108,7 +108,12 @@ namespace ControllerCNC
 
             _workspace.Children.Add(_xyHead);
             _workspace.Children.Add(_uvHead);
-            //_workspace.Children.Add(heart);
+            /*/
+            var points = ShapeDrawing.CircleToSquare();
+            var shape = new ShapeItem4D(new ReadableIdentifier("Test4D"), points.As4Df());
+            shape.MetricThickness = 100;
+            shape.MetricWidth = 50;
+            _workspace.Children.Add(shape);/**/
             _workspace.OnWorkItemListChanged += refreshItemList;
             _workspace.OnSettingsChanged += onSettingsChanged;
             _workspace.OnWorkItemClicked += onItemClicked;
@@ -224,7 +229,7 @@ namespace ControllerCNC
                 copyItem.Header = "Copy";
                 copyItem.Click += (e, s) =>
                 {
-                    _workspace.Children.Add(shapeItem.Clone());
+                    _workspace.Children.Add(shapeItem.Clone(_workspace.UnusedVersion(shapeItem.Name)));
                 };
                 menu.Items.Add(copyItem);
 
@@ -319,11 +324,11 @@ namespace ControllerCNC
             PositionX.Text = positionX.ToString("0.000");
             PositionY.Text = positionY.ToString("0.000");
 
-            _uvHead.PositionX = currentU;
-            _uvHead.PositionY = currentV;
+            _uvHead.PositionC1 = currentU;
+            _uvHead.PositionC2 = currentV;
 
-            _xyHead.PositionX = currentX;
-            _xyHead.PositionY = currentY;
+            _xyHead.PositionC1 = currentX;
+            _xyHead.PositionC2 = currentY;
 
             if (_cnc.CompletedState.IsHomeCalibrated)
             {
@@ -357,12 +362,14 @@ namespace ControllerCNC
             var point = _workspace.EntryPoint;
 
             var state = _cnc.PlannedState;
-            var initX = point.PositionX - state.X;
-            var initY = point.PositionY - state.Y;
-            builder.AddRampedLineXY(initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            var initU = point.PositionC1 - state.U;
+            var initV = point.PositionC2 - state.V;
+            var initX = point.PositionC1 - state.X;
+            var initY = point.PositionC2 - state.Y;
+            builder.AddRampedLineUVXY(initU, initV, initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
             _workspace.BuildPlan(builder);
-            // builder.AddRampedLineXY(-initX, -initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
-            builder.DuplicateXYtoUV();
+            //builder.AddRampedLineUVXY(-initU, -initV, -initX, -initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+
             var plan = builder.Build();
             if (!_cnc.SEND(plan))
                 throw new NotSupportedException("Invalid plan");
@@ -534,7 +541,7 @@ namespace ControllerCNC
                 var extension = System.IO.Path.GetExtension(filename);
                 var name = System.IO.Path.GetFileNameWithoutExtension(filename);
 
-                IEnumerable<Point> coordinates;
+                IEnumerable<Point2Df> coordinates;
                 switch (extension.ToLower())
                 {
                     case ".cor":
@@ -545,7 +552,8 @@ namespace ControllerCNC
                         break;
                 }
 
-                var shape = new ShapeItem(name, coordinates);
+                var identifier = _workspace.UnusedVersion(new ReadableIdentifier(name));
+                var shape = new ShapeItem2D(identifier, coordinates);
                 shape.MetricWidth = 50;
                 _workspace.Children.Add(shape);
             }

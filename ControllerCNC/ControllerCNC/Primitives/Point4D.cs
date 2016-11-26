@@ -51,6 +51,22 @@ namespace ControllerCNC.Primitives
             return 1.0 * diffU * diffU + 1.0 * diffV * diffV + 1.0 * diffX * diffX + 1.0 * diffY * diffY;
         }
 
+        /// <summary>
+        /// Selects UV plane.
+        /// </summary>
+        internal Point2D ToUV()
+        {
+            return new Point2D(U, V);
+        }
+
+        /// <summary>
+        /// Selects XY.
+        /// </summary>
+        internal Point2D ToXY()
+        {
+            return new Point2D(X, Y);
+        }
+
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {

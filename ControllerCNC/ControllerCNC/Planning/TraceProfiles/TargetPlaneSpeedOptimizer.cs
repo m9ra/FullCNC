@@ -36,14 +36,14 @@ namespace ControllerCNC.Planning.TraceProfiles
         }
 
         /// </inheritdoc>
-        protected override int requiresTicks()
+        protected override TraceExpansionProtocol requiresTicks()
         {
             //no time is required - profile tries to satisfy target speed, does not enforce it
-            return 0;
+            return null;
         }
 
         /// </inheritdoc>
-        protected override int nextStepTicks()
+        protected override TraceExpansionProtocol nextStepTicks()
         {
             var axisAcceleration = AsPlaneAxisDouble(_planeAcceleration);
             var axisTargetSpeed = AsPlaneAxis(_targetPlaneSpeed);
@@ -61,8 +61,8 @@ namespace ControllerCNC.Planning.TraceProfiles
             var c0Discrete = (int)Math.Round(c0);
             var endN = AccelerationBuilder.FindEndN(c0Discrete, initialN, ProfileTickCount);
             var nextStepDelta = AccelerationBuilder.FindTargetDelta(c0Discrete, initialN, endN + 1);
-
-            return nextStepDelta;
+            var finalSpeed = Speed.FromDeltaT(nextStepDelta);
+            return new TraceExpansionProtocol(nextStepDelta, 1, finalSpeed);
         }
     }
 }

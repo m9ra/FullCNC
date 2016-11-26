@@ -14,6 +14,16 @@ namespace ControllerCNC.Demos
 {
     static class MachineTesting
     {
+        public static PlanBuilder Shape4dTest()
+        {
+            var metricShapeThickness = 300;
+            var points = ShapeDrawing.CircleToSquare();
+            var projector = new PlaneProjector(metricShapeThickness);
+            var projectedPoints = projector.Project(points);
+            var planner = new StraightLinePlanner4D(Speed.FromDeltaT(3000));
+            return planner.CreateConstantPlan(new Trajectory4D(projectedPoints));
+        }
+
         /// <summary>
         /// Draws multicross by using ramped lines.
         /// </summary>

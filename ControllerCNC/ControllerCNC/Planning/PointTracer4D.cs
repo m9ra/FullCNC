@@ -26,7 +26,7 @@ namespace ControllerCNC.Planning
                 throw new InvalidOperationException("Cannot set next point until profile of previous one is complete");
 
             _nextPoint = point;
-            _context = new TraceContext();
+            _context = new TraceContext(_context);
         }
 
         internal void AddProfile(TraceProfileBase profile)

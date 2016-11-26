@@ -25,14 +25,20 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         internal override IEnumerable<Point4D> ItemPoints
         {
-            get { return new[] { new Point4D(PositionX, PositionY, PositionX, PositionY) }; }
+            get { return new[] { new Point4D(PositionC1, PositionC2, PositionC1, PositionC2) }; }
+        }
+
+        /// <inheritdoc/>
+        internal override IEnumerable<Point4D> CutPoints
+        {
+            get { return ItemPoints; }
         }
 
         internal EntryPoint()
-            : base("START")
+            : base(new ReadableIdentifier("START"))
         {
-            PositionX = 5000;
-            PositionY = 5000;
+            PositionC1 = 5000;
+            PositionC2 = 5000;
             initialize();
         }
 
@@ -57,7 +63,7 @@ namespace ControllerCNC.GUI
             entryPoint.RenderTransform = new TranslateTransform(-EntryPointVisualDiameter / 2, -EntryPointVisualDiameter / 2);
 
             var brush = new SolidColorBrush(Colors.Green);
-            brush.Opacity = 0.3;
+            brush.Opacity = 1.0;
             entryPoint.Fill = brush;
 
             return entryPoint;
