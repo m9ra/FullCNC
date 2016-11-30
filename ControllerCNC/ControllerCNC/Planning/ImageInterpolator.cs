@@ -66,7 +66,7 @@ namespace ControllerCNC.Planning
             _backgroundColor = _data[0];
         }
 
-        public IEnumerable<Point2Df> InterpolateCoordinates()
+        public IEnumerable<Point2Dmm> InterpolateCoordinates()
         {
             //initialize datastructures
             _contourPoints = new Dictionary<Tuple<int, int>, ContourPoint>();
@@ -128,15 +128,15 @@ namespace ControllerCNC.Planning
             //make the shape closed
             orderedPoints = orderedPoints.Concat(new[] { orderedPoints.First() }).ToArray();
 
-            return orderedPoints.Select(p => new Point2Df(p.X, p.Y));
+            return orderedPoints.Select(p => new Point2Dmm(p.X, p.Y));
         }
 
 
-        internal IEnumerable<Point4D> InterpolateCoordinates(double scale)
+        internal IEnumerable<Point4Dstep> InterpolateCoordinates(double scale)
         {
             var points = InterpolateCoordinates();
 
-            var result = new List<Point4D>();
+            var result = new List<Point4Dstep>();
             foreach (var point in points)
             {
                 result.Add(point2D(point.C1, point.C2, scale));
@@ -554,10 +554,10 @@ namespace ControllerCNC.Planning
         /// </summary>
         /// <param name="x">X coordinate.</param>
         /// <param name="y">Y coordinate.</param>
-        /// <returns>The <see cref="Point4D"/>.</returns>
-        private Point4D point2D(int x, int y)
+        /// <returns>The <see cref="Point4Dstep"/>.</returns>
+        private Point4Dstep point2D(int x, int y)
         {
-            return new Point4D(0, 0, x, y);
+            return new Point4Dstep(0, 0, x, y);
         }
 
         /// <summary>
@@ -566,8 +566,8 @@ namespace ControllerCNC.Planning
         /// <param name="x">X coordinate.</param>
         /// <param name="y">Y coordinate.</param>
         /// <param name="scale">Scale of the coordinates.</param>
-        /// <returns>The <see cref="Point4D"/>.</returns>
-        private Point4D point2D(double x, double y, double scale)
+        /// <returns>The <see cref="Point4Dstep"/>.</returns>
+        private Point4Dstep point2D(double x, double y, double scale)
         {
             return point2D((int)Math.Round(x * scale), (int)Math.Round(y * scale));
         }

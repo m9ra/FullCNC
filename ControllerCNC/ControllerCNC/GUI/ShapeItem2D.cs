@@ -29,13 +29,13 @@ namespace ControllerCNC.GUI
         private Pen _itemPen;
 
         /// <inheritdoc/>
-        internal override IEnumerable<Point4D> CutPoints
+        internal override IEnumerable<Point4Dstep> CutPoints
         {
             get { return ItemPoints; }
         }
 
-        internal ShapeItem2D(ReadableIdentifier name, IEnumerable<Point2Df> shapeDefinition)
-            : base(name, shapeDefinition.DuplicateTo4D())
+        internal ShapeItem2D(ReadableIdentifier name, IEnumerable<Point2Dmm> shapeDefinition)
+            : base(name, shapeDefinition.DuplicateTo4Dmm())
         {
 
         }

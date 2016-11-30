@@ -70,13 +70,13 @@ namespace ControllerCNC.GUI
         }
 
         /// <inheritdoc/>
-        internal override IEnumerable<Point4D> CutPoints
+        internal override IEnumerable<Point4Dstep> CutPoints
         {
             get { return new PlaneProjector(_shapeMetricThickness).Project(ItemPoints); }
         }
 
 
-        internal ShapeItem4D(ReadableIdentifier name, IEnumerable<Point4Df> shapeDefinition)
+        internal ShapeItem4D(ReadableIdentifier name, IEnumerable<Point4Dmm> shapeDefinition)
             : base(name, shapeDefinition)
         {
         }

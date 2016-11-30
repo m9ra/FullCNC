@@ -14,6 +14,8 @@ using System.Windows.Shapes;
 
 using System.Windows.Controls.Primitives;
 
+using System.Runtime.Serialization.Formatters.Binary;
+
 using System.IO;
 using System.Threading;
 using System.Windows.Threading;
@@ -366,9 +368,11 @@ namespace ControllerCNC
             var initV = point.PositionC2 - state.V;
             var initX = point.PositionC1 - state.X;
             var initY = point.PositionC2 - state.Y;
-            builder.AddRampedLineUVXY(initU, initV, initX, initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+
+
+            builder.AddRampedLineUVXY(initU, initV, initX, initY, Constants.MaxPlaneAcceleration, getTransitionSpeed());
             _workspace.BuildPlan(builder);
-            //builder.AddRampedLineUVXY(-initU, -initV, -initX, -initY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            //builder.AddRampedLineUVXY(-initU, -initV, -initX, -initY, Constants.MaxPlaneAcceleration, getTransitionSpeed());
 
             var plan = builder.Build();
             if (!_cnc.SEND(plan))
@@ -470,13 +474,18 @@ namespace ControllerCNC
             if (_coordController == null)
                 return;
 
+            _coordController.SetSpeed(getTransitionSpeed().ToDeltaT());
+        }
+
+        private Speed getTransitionSpeed()
+        {
             if (MoveByCuttingSpeed.IsChecked.Value)
             {
-                _coordController.SetSpeed(_workspace.CuttingSpeed.ToDeltaT());
+                return _workspace.CuttingSpeed;
             }
             else
             {
-                _coordController.SetSpeed(Constants.FastestDeltaT);
+                return Constants.MaxPlaneSpeed;
             }
         }
 
@@ -532,30 +541,46 @@ namespace ControllerCNC
         private void AddShape_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.Filter = "Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.cor";
+            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.cor;*.4dcor|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.cor;*.4dcor";
 
-            var result = dlg.ShowDialog();
-            if (result == true)
+            if (dlg.ShowDialog().Value)
             {
                 string filename = dlg.FileName;
                 var extension = System.IO.Path.GetExtension(filename);
                 var name = System.IO.Path.GetFileNameWithoutExtension(filename);
+                var identifier = _workspace.UnusedVersion(new ReadableIdentifier(name));
 
-                IEnumerable<Point2Df> coordinates;
+                IEnumerable<Point2Dmm> coordinates;
                 switch (extension.ToLower())
                 {
+                    case ".4dcor":
+                        {
+                            var formatter = new BinaryFormatter();
+                            using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
+                            {
+                                var definition = (ShapeDefinition4D)formatter.Deserialize(stream);
+                                var shape = new ShapeItem4D(identifier, definition.Points);
+                                shape.MetricThickness = definition.Thickness;
+                                shape.SetOriginalSize();
+                                _workspace.Children.Add(shape);
+                            }
+                            break;
+                        }
                     case ".cor":
                         throw new NotImplementedException();
                     default:
-                        var interpolator = new ImageInterpolator(filename);
-                        coordinates = interpolator.InterpolateCoordinates();
-                        break;
+                        {
+                            var interpolator = new ImageInterpolator(filename);
+                            coordinates = interpolator.InterpolateCoordinates();
+
+                            var shape = new ShapeItem2D(identifier, coordinates);
+                            shape.MetricWidth = 50;
+                            _workspace.Children.Add(shape);
+                            break;
+                        }
                 }
 
-                var identifier = _workspace.UnusedVersion(new ReadableIdentifier(name));
-                var shape = new ShapeItem2D(identifier, coordinates);
-                shape.MetricWidth = 50;
-                _workspace.Children.Add(shape);
+
             }
         }
 

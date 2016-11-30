@@ -55,9 +55,9 @@ namespace ControllerCNC.Planning
             return planBuilder;
         }
 
-        private void iterateDistances(Trajectory4D trajectory, Action<Point4D, int, int, int, int> planner)
+        private void iterateDistances(Trajectory4D trajectory, Action<Point4Dstep, int, int, int, int> planner)
         {
-            Point4D lastPoint = null;
+            Point4Dstep lastPoint = null;
             foreach (var point in trajectory.Points)
             {
                 if (lastPoint == null)

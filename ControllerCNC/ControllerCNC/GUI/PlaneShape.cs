@@ -13,7 +13,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Points belonging into the plane.
         /// </summary>
-        internal IEnumerable<Point2Df> Shape { get; private set; }
+        internal IEnumerable<Point2Dmm> Shape { get; private set; }
 
         /// <summary>
         /// MInimum of the plane points for first dimension.
@@ -35,7 +35,7 @@ namespace ControllerCNC.GUI
         /// </summary>
         internal readonly double MaxC2;
 
-        internal PlaneShape(IEnumerable<Point2Df> planePoints)
+        internal PlaneShape(IEnumerable<Point2Dmm> planePoints)
         {
             Shape = planePoints.ToArray();
 

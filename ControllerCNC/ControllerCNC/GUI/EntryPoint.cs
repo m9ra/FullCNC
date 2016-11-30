@@ -23,13 +23,13 @@ namespace ControllerCNC.GUI
         internal readonly static double EntryPointVisualDiameter = 20;
 
         /// <inheritdoc/>
-        internal override IEnumerable<Point4D> ItemPoints
+        internal override IEnumerable<Point4Dstep> ItemPoints
         {
-            get { return new[] { new Point4D(PositionC1, PositionC2, PositionC1, PositionC2) }; }
+            get { return new[] { new Point4Dstep(PositionC1, PositionC2, PositionC1, PositionC2) }; }
         }
 
         /// <inheritdoc/>
-        internal override IEnumerable<Point4D> CutPoints
+        internal override IEnumerable<Point4Dstep> CutPoints
         {
             get { return ItemPoints; }
         }

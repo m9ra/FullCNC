@@ -7,29 +7,29 @@ using System.Threading.Tasks;
 namespace ControllerCNC.Primitives
 {
     [Serializable]
-    public class Point4Df
+    public class Point4Dstep
     {
         /// <summary>
         /// U dimension.
         /// </summary>
-        public readonly double U;
+        public readonly int U;
 
         /// <summary>
         /// V dimension.
         /// </summary>
-        public readonly double V;
+        public readonly int V;
 
         /// <summary>
         /// X dimension.
         /// </summary>
-        public readonly double X;
+        public readonly int X;
 
         /// <summary>
         /// Y dimension.
         /// </summary>
-        public readonly double Y;
+        public readonly int Y;
 
-        public Point4Df(double u, double v, double x, double y)
+        public Point4Dstep(int u, int v, int x, int y)
         {
             U = u;
             V = v;
@@ -37,10 +37,11 @@ namespace ControllerCNC.Primitives
             Y = y;
         }
 
+
         /// <summary>
         /// Squared eclidian distance to given point
         /// </summary>
-        public double DistanceSquaredTo(Point4Df point)
+        public double DistanceSquaredTo(Point4Dstep point)
         {
             var diffU = U - point.U;
             var diffV = V - point.V;
@@ -53,26 +54,25 @@ namespace ControllerCNC.Primitives
         /// <summary>
         /// Selects UV plane.
         /// </summary>
-        internal Point2Df ToUV()
+        internal Point2Dstep ToUV()
         {
-            return new Point2Df(U, V);
+            return new Point2Dstep(U, V);
         }
 
         /// <summary>
         /// Selects XY.
         /// </summary>
-        internal Point2Df ToXY()
+        internal Point2Dstep ToXY()
         {
-            return new Point2Df(X, Y);
+            return new Point2Dstep(X, Y);
         }
 
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {
-            var o = obj as Point4Df;
+            var o = obj as Point4Dstep;
             if (o == null)
                 return false;
-
 
             return U == o.U && V == o.V && X == o.X && Y == o.Y;
         }

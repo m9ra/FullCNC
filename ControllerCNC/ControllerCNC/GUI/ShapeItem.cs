@@ -23,7 +23,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Points defining the shape.
         /// </summary>
-        private readonly IEnumerable<Point4Df> _shapeDefinition;
+        private readonly IEnumerable<Point4Dmm> _shapeDefinition;
 
         /// <summary>
         /// First facet of the shape.
@@ -46,7 +46,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Definition of the shape.
         /// </summary>
-        protected IEnumerable<Point4Df> ShapeDefinition { get { return _shapeDefinition; } }
+        protected IEnumerable<Point4Dmm> ShapeDefinition { get { return _shapeDefinition; } }
 
         /// <summary>
         /// Determine size of the shape in milimeters.
@@ -138,7 +138,7 @@ namespace ControllerCNC.GUI
         }
 
         /// </inheritdoc>
-        internal override IEnumerable<Point4D> ItemPoints
+        internal override IEnumerable<Point4Dstep> ItemPoints
         {
             get
             {
@@ -158,12 +158,12 @@ namespace ControllerCNC.GUI
                     var v = (int)Math.Round((point.V - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
                     var x = (int)Math.Round((point.X - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
                     var y = (int)Math.Round((point.Y - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
-                    yield return new Point4D(u + PositionC1, v + PositionC2, x + PositionC1, y + PositionC2);
+                    yield return new Point4Dstep(u + PositionC1, v + PositionC2, x + PositionC1, y + PositionC2);
                 }
             }
         }
 
-        internal ShapeItem(ReadableIdentifier name, IEnumerable<Point4Df> shapeDefinition)
+        internal ShapeItem(ReadableIdentifier name, IEnumerable<Point4Dmm> shapeDefinition)
             : base(name)
         {
             if (shapeDefinition == null)
@@ -176,7 +176,7 @@ namespace ControllerCNC.GUI
         internal ShapeItem(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
-            _shapeDefinition = (Point4Df[])info.GetValue("_shapeDefinition", typeof(Point4Df[]));
+            _shapeDefinition = (Point4Dmm[])info.GetValue("_shapeDefinition", typeof(Point4Dmm[]));
             _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));
             _rotationAngle = info.GetDouble("_rotationAngle");
             constructionInitialization();
@@ -199,9 +199,9 @@ namespace ControllerCNC.GUI
             var c1Diff = _shapeMaxC1 - _shapeMinC1;
             var c2Diff = _shapeMaxC2 - _shapeMinC2;
             if (c1Diff > c2Diff)
-                MetricWidth = c1Diff * Constants.MilimetersPerStep;
+                MetricWidth = c1Diff;
             else
-                MetricHeight = c2Diff * Constants.MilimetersPerStep;
+                MetricHeight = c2Diff;
         }
 
         protected virtual void constructionInitialization()
@@ -253,7 +253,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Creates figure by joining the given points.
         /// </summary>
-        protected PathFigure CreatePathFigure(IEnumerable<Point2D> geometryPoints)
+        protected PathFigure CreatePathFigure(IEnumerable<Point2Dstep> geometryPoints)
         {
             var pathSegments = new PathSegmentCollection();
             var isFirst = true;
@@ -277,7 +277,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Rotates given point according to current rotation angle.
         /// </summary>
-        protected Point4Df rotate(Point4Df point)
+        protected Point4Dmm rotate(Point4Dmm point)
         {
             var c1 = _shapeMinC1 + _shapeMaxC1 / 2.0;
             var c2 = _shapeMinC2 + _shapeMaxC2 / 2.0;
@@ -291,7 +291,7 @@ namespace ControllerCNC.GUI
             var rotatedV = centeredV * _rotationCos + centeredU * _rotationSin;
             var rotatedX = centeredX * _rotationCos - centeredY * _rotationSin;
             var rotatedY = centeredY * _rotationCos + centeredX * _rotationSin;
-            return new Point4Df(
+            return new Point4Dmm(
                 rotatedU + c1, rotatedV + c2,
                 rotatedX + c1, rotatedY + c2
                 );

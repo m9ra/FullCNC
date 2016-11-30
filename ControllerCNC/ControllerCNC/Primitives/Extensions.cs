@@ -4,38 +4,75 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using ControllerCNC.Machine;
+
 namespace ControllerCNC.Primitives
 {
     internal static class Extensions
     {
-        public static IEnumerable<Point4Df> DuplicateTo4D(this IEnumerable<Point2Df> points)
+        public static IEnumerable<Point4Dmm> DuplicateTo4Dmm(this IEnumerable<Point2Dmm> points)
         {
-            return points.Select(p => new Point4Df(p.C1, p.C2, p.C1, p.C2));
+            return points.Select(p => new Point4Dmm(p.C1, p.C2, p.C1, p.C2));
         }
 
-        public static IEnumerable<Point4Df> As4Df(this IEnumerable<Point4D> points)
+        public static IEnumerable<Point4Dmm> As4Dmm(this IEnumerable<Point4Dstep> points)
         {
-            return points.Select(p => new Point4Df(p.U, p.V, p.X, p.Y));
+            return points.Select(p => new Point4Dmm(stepToMm(p.U), stepToMm(p.V), stepToMm(p.X), stepToMm(p.Y)));
         }
 
-        public static IEnumerable<Point2Df> ToUV(this IEnumerable<Point4Df> points)
+        public static Point4Dstep As4Dstep(this Point4Dmm point)
         {
-            return points.Select(p => new Point2Df(p.U, p.V));
+            return new Point4Dstep(mmToStep(point.U), mmToStep(point.V), mmToStep(point.X), mmToStep(point.Y));
         }
 
-        public static IEnumerable<Point2D> ToUV(this IEnumerable<Point4D> points)
+        public static Point2Dstep As2Dstep(this Point2Dmm point)
         {
-            return points.Select(p => new Point2D(p.U, p.V));
+            return new Point2Dstep(mmToStep(point.C1), mmToStep(point.C2));
         }
 
-        public static IEnumerable<Point2Df> ToXY(this IEnumerable<Point4Df> points)
+        public static Point2Dmm As2Dmm(this Point2Dstep point)
         {
-            return points.Select(p => new Point2Df(p.X, p.Y));
+            return new Point2Dmm(stepToMm(point.C1), stepToMm(point.C2));
         }
 
-        public static IEnumerable<Point2D> ToXY(this IEnumerable<Point4D> points)
+        public static IEnumerable<Point4Dstep> As4Dstep(this IEnumerable<Point4Dmm> points)
         {
-            return points.Select(p => new Point2D(p.X, p.Y));
+            return points.Select(p => p.As4Dstep());
+        }
+
+        public static IEnumerable<Point2Dmm> As2Dmm(this IEnumerable<Point2Dstep> points)
+        {
+            return points.Select(p => new Point2Dmm(stepToMm(p.C1), stepToMm(p.C2)));
+        }
+
+        public static IEnumerable<Point2Dmm> ToUV(this IEnumerable<Point4Dmm> points)
+        {
+            return points.Select(p => new Point2Dmm(p.U, p.V));
+        }
+
+        public static IEnumerable<Point2Dstep> ToUV(this IEnumerable<Point4Dstep> points)
+        {
+            return points.Select(p => new Point2Dstep(p.U, p.V));
+        }
+
+        public static IEnumerable<Point2Dmm> ToXY(this IEnumerable<Point4Dmm> points)
+        {
+            return points.Select(p => new Point2Dmm(p.X, p.Y));
+        }
+
+        public static IEnumerable<Point2Dstep> ToXY(this IEnumerable<Point4Dstep> points)
+        {
+            return points.Select(p => new Point2Dstep(p.X, p.Y));
+        }
+
+        private static int mmToStep(double mm)
+        {
+            return (int)Math.Round(mm / Constants.MilimetersPerStep);
+        }
+
+        private static double stepToMm(int step)
+        {
+            return step * Constants.MilimetersPerStep;
         }
     }
 }

@@ -103,16 +103,19 @@
     <Compile Include="Machine\Constants.cs" />
     <Compile Include="Machine\InstructionCNC.cs" />
     <Compile Include="Primitives\Extensions.cs" />
-    <Compile Include="Primitives\Point2Df.cs" />
-    <Compile Include="Primitives\Point4Df.cs" />
-    <Compile Include="Primitives\Point2D.cs" />
-    <Compile Include="Primitives\Point4D.cs" />
+    <Compile Include="Primitives\Point2Dmm.cs" />
+    <Compile Include="Primitives\Point4Dmm.cs" />
+    <Compile Include="Primitives\Point2Dstep.cs" />
+    <Compile Include="Primitives\Point4Dstep.cs" />
     <Compile Include="Primitives\ReadableIdentifier.cs" />
+    <Compile Include="Primitives\ShapeDefinition4D.cs" />
     <Compile Include="Primitives\Trajectory4D.cs" />
     <Compile Include="Primitives\Speed.cs" />
+    <Compile Include="ShapeEditor\EditorShapePart.cs" />
     <Compile Include="ShapeEditor\EditorWindow.xaml.cs">
       <DependentUpon>EditorWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="ShapeEditor\FacetPanel.cs" />
     <Compile Include="ShapeEditor\FacetShape.cs" />
     <Compile Include="ShapeEditor\TrackballDecorator.cs" />
     <Compile Include="ShapeEditor\Triangulation.cs" />

@@ -71,7 +71,8 @@ namespace ControllerCNC.GUI
 
             writeNumber(ShapeWidth, shapeItem.MetricWidth);
             writeNumber(ShapeHeight, shapeItem.MetricHeight);
-            writeNumber(BlockThickness, shapeItem4D.MetricThickness);
+            if (shapeItem4D != null)
+                writeNumber(BlockThickness, shapeItem4D.MetricThickness);
             ShapeRotation.Value = shapeItem.RotationAngle;
         }
 

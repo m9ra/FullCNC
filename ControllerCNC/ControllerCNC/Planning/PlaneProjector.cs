@@ -28,9 +28,9 @@ namespace ControllerCNC.Planning
             _shapeMetricThickness = shapeMetricThickness;
         }
 
-        internal IEnumerable<Primitives.Point4D> Project(IEnumerable<Primitives.Point4D> shape)
+        internal IEnumerable<Primitives.Point4Dstep> Project(IEnumerable<Primitives.Point4Dstep> shape)
         {
-            var result = new List<Primitives.Point4D>();
+            var result = new List<Primitives.Point4Dstep>();
             var shapeToTowerDistance = _shapeMetricThickness - Constants.TowerMetricDistance;
 
 
@@ -50,9 +50,9 @@ namespace ControllerCNC.Planning
             return result;
         }
 
-        private Primitives.Point4D point4D(double u, double v, double x, double y)
+        private Primitives.Point4Dstep point4D(double u, double v, double x, double y)
         {
-            return new Primitives.Point4D((int)Math.Round(u), (int)Math.Round(v), (int)Math.Round(x), (int)Math.Round(y));
+            return new Primitives.Point4Dstep((int)Math.Round(u), (int)Math.Round(v), (int)Math.Round(x), (int)Math.Round(y));
         }
     }
 }

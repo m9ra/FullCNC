@@ -78,9 +78,9 @@ namespace ControllerCNC.Planning
             return planBuilder;
         }
 
-        private void iterateDistances(Trajectory4D trajectory, Action<Point4D, int, int> planner)
+        private void iterateDistances(Trajectory4D trajectory, Action<Point4Dstep, int, int> planner)
         {
-            Point4D lastPoint = null;
+            Point4Dstep lastPoint = null;
             foreach (var point in trajectory.Points)
             {
                 if (lastPoint == null)
@@ -97,15 +97,15 @@ namespace ControllerCNC.Planning
             }
         }
 
-        private Dictionary<Point4D, double> createPointSpeeds(IEnumerable<Point4D> points)
+        private Dictionary<Point4Dstep, double> createPointSpeeds(IEnumerable<Point4Dstep> points)
         {
             var junctionLimits = createJunctionLimits(points);
 
             var calculationPlan = new PlanBuilder();
-            var speedLimits = new Dictionary<Point4D, double>();
+            var speedLimits = new Dictionary<Point4Dstep, double>();
             var currentSpeedF = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
             var stepAcceleration = 1;
-            Point4D previousPoint = null;
+            Point4Dstep previousPoint = null;
             foreach (var point in points.Reverse())
             {
                 var junctionLimitF = junctionLimits[point];
@@ -154,13 +154,13 @@ namespace ControllerCNC.Planning
             return speedLimits;
         }
 
-        private Dictionary<Point4D, double> createJunctionLimits(IEnumerable<Point4D> points)
+        private Dictionary<Point4Dstep, double> createJunctionLimits(IEnumerable<Point4Dstep> points)
         {
             var startVelocity = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
             var maxVelocity = 1.0 * Constants.TimerFrequency / Constants.FastestDeltaT;
             var aMax = 1.0 * Constants.MaxAcceleration / Constants.TimerFrequency / Constants.TimerFrequency;
 
-            var junctionLimits = new Dictionary<Point4D, double>();
+            var junctionLimits = new Dictionary<Point4Dstep, double>();
             var pointsArrayRev = points.Reverse().ToArray();
             junctionLimits[pointsArrayRev.First()] = startVelocity;
             junctionLimits[pointsArrayRev.Last()] = startVelocity;
@@ -196,7 +196,7 @@ namespace ControllerCNC.Planning
             return junctionLimits;
         }
 
-        private double getTheta(Point4D point1, Point4D point2, Point4D point3)
+        private double getTheta(Point4Dstep point1, Point4Dstep point2, Point4Dstep point3)
         {
             var Ax = 1.0 * point2.X - point1.X;
             var Ay = 1.0 * point2.Y - point1.Y;

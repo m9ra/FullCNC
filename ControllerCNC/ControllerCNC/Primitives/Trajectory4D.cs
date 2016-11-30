@@ -12,9 +12,9 @@ namespace ControllerCNC.Primitives
         /// <summary>
         /// Points defined by the trajectory.
         /// </summary>
-        public readonly IEnumerable<Point4D> Points;
+        public readonly IEnumerable<Point4Dstep> Points;
 
-        public Trajectory4D(IEnumerable<Point4D> points)
+        public Trajectory4D(IEnumerable<Point4Dstep> points)
         {
             Points = points.ToArray();
         }

@@ -10,7 +10,7 @@ namespace TrajectorySimulator
 {
     class ChannelPlotter
     {
-        public IEnumerable<Point4D> Plot2D(ChannelTrace channelX, ChannelTrace channelY)
+        public IEnumerable<Point4Dstep> Plot2D(ChannelTrace channelX, ChannelTrace channelY)
         {
             var qX = new Queue<int>(channelX.Times);
             var qY = new Queue<int>(channelY.Times);
@@ -20,7 +20,7 @@ namespace TrajectorySimulator
 
             var xCoord = 0;
             var yCoord = 0;
-            var result = new List<Point4D>();
+            var result = new List<Point4Dstep>();
 
             while (qX.Count > 0 || qY.Count > 0)
             {
@@ -52,9 +52,9 @@ namespace TrajectorySimulator
             return result;
         }
 
-        private Point4D point(int x, int y)
+        private Point4Dstep point(int x, int y)
         {
-            return new Point4D(0, 0, x, y);
+            return new Point4Dstep(0, 0, x, y);
         }
     }
 }

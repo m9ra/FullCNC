@@ -205,7 +205,7 @@ namespace ControllerCNC.GUI
         /// </summary>
         internal void BuildPlan(PlanBuilder plan)
         {
-            var planPoints = new List<Point4D>();
+            var planPoints = new List<Point4Dstep>();
 
             //the plan starts from entry point (recursively)
             fillPlanBy(planPoints, _entryPoint, 0);
@@ -216,7 +216,7 @@ namespace ControllerCNC.GUI
             plan.Add(trajectoryPlan.Build());
         }
 
-        private void fillPlanBy(List<Point4D> planPoints, PointProviderItem item, int incommingPointIndex)
+        private void fillPlanBy(List<Point4Dstep> planPoints, PointProviderItem item, int incommingPointIndex)
         {
             var points = item.CutPoints.ToArray();
             var isClosedShape = points.First().Equals(points.Last());

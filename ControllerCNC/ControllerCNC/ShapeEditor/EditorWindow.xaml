@@ -8,8 +8,9 @@
             <DockPanel LastChildFill="True">
                 <Border Width="200" Background="LightBlue" >
                     <StackPanel Orientation="Vertical">
-                        <TextBlock>Toolbox</TextBlock>
-                        <TextBlock>Toolbox2</TextBlock>
+                        <Button Height="50" FontSize="30" Name="Export" Click="Export_Click">
+                            Export
+                        </Button>
                     </StackPanel>
                 </Border>
                 <Grid>
@@ -21,12 +22,12 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
-                    <Canvas Grid.Row="0" Grid.Column="0" Background="Red" Name="Facet1">
+                    <e:FacetPanel Grid.Row="0" Grid.Column="0" x:Name="Facet1Pane">
 
-                    </Canvas>
-                    <Canvas Grid.Row="1" Grid.Column="0" Background="Blue" Name="Facet2">
+                    </e:FacetPanel>
+                    <e:FacetPanel Grid.Row="1" Grid.Column="0" x:Name="Facet2Pane">
 
-                    </Canvas>
+                    </e:FacetPanel>
                     <e:TrackballDecorator x:Name="Trackball" Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
                         <Viewport3D Name="View3D">
                             <Viewport3D.Camera>
@@ -37,7 +38,7 @@
                                 <ModelVisual3D.Content>
                                     <DirectionalLight x:Name="dirLightMain" Direction="0,0,10"/>
                                 </ModelVisual3D.Content>
-                            </ModelVisual3D>                         
+                            </ModelVisual3D>
                         </Viewport3D>
                     </e:TrackballDecorator>
                 </Grid>

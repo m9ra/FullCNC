@@ -22,18 +22,18 @@ namespace ControllerCNC.ShapeEditor
         // algorithms that are much more complex.
 
         // convert a triangle to a list of triangles. each triangle is represented by a Point2Df array of length 3.
-        public static IEnumerable<Point2Df[]> Triangulate(IEnumerable<Point2Df> points)
+        public static IEnumerable<Point2Dmm[]> Triangulate(IEnumerable<Point2Dmm> points)
         {
             var poly = new Polygon(points);
 
-            List<Point2Df[]> triangles = new List<Point2Df[]>();  // accumulate the triangles here
+            List<Point2Dmm[]> triangles = new List<Point2Dmm[]>();  // accumulate the triangles here
             // keep clipping ears off of poly until only one triangle remains
             while (poly.PtListOpen.Count > 3)  // if only 3 points are left, we have the final triangle
             {
                 int midvertex = FindEar(poly);  // find the middle vertex of the next "ear"
-                triangles.Add(new Point2Df[] { poly.PtList[midvertex - 1], poly.PtList[midvertex], poly.PtList[midvertex + 1] });
+                triangles.Add(new Point2Dmm[] { poly.PtList[midvertex - 1], poly.PtList[midvertex], poly.PtList[midvertex + 1] });
                 // create a new polygon that clips off the ear; i.e., all vertices but midvertex
-                List<Point2Df> newPts = new List<Point2Df>(poly.PtList);
+                List<Point2Dmm> newPts = new List<Point2Dmm>(poly.PtList);
                 newPts.RemoveAt(midvertex);  // clip off the ear
                 poly = new Polygon(newPts);  // poly now has one less point
             }
@@ -50,9 +50,9 @@ namespace ControllerCNC.ShapeEditor
                 if (poly.VertexType(i + 1) == PolygonType.Convex)
                 {
                     // get the three points of the triangle we are about to test
-                    Point2Df a = poly.PtList[i];
-                    Point2Df b = poly.PtList[i + 1];
-                    Point2Df c = poly.PtList[i + 2];
+                    Point2Dmm a = poly.PtList[i];
+                    Point2Dmm b = poly.PtList[i + 1];
+                    Point2Dmm c = poly.PtList[i + 2];
                     bool foundAPointInTheTriangle = false;  // see if any of the other points in the polygon are in this triangle
                     for (int j = 0; j < poly.PtListOpen.Count; j++)  // don't check the last point, which is a duplicate of the first
                     {
@@ -66,7 +66,7 @@ namespace ControllerCNC.ShapeEditor
         }
 
         // return true if point p is inside the triangle a,b,c
-        public static bool PointInTriangle(Point2Df p, Point2Df a, Point2Df b, Point2Df c)
+        public static bool PointInTriangle(Point2Dmm p, Point2Dmm a, Point2Dmm b, Point2Dmm c)
         {
             // three tests are required.
             // if p and c are both on the same side of the line a,b
@@ -77,7 +77,7 @@ namespace ControllerCNC.ShapeEditor
         }
 
         // if the two points p1 and p2 are both on the same side of the line a,b, return true
-        private static bool PointsOnSameSide(Point2Df p1, Point2Df p2, Point2Df a, Point2Df b)
+        private static bool PointsOnSameSide(Point2Dmm p1, Point2Dmm p2, Point2Dmm a, Point2Dmm b)
         {
             // these are probably the most interesting three lines of code in the algorithm (probably because I don't fully understand them)
             // the concept is nicely described at http://www.blackpawn.com/texts/pointinpoly/default.html
@@ -87,13 +87,13 @@ namespace ControllerCNC.ShapeEditor
         }
 
         // subtract the vector (point) b from the vector (point) a
-        private static Point2Df VSub(Point2Df a, Point2Df b)
+        private static Point2Dmm VSub(Point2Dmm a, Point2Dmm b)
         {
-            return new Point2Df(a.C1 - b.C1, a.C2 - b.C2);
+            return new Point2Dmm(a.C1 - b.C1, a.C2 - b.C2);
         }
 
         // find the cross product of two x,y vectors, which is always a single value, z, representing the three dimensional vector (0,0,z)
-        private static double CrossProduct(Point2Df p1, Point2Df p2)
+        private static double CrossProduct(Point2Dmm p1, Point2Dmm p2)
         {
             return (p1.C1 * p2.C2) - (p1.C2 * p2.C1);
         }
@@ -117,32 +117,32 @@ namespace ControllerCNC.ShapeEditor
 
     public class Polygon
     {
-        public readonly List<Point2Df> PtList;  // the points making up the Polygon; guaranteed to be Closed, such that the last point is the same as the first
-        public readonly List<Point2Df> PtListOpen;  // the same PtList, but with the last point removed, i.e., an Open polygon
+        public readonly List<Point2Dmm> PtList;  // the points making up the Polygon; guaranteed to be Closed, such that the last point is the same as the first
+        public readonly List<Point2Dmm> PtListOpen;  // the same PtList, but with the last point removed, i.e., an Open polygon
         public readonly double Area;
         public readonly PolygonType Type;
 
         // create a new polygon with a list of points (which won't change)
-        public Polygon(IEnumerable<Point2Df> pts)
+        public Polygon(IEnumerable<Point2Dmm> pts)
         {
-            var ptlist = new List<Point2Df>(pts);
+            var ptlist = new List<Point2Dmm>(pts);
             PolyClose(ptlist);  // make sure the polygon is closed by duplicating the first point to the end, if necessary
             PtList = ptlist;
-            PtListOpen = new List<Point2Df>(PtList);
+            PtListOpen = new List<Point2Dmm>(PtList);
             PtListOpen.RemoveAt(PtList.Count - 1);  // remove the last point, which is a duplicate of the first
             Area = PolyArea(PtList);
             Type = PolyType(PtList, Area);
         }
 
         // create a new pointlist that closes the polygon by adding the first point at the end
-        private static void PolyClose(List<Point2Df> pts)
+        private static void PolyClose(List<Point2Dmm> pts)
         {
             if (!IsPolyClosed(pts)) pts.Add(pts[0]);  // add a point at the end if it is not already closed
         }
 
         // find the area of a polygon. if the vertices are ordered clockwise, the area is negative, o.w. positive, but
         // the absolute value is the same in either case. (Remember that, in System.Drawing, Y is positive down.
-        private static double PolyArea(List<Point2Df> ptlist)
+        private static double PolyArea(List<Point2Dmm> ptlist)
         {
             double area = 0;
             for (int i = 0; i < ptlist.Count() - 1; i++) area += ptlist[i].C1 * ptlist[i + 1].C2 - ptlist[i + 1].C1 * ptlist[i].C2;
@@ -150,12 +150,12 @@ namespace ControllerCNC.ShapeEditor
         }
 
         // find the type, Concave or Convex, of a Simple polygon
-        private static PolygonType PolyType(List<Point2Df> ptlist, double area)
+        private static PolygonType PolyType(List<Point2Dmm> ptlist, double area)
         {
             int polysign = Math.Sign(area);
             for (int i = 0; i < ptlist.Count() - 2; i++)
             {
-                if (Math.Sign((double)PolyArea(new List<Point2Df> { ptlist[i], ptlist[i + 1], ptlist[i + 2] })) != polysign) return PolygonType.Concave;
+                if (Math.Sign((double)PolyArea(new List<Point2Dmm> { ptlist[i], ptlist[i + 1], ptlist[i + 2] })) != polysign) return PolygonType.Concave;
             }
             return PolygonType.Convex;
         }
@@ -166,11 +166,11 @@ namespace ControllerCNC.ShapeEditor
             Polygon triangle;
             if (vertexNo == 0)
             {
-                triangle = new Polygon(new List<Point2Df> { PtList[PtList.Count - 2], PtList[0], PtList[1] });  // the polygon is always closed so the last point is the same as the first
+                triangle = new Polygon(new List<Point2Dmm> { PtList[PtList.Count - 2], PtList[0], PtList[1] });  // the polygon is always closed so the last point is the same as the first
             }
             else
             {
-                triangle = new Polygon(new List<Point2Df> { PtList[vertexNo - 1], PtList[vertexNo], PtList[vertexNo + 1] });
+                triangle = new Polygon(new List<Point2Dmm> { PtList[vertexNo - 1], PtList[vertexNo], PtList[vertexNo + 1] });
             }
 
             if (Math.Sign(triangle.Area) == Math.Sign(this.Area))
@@ -179,12 +179,12 @@ namespace ControllerCNC.ShapeEditor
                 return PolygonType.Concave;
         }
 
-        private static bool IsPolyClosed(List<Point2Df> pts)
+        private static bool IsPolyClosed(List<Point2Dmm> pts)
         {
             return IsSamePoint(pts[0], pts[pts.Count - 1]);
         }
 
-        private static bool IsSamePoint(Point2Df pt1, Point2Df pt2)
+        private static bool IsSamePoint(Point2Dmm pt1, Point2Dmm pt2)
         {
             return pt1.C1 == pt2.C1 && pt1.C2 == pt2.C2;
         }

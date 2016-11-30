@@ -16,12 +16,12 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Points defining the item.
         /// </summary>
-        internal abstract IEnumerable<Point4D> ItemPoints { get; }
+        internal abstract IEnumerable<Point4Dstep> ItemPoints { get; }
 
         /// <summary>
         /// Points for cutting of the item.
         /// </summary>
-        internal abstract IEnumerable<Point4D> CutPoints { get; }
+        internal abstract IEnumerable<Point4Dstep> CutPoints { get; }
 
         internal PointProviderItem(ReadableIdentifier name)
             : base(name)

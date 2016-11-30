@@ -12,7 +12,7 @@ namespace ControllerCNC.Planning
 {
     class PointTracer4D
     {
-        private Point4D _nextPoint = null;
+        private Point4Dstep _nextPoint = null;
 
         private TraceContext _context = null;
 
@@ -20,7 +20,7 @@ namespace ControllerCNC.Planning
         /// Sets the next point to be reached.
         /// </summary>
         /// <param name="point">Point where the tracer will run to.</param>
-        internal void StartNextPoint(Point4D point)
+        internal void StartNextPoint(Point4Dstep point)
         {
             if (_nextPoint != null)
                 throw new InvalidOperationException("Cannot set next point until profile of previous one is complete");
