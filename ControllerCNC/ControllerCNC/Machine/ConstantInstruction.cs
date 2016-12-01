@@ -69,5 +69,14 @@ namespace ControllerCNC.Machine
             return string.Format("C({0},{1},{2},{3}", StepCount, BaseDeltaT, PeriodNumerator, PeriodDenominator);
         }
 
+        /// </inheritdoc>
+        internal override ulong GetInstructionDuration()
+        {
+            var result = (ulong)Math.Abs(StepCount) * (ulong)BaseDeltaT;
+            if (PeriodDenominator > 0)
+                result += (ulong)(PeriodNumerator / PeriodDenominator);
+
+            return result;
+        }
     }
 }

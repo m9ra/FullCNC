@@ -35,7 +35,9 @@ namespace ControllerCNC
     /// </summary>
     public partial class CutterPanel : Window
     {
-        private readonly string _autosaveFile = "workspace_autosave.bin";
+        private static string _autosaveFile = "workspace_autosave.cwspc";
+
+        private string _workspaceFile;
 
         private readonly DriverCNC _cnc;
 
@@ -47,13 +49,19 @@ namespace ControllerCNC
 
         private readonly DispatcherTimer _statusTimer = new DispatcherTimer();
 
-        private readonly DispatcherTimer _autosaveTime = new DispatcherTimer();
+        private readonly DispatcherTimer _messageTimer = new DispatcherTimer();
 
-        private readonly WorkspacePanel _workspace;
+        private readonly DispatcherTimer _autosaveTime = new DispatcherTimer();
 
         private readonly WorkspaceItem _uvHead = new HeadCNC(Colors.Blue, true);
 
         private readonly WorkspaceItem _xyHead = new HeadCNC(Colors.Red, false);
+
+        private readonly int _messageShowDelay = 3000;
+
+        private WorkspacePanel _workspace;
+
+        private int _lastRemainingSeconds = 0;
 
         private int _positionOffsetU = 0;
 
@@ -65,6 +73,10 @@ namespace ControllerCNC
 
         private bool _addJoinsEnabled = false;
 
+        private bool _isPlanRunning = false;
+
+        private DateTime _planStart;
+
         private PointProviderItem _joinItemCandidate;
 
         public CutterPanel()
@@ -74,6 +86,7 @@ namespace ControllerCNC
             System.Threading.Thread.CurrentThread.CurrentCulture = customCulture;
 
             InitializeComponent();
+            MessageBox.Visibility = Visibility.Hidden;
 
             _motionCommands.Add(Calibration);
             _motionCommands.Add(GoToZeros);
@@ -89,7 +102,9 @@ namespace ControllerCNC
 
             _coordController = new Coord2DController(_cnc);
 
-
+            _messageTimer.Interval = TimeSpan.FromMilliseconds(_messageShowDelay);
+            _messageTimer.IsEnabled = false;
+            _messageTimer.Tick += _messageTimer_Tick;
             _statusTimer.Interval = TimeSpan.FromMilliseconds(20);
             _statusTimer.Tick += _statusTimer_Tick;
             _statusTimer.IsEnabled = true;
@@ -100,33 +115,91 @@ namespace ControllerCNC
             KeyUp += keyUp;
             KeyDown += keyDown;
 
-
-            //setup workspace
-            _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
-            WorkspaceSlot.Child = _workspace;
-
-            if (File.Exists(_autosaveFile))
-                _workspace.LoadFrom(_autosaveFile);
-
-            _workspace.Children.Add(_xyHead);
-            _workspace.Children.Add(_uvHead);
-            /*/
-            var points = ShapeDrawing.CircleToSquare();
-            var shape = new ShapeItem4D(new ReadableIdentifier("Test4D"), points.As4Df());
-            shape.MetricThickness = 100;
-            shape.MetricWidth = 50;
-            _workspace.Children.Add(shape);/**/
-            _workspace.OnWorkItemListChanged += refreshItemList;
-            _workspace.OnSettingsChanged += onSettingsChanged;
-            _workspace.OnWorkItemClicked += onItemClicked;
-
-            refreshItemList();
-            onSettingsChanged();
-
+            resetWorkspace(true);
             initializeTransitionHandlers();
         }
 
+
+        #region Message handling
+
+        private void showError(string message, bool forceRefresh = false)
+        {
+            setMessageText(message, Brushes.DarkRed, Brushes.Red, forceRefresh);
+        }
+
+        private void showMessage(string message, bool forceRefresh = false)
+        {
+            setMessageText(message, Brushes.DarkOrchid, Brushes.Orchid, forceRefresh);
+        }
+
+        private void setMessageText(string message, Brush borderColor, Brush color, bool forceRefresh)
+        {
+            Message.Text = message;
+            Message.Background = color;
+            Message.BorderBrush = borderColor;
+            MessageBox.Visibility = Visibility.Visible;
+
+            if (forceRefresh)
+            {
+                MessageBox.Dispatcher.Invoke(DispatcherPriority.Background, new Action(() => { }));
+            }
+        }
+
+        void _messageTimer_Tick(object sender, EventArgs e)
+        {
+            hideMessage();
+        }
+
+        private void hideMessage()
+        {
+            _messageTimer.IsEnabled = false;
+            Message.Text = "";
+            MessageBox.Visibility = Visibility.Hidden;
+        }
+
+        #endregion
+
         #region Workspace handling
+
+        private void resetWorkspace(bool withReload)
+        {
+            _workspaceFile = _autosaveFile;
+            if (_workspace != null)
+            {
+                _workspace.Children.Remove(_uvHead);
+                _workspace.Children.Remove(_xyHead);
+                _autosaveTime.IsEnabled = false;
+            }
+
+            _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
+            WorkspaceSlot.Child = _workspace;
+            if (withReload)
+            {
+                reloadWorkspace();
+            }
+            else
+            {
+                _workspace.Children.Add(_xyHead);
+                _workspace.Children.Add(_uvHead);
+            }
+
+            _workspace.OnWorkItemListChanged += refreshItemList;
+            _workspace.OnSettingsChanged += onSettingsChanged;
+            _workspace.OnWorkItemClicked += onItemClicked;
+            CuttingDeltaT.Value = _workspace.CuttingSpeed.ToDeltaT();
+
+            refreshItemList();
+            onSettingsChanged();
+        }
+
+        private void reloadWorkspace()
+        {
+            if (File.Exists(_workspaceFile))
+                _workspace.LoadFrom(_workspaceFile);
+
+            _workspace.Children.Add(_xyHead);
+            _workspace.Children.Add(_uvHead);
+        }
 
         private void onItemClicked(WorkspaceItem item)
         {
@@ -288,7 +361,7 @@ namespace ControllerCNC
         void _autosaveTime_Tick(object sender, EventArgs e)
         {
             _autosaveTime.IsEnabled = false;
-            _workspace.SaveTo(_autosaveFile);
+            _workspace.SaveTo(_workspaceFile);
         }
 
         #endregion
@@ -332,6 +405,23 @@ namespace ControllerCNC
             _xyHead.PositionC1 = currentX;
             _xyHead.PositionC2 = currentY;
 
+            if (_isPlanRunning)
+            {
+                var remainingTicks = _cnc.PlannedState.TickCount - _cnc.EstimationTicks;
+                var remainingSeconds = (int)(remainingTicks / Constants.TimerFrequency);
+                if (_lastRemainingSeconds > remainingSeconds || Math.Abs(_lastRemainingSeconds - remainingSeconds) > 2)
+                {
+                    _lastRemainingSeconds = remainingSeconds;
+                    var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);
+                    var elapsedTime = new TimeSpan(0,0,0,(int)(DateTime.Now - _planStart).TotalSeconds);
+
+                    if (remainingTime.TotalDays < 2)
+                    {
+                        showMessage(elapsedTime.ToString() + "/" + remainingTime.ToString());
+                    }
+                }
+            }
+
             if (_cnc.CompletedState.IsHomeCalibrated)
             {
                 Calibration.Foreground = Brushes.Black;
@@ -357,6 +447,12 @@ namespace ControllerCNC
 
         private void executePlan()
         {
+            if (!_cnc.IsHomeCalibrated)
+            {
+                showError("Calibration is required!");
+                return;
+            }
+
             disableMotionCommands();
             _workspace.DisableChanges();
 
@@ -375,14 +471,26 @@ namespace ControllerCNC
             //builder.AddRampedLineUVXY(-initU, -initV, -initX, -initY, Constants.MaxPlaneAcceleration, getTransitionSpeed());
 
             var plan = builder.Build();
+
             if (!_cnc.SEND(plan))
-                throw new NotSupportedException("Invalid plan");
+            {
+                planCompleted();
+                showError("Plan overflows the workspace!");
+                return;
+            }
 
             _cnc.OnInstructionQueueIsComplete += planCompleted;
+            _planStart = DateTime.Now;
+            _isPlanRunning = true;
+
+            if (!plan.Any())
+                planCompleted();
         }
 
         private void planCompleted()
         {
+            _isPlanRunning = false;
+            _lastRemainingSeconds = 0;
             _cnc.OnInstructionQueueIsComplete -= planCompleted;
             _workspace.EnableChanges();
             enableMotionCommands();
@@ -570,8 +678,10 @@ namespace ControllerCNC
                         throw new NotImplementedException();
                     default:
                         {
+                            showMessage("Image processing, please wait.", true);
                             var interpolator = new ImageInterpolator(filename);
                             coordinates = interpolator.InterpolateCoordinates();
+                            hideMessage();
 
                             var shape = new ShapeItem2D(identifier, coordinates);
                             shape.MetricWidth = 50;
@@ -579,8 +689,6 @@ namespace ControllerCNC
                             break;
                         }
                 }
-
-
             }
         }
 
@@ -615,6 +723,43 @@ namespace ControllerCNC
             CuttingSpeed.Text = string.Format("{0:0.000}mm/s", speed);
         }
 
+        private void LoadPlan_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.Filter = "Cutter workspace|*.cwspc";
+            if (dlg.ShowDialog() == true)
+            {
+                _workspaceFile = dlg.FileName;
+                reloadWorkspace();
+            }
+        }
+
+        private void SavePlan_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog();
+            dlg.Filter = "Cutter workspace|*.cwspc";
+            if (dlg.ShowDialog() == true)
+            {
+                _workspaceFile = dlg.FileName;
+                _workspace.SaveTo(_workspaceFile);
+            }
+        }
+
+        private void OpenEditor_Click(object sender, RoutedEventArgs e)
+        {
+            var editor = new ShapeEditor.EditorWindow();
+            editor.Show();
+        }
+
+        private void NewPlan_Click(object sender, RoutedEventArgs e)
+        {
+            resetWorkspace(false);
+        }
+
+        private void MessageBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            hideMessage();
+        }
         #endregion
     }
 }

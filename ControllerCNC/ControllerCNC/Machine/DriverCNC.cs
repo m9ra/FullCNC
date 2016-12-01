@@ -107,6 +107,11 @@ namespace ControllerCNC.Machine
         private int _stateDataRemainingBytes = 0;
 
         /// <summary>
+        /// How many ticks was made during estimation.
+        /// </summary>
+        private ulong _tickEstimation;
+
+        /// <summary>
         /// How many steps is estimated from last instruction completion.
         /// </summary>
         private volatile int _uEstimation;
@@ -189,6 +194,11 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Position estimation.
         /// </summary>
+        public ulong EstimationTicks { get { return CompletedState.TickCount + _tickEstimation; } }
+
+        /// <summary>
+        /// Position estimation.
+        /// </summary>
         public int EstimationU { get { return CompletedState.U + _uEstimation; } }
 
         /// <summary>
@@ -214,7 +224,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Determine whether last homing attempt was successful.
         /// </summary>
-        public bool IsHomeCalibrated { get; private set; }
+        public bool IsHomeCalibrated { get { return CompletedState.IsHomeCalibrated; } }
 
         public DriverCNC()
         {
@@ -318,6 +328,8 @@ namespace ControllerCNC.Machine
                     _vEstimation += vSteps;
                     _xEstimation += xSteps;
                     _yEstimation += ySteps;
+                    if (targetTicks > 0)
+                        _tickEstimation = (ulong)targetTicks;
                 }
             }
         }
@@ -399,7 +411,6 @@ namespace ControllerCNC.Machine
                             Monitor.Pulse(_L_instructionCompletition);
                         }
 
-                        IsHomeCalibrated = true;
                         //homing was finished successfuly
                         if (OnHomingEnded != null)
                             OnHomingEnded();

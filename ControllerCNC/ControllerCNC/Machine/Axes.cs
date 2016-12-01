@@ -181,5 +181,19 @@ namespace ControllerCNC.Machine
             throw new NullReferenceException("There has to be at least one non-null instruction.");
         }
 
+        /// <summary>
+        /// Gets duration of the longest instruction.
+        /// </summary>
+        internal ulong GetInstructionDuration()
+        {
+            ulong result = 0;
+            foreach (var instruction in new[] { InstructionX, InstructionY, InstructionU, InstructionV })
+            {
+                if (InstructionX != null)
+                    result = Math.Max(result, InstructionX.GetInstructionDuration());
+            }
+
+            return result;
+        }
     }
 }

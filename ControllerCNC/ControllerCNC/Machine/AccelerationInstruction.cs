@@ -109,5 +109,11 @@ namespace ControllerCNC.Machine
         {
             return string.Format("A({0},{1},{2})", StepCount, InitialDeltaT, StartN);
         }
+
+        /// </inheritdoc>
+        internal override ulong GetInstructionDuration()
+        {
+            return (ulong)GetStepTimings().Sum();
+        }
     }
 }

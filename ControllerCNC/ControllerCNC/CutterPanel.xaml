@@ -49,11 +49,13 @@
 
         <Style x:Key="CommandButton" TargetType="{x:Type Button}">
             <Setter Property="FontSize" Value="30" />
+            <Setter Property="Height" Value="50" />
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
         <Style x:Key="CommandToggleButton" TargetType="{x:Type ToggleButton}">
             <Setter Property="FontSize" Value="30" />
+            <Setter Property="Height" Value="50" />
             <Setter Property="FontWeight" Value="Bold" />
 
             <Setter Property="Template">
@@ -160,9 +162,13 @@
                                 <Button Name="AddShape" Style="{StaticResource CommandButton}" Click="AddShape_Click">Add shape</Button>
                                 <ToggleButton Name="JoinMode" Style="{StaticResource CommandToggleButton}" Checked="JoinMode_Checked" Unchecked="JoinMode_Unchecked" >Join mode</ToggleButton>
                                 <Button Name="RefreshJoins" Style="{StaticResource CommandButton}" Click="RefreshJoins_Click" >Refresh joins</Button>
+                                <Button Name="OpenEditor" Style="{StaticResource CommandButton}" Click="OpenEditor_Click">Open editor</Button>
                             </StackPanel>
                             <StackPanel Width="200">
                                 <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
+                                <Button Name="SavePlan" Style="{StaticResource CommandButton}" Click="SavePlan_Click">Save as</Button>
+                                <Button Name="LoadPlan" Style="{StaticResource CommandButton}" Click="LoadPlan_Click">Load</Button>
+                                <Button Name="NewPlan" Style="{StaticResource CommandButton}" Click="NewPlan_Click">New</Button>
                             </StackPanel>
                         </StackPanel>
                         <g:ListBoxOverride x:Name="WorkItemList" SelectionMode="Multiple" DockPanel.Dock="Left" FontSize="30"  BorderBrush="Gray"/>
@@ -237,6 +243,9 @@
                 </StackPanel>
                 <Border Background="Gray" Name="WorkspaceSlot" BorderBrush="Black" BorderThickness="2"></Border>
             </DockPanel>
+            <StackPanel Name="MessageBox" Opacity="0.8" PreviewMouseDown="MessageBox_PreviewMouseDown" >
+                <TextBox Name="Message" IsReadOnly="True"  BorderBrush="DarkOrchid" Padding="20" BorderThickness="2" Background="Orchid" FontSize="50" HorizontalAlignment="Right" Margin="2">Message which is very long</TextBox>
+            </StackPanel>
         </Grid>
     </Viewbox>
 </Window>

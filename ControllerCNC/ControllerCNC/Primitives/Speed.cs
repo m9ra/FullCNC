@@ -54,7 +54,7 @@ namespace ControllerCNC.Primitives
         /// </summary>
         internal int ToDeltaT()
         {
-            return (int)(Ticks / StepCount);
+            return (int)Math.Round(1.0*Ticks / StepCount);
         }
     }
 }

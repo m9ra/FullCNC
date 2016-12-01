@@ -13,7 +13,15 @@ namespace ControllerCNC.Machine
         /// </summary>
         internal readonly Int16 StepCount;
 
+        /// <summary>
+        /// Gets timing of all the steps.
+        /// </summary>
         internal abstract int[] GetStepTimings();
+
+        /// <summary>
+        /// Gets duration of the whole instruction in ticks.
+        /// </summary>
+        internal abstract ulong GetInstructionDuration();
 
         protected StepInstrution(Int16 stepCount)
         {

@@ -9,6 +9,11 @@ namespace ControllerCNC.Machine
     struct StateInfo
     {
         /// <summary>
+        /// How many ticks was done.
+        /// </summary>
+        internal ulong TickCount { get; private set; }
+
+        /// <summary>
         /// Position along U (in steps).
         /// </summary>
         internal int U { get; private set; }
@@ -51,6 +56,7 @@ namespace ControllerCNC.Machine
                 Y = 0;
                 U = 0;
                 V = 0;
+                TickCount = 0;
                 IsHomeCalibrated = true;
                 return;
             }
@@ -69,6 +75,8 @@ namespace ControllerCNC.Machine
 
                 if (axesInstruction.InstructionY != null)
                     Y += axesInstruction.InstructionY.StepCount;
+
+                TickCount += axesInstruction.GetInstructionDuration();
                 return;
             }
 
@@ -76,6 +84,7 @@ namespace ControllerCNC.Machine
             if (stepInstruction != null)
             {
                 X += stepInstruction.StepCount;
+                TickCount += stepInstruction.GetInstructionDuration();
             }
         }
 
