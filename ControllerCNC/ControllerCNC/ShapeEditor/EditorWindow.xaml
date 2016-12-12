@@ -11,6 +11,9 @@
                         <Button Height="50" FontSize="30" Name="Export" Click="Export_Click">
                             Export
                         </Button>
+                        <Button Height="50" FontSize="30" Name="Exit" Click="Exit_Click">
+                            Exit
+                        </Button>
                     </StackPanel>
                 </Border>
                 <Grid>

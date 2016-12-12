@@ -34,8 +34,8 @@ namespace ControllerCNC.ShapeEditor
         {
             InitializeComponent();
             var points = ShapeDrawing.CircleToSquare().ToArray();
-            //var snowflake = ShapeDrawing.InterpolateImage("snowflake.png");
-            //snowflake = snowflake.Reverse().Select(p => new Point2Dmm(p.C1 / 40, p.C2 / 40));
+         /*   var snowflake = ShapeDrawing.InterpolateImage("snowflake.png");
+            snowflake = snowflake.Reverse().Select(p => new Point2Dmm(p.C1 / 40, p.C2 / 40));*/
 
             var facet1 = new FacetShape(points.ToUV());
             var facet2 = new FacetShape(points.ToXY());
@@ -103,24 +103,42 @@ namespace ControllerCNC.ShapeEditor
                 var f1p = points1[i];
                 var f2p = points2[i];
 
+                /* points.Add(new Point3D((f1p.C1 - coordOffset) * coordFactor, (f1p.C2 - coordOffset) * coordFactor, facet1Z));
+                 points.Add(new Point3D((f2p.C1 - coordOffset) * coordFactor, (f2p.C2 - coordOffset) * coordFactor, facet2Z));
+
+
+                 if (points.Count < 4)
+                     continue;
+
+                 var i_p0 = points.Count - 4;
+                 var i_p1 = i_p0 + 1;
+                 var i_p2 = i_p0 + 2;
+                 var i_p3 = i_p0 + 3;
+
+                 var p0 = points[i_p0];
+                 var p1 = points[i_p1];
+                 var p2 = points[i_p2];
+                 var p3 = points[i_p3];
+
+             
+                 var bodyTriangle1 = getTriangleIndexes(true,p0, i_p0, p1, i_p1, p2, i_p2);
+                 var bodyTriangle2 = getTriangleIndexes(true, p1, i_p1, p2, i_p2, p3, i_p3);*/
+
                 points.Add(new Point3D((f1p.C1 - coordOffset) * coordFactor, (f1p.C2 - coordOffset) * coordFactor, facet1Z));
+                points.Add(new Point3D((f1p.C1 - coordOffset) * coordFactor, (f1p.C2 - coordOffset) * coordFactor, facet1Z));
+                points.Add(new Point3D((f2p.C1 - coordOffset) * coordFactor, (f2p.C2 - coordOffset) * coordFactor, facet2Z));
                 points.Add(new Point3D((f2p.C1 - coordOffset) * coordFactor, (f2p.C2 - coordOffset) * coordFactor, facet2Z));
 
                 if (points.Count < 4)
                     continue;
 
                 var i_p0 = points.Count - 4;
-                var i_p1 = i_p0 + 1;
-                var i_p2 = i_p0 + 2;
-                var i_p3 = i_p0 + 3;
+                var i_p1 = i_p0 + 2;
+                var i_p2 = i_p0 + 4;
+                var i_p3 = i_p0 + 6;
 
-                var p0 = points[i_p0];
-                var p1 = points[i_p1];
-                var p2 = points[i_p2];
-                var p3 = points[i_p3];
-
-                var bodyTriangle1 = getTriangleIndexes(true, p0, i_p0, p1, i_p1, p2, i_p2);
-                var bodyTriangle2 = getTriangleIndexes(true, p1, i_p1, p2, i_p2, p3, i_p3);
+                var bodyTriangle1 = bothSidedTriangleIndexes(i_p0, i_p1, i_p2);
+                var bodyTriangle2 = bothSidedTriangleIndexes(i_p1, i_p2, i_p3);
                 foreach (var index in bodyTriangle1.Concat(bodyTriangle2))
                     triangles.Add(index);
             }
@@ -135,7 +153,14 @@ namespace ControllerCNC.ShapeEditor
             materialGroup.Children.Add(new EmissiveMaterial(Brushes.DarkGreen));
 
             var model = new GeometryModel3D(geometry, materialGroup);
+            model.BackMaterial = materialGroup;
+            var normals = geometry.Normals.ToArray();
             return model;
+        }
+
+        private static IEnumerable<int> bothSidedTriangleIndexes(int p0, int p1, int p2)
+        {
+            return new int[] { p0, p1, p2, p2 + 1, p1 + 1, p0 + 1 };
         }
 
         private static GeometryModel3D getFacetModel(IEnumerable<Point2Dstep> facetPoints, double z, double coordOffset, double coordFactor, bool isFrontFace)
@@ -262,6 +287,13 @@ namespace ControllerCNC.ShapeEditor
             }
         }
 
+
+        private void Exit_Click(object sender, RoutedEventArgs e)
+        {
+            this.Close();
+        }
+
         #endregion
+
     }
 }

@@ -232,9 +232,6 @@ namespace ControllerCNC.GUI
         {
             _stepToVisualFactorC1 = size.Width / workspace.StepCountX;
             _stepToVisualFactorC2 = size.Height / workspace.StepCountY;
-
-            Width = _shapeMetricSize.Width / Constants.MilimetersPerStep * _stepToVisualFactorC1;
-            Height = _shapeMetricSize.Height / Constants.MilimetersPerStep * _stepToVisualFactorC2;
         }
 
 

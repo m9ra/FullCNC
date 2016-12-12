@@ -413,7 +413,7 @@ namespace ControllerCNC
                 {
                     _lastRemainingSeconds = remainingSeconds;
                     var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);
-                    var elapsedTime = new TimeSpan(0,0,0,(int)(DateTime.Now - _planStart).TotalSeconds);
+                    var elapsedTime = new TimeSpan(0, 0, 0, (int)(DateTime.Now - _planStart).TotalSeconds);
 
                     if (remainingTime.TotalDays < 2)
                     {
@@ -649,7 +649,7 @@ namespace ControllerCNC
         private void AddShape_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.cor;*.4dcor|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.cor;*.4dcor";
+            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.cor;*.4dcor;*.slice_cut|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.cor;*.4dcor|Slice files|*.slice_cut";
 
             if (dlg.ShowDialog().Value)
             {
@@ -674,6 +674,12 @@ namespace ControllerCNC
                             }
                             break;
                         }
+                    case ".slice_cut":
+                        {
+                            var shape = sliceShape(filename, identifier);
+                            _workspace.Children.Add(shape);
+                            break;
+                        }
                     case ".cor":
                         throw new NotImplementedException();
                     default:
@@ -690,6 +696,52 @@ namespace ControllerCNC
                         }
                 }
             }
+        }
+
+        private ShapeItem2D sliceShape(string filename, ReadableIdentifier identifier)
+        {
+            var lines = File.ReadAllLines(filename);
+            var dimensions = new List<double>();
+            foreach (var line in lines)
+            {
+                var parts = line.Split(' ');
+                if (parts.Length == 0)
+                    continue;
+
+                var dimension = double.Parse(parts[0]);
+                dimensions.Add(dimension);
+            }
+
+            var sliceThickness = dimensions[0];
+            var sliceLength = dimensions[1];
+            var sliceCount = (int)Math.Round(dimensions[2]);
+
+            //TODO even counts are now not supported
+            sliceCount = ((sliceCount + 1) / 2) * 2;
+
+            var slicePoints = new List<Point2Dmm>();
+            for (var i = 0; i < sliceCount; ++i)
+            {
+                var totalHeight = i * sliceThickness;
+                if (i % 2 == 0)
+                {
+                    slicePoints.Add(new Point2Dmm(0, totalHeight));
+                    slicePoints.Add(new Point2Dmm(sliceLength, totalHeight));
+                }
+                else
+                {
+                    slicePoints.Add(new Point2Dmm(sliceLength, totalHeight));
+                    slicePoints.Add(new Point2Dmm(0, totalHeight));
+                }
+            }
+
+            //this we can do only for odd slice counts
+            slicePoints.Add(new Point2Dmm(0, 0));
+            slicePoints.Reverse();
+
+            var item = new ShapeItem2D(identifier, slicePoints);
+            item.SetOriginalSize();
+            return item;
         }
 
         private void RefreshJoins_Click(object sender, RoutedEventArgs e)
