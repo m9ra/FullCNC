@@ -1,159 +1,76 @@
 #include "StepperControl.h"
 
-int STEP_CLK_PIN = 8;
-int STEP_DIR_PIN = 9;
-StepperGroup group1 = StepperGroup(1, new byte[1]{ STEP_CLK_PIN }, new byte[1]{ STEP_DIR_PIN });
+PlanScheduler4D<ConstantPlan> CONSTANT_SCHEDULER(SLOT1_CLK_MASK, SLOT1_DIR_MASK, SLOT0_CLK_MASK, SLOT0_DIR_MASK, SLOT3_CLK_MASK, SLOT3_DIR_MASK, SLOT2_CLK_MASK, SLOT2_DIR_MASK);
 
 // the setup function runs once when you press reset or power the board
 void setup() {
 	Serial.begin(128000);
-	pinMode(STEP_CLK_PIN, OUTPUT);
-	pinMode(STEP_DIR_PIN, OUTPUT);
+
+	pinMode(SLOT0_CLK_PIN, OUTPUT);
+	pinMode(SLOT0_DIR_PIN, OUTPUT);
+
+	pinMode(SLOT1_CLK_PIN, OUTPUT);
+	pinMode(SLOT1_DIR_PIN, OUTPUT);
+
+	pinMode(SLOT2_CLK_PIN, OUTPUT);
+	pinMode(SLOT2_DIR_PIN, OUTPUT);
+
+	pinMode(SLOT3_CLK_PIN, OUTPUT);
+	pinMode(SLOT3_DIR_PIN, OUTPUT);
 
 	Steppers::initialize();
 }
 
-void printTime(String message, unsigned long duration, int16_t stepCount) {
+void printTime(String message, unsigned long duration) {
 	Serial.print(message);
-	Serial.print(1.0*(duration) / stepCount);
+	Serial.print(1.0*(duration));
 	Serial.println("us");
 }
 
-class AccelerationPlanBenchmark : AccelerationPlan {
-public:
-	AccelerationPlanBenchmark() : AccelerationPlan(0, 0, 0) {}
+void printTimeStep(String message, unsigned long duration, int32_t steps) {
+	Serial.print(message);
+	Serial.print(1.0*duration/steps);
+	Serial.println("us");
+}
 
-	void run() {
-		unsigned long duration;
-		int16_t stepCount;
+void testActivationClock() {
+	int16_t stepCount = 30000;
+	int32_t stepDelay = 100;
+	int32_t stepDelayTick = stepDelay * 2;
+	int32_t measuringOverhead = 16; //us
 
-		stepCount = 1000;
-		duration = this->_runPlan(stepCount, 2000, 100);
-		printTime("AccelerationPlan Forward - 1000|2000|100: ", duration, stepCount);
+	int32_t expectedMicroseconds = stepCount*stepDelay;
 
-		duration = this->_runPlan(-stepCount, 2000, 100);
-		printTime("AccelerationPlan Backward - 1000|2000|100: ", duration, stepCount);
+	byte data[64] = { 0 };
+	byte plan1[] = { INT16_TO_BYTES(stepCount),INT32_TO_BYTES(stepDelayTick) };
 
-		stepCount = 5000;
-		duration = this->_runPlan(stepCount, 2000, 100);
-		printTime("AccelerationPlan Forward - 5000|2000|100: ", duration, stepCount);
-
-		duration = this->_runPlan(-stepCount, 2000, 100);
-		printTime("AccelerationPlan Backward - 5000|2000|100: ", duration, stepCount);
-
-		stepCount = 5000;
-		duration = this->_runPlan(stepCount, 20000, 100);
-		printTime("AccelerationPlan Forward - 5000|20000|100: ", duration, stepCount);
-
-		duration = this->_runPlan(-stepCount, 20000, 100);
-		printTime("AccelerationPlan Backward - 5000|20000|100: ", duration, stepCount);
-
-		stepCount = 5000;
-		duration = this->_runPlan(stepCount, 20000, 10);
-		printTime("AccelerationPlan Forward - 5000|20000|10: ", duration, stepCount);
-
-		duration = this->_runPlan(-stepCount, 20000, 10);
-		printTime("AccelerationPlan Backward - 5000|20000|10: ", duration, stepCount);
-		Serial.println();
+	for (int i = 0; i < sizeof(plan1); ++i) {
+		data[i] = plan1[i];
 	}
 
-private:
-	unsigned long _runPlan(int16_t stepCount, uint16_t initialDeltaT, int16_t n) {
-		this->_isActive = true;
-		this->_remainingSteps = abs(stepCount);
-		this->_nextStepDirection = stepCount > 0;
-		this->_current2N = abs(2 * n);
-		this->_isDeceleration = n < 0;
-		this->_currentDeltaT = initialDeltaT;
-		this->_currentDeltaTBuffer = 0;
-		this->_skipNextActivation = false;
+	CONSTANT_SCHEDULER.initFrom(data);
 
-		unsigned long startTime = micros();
-		while (this->_isActive) {
-			this->_createNextActivation();
-		}
-		unsigned long endTime = micros();
+	//fill schedule without scheduler enabling
+	CONSTANT_SCHEDULER.fillSchedule(false);
+	volatile unsigned long startTime = micros();
+	while (CONSTANT_SCHEDULER.fillSchedule(true));
+	while (TIMSK1 != 0);
+	volatile unsigned long endTime = micros();
 
-		return endTime - startTime;
-	}
-};
 
-class ConstantPlanBenchmark :ConstantPlan {
-public:
-	ConstantPlanBenchmark() :ConstantPlan(0, 0, 0, 0) {}
+	int32_t duration = endTime - startTime - measuringOverhead;
+	printTime("Expected duration: ", expectedMicroseconds);
+	printTime("Measured duration: ", duration);
+	printTimeStep("Duration difference per step: ", abs(expectedMicroseconds - duration), stepCount);
+}
 
-	void run() {
-		unsigned long duration;
-		int16_t stepCount = 10000;
-
-		duration = this->_runPlan(stepCount);
-		printTime("ConstantPlan Forward - no period: ", duration, stepCount);
-
-		duration = this->_runPlan(-stepCount);
-		printTime("ConstantPlan Backward - no period: ", duration, stepCount);
-
-		duration = this->_runPlan(stepCount, 1, 2);
-		printTime("ConstantPlan Forward - 1/2 period: ", duration, stepCount);
-
-		duration = this->_runPlan(-stepCount, 1, 2);
-		printTime("ConstantPlan Backward - 1/2 no period: ", duration, stepCount);
-
-		duration = this->_runPlan(stepCount, 1, 200);
-		printTime("ConstantPlan Forward - 1/200 period: ", duration, stepCount);
-
-		duration = this->_runPlan(-stepCount, 1, 200);
-		printTime("ConstantPlan Backward - 1/200 no period: ", duration, stepCount);
-
-		Serial.println();
-	}
-private:
-	unsigned long _runPlan(int16_t stepCount, uint16_t periodNumerator = 0, uint16_t periodDenominator = 0) {
-		this->_remainingSteps = abs(stepCount);
-		this->_nextStepDirection = stepCount;
-		this->_periodAccumulator = 0;
-		(uint16_t&)this->_periodNumerator = periodNumerator;
-		(uint16_t&)this->_periodDenominator = periodDenominator;
-		this->_isActive = true;
-		this->_skipNextActivation = false;
-
-		unsigned long startTime = micros();
-		while (this->_isActive) {
-			this->_createNextActivation();
-		}
-		unsigned long endTime = micros();
-
-		return endTime - startTime;
-	}
-};
 
 void loop() {
-	ConstantPlanBenchmark benchmark1 = ConstantPlanBenchmark();
-	benchmark1.run();
+	testActivationClock();
 
-	AccelerationPlanBenchmark benchmark2 = AccelerationPlanBenchmark();
-	benchmark2.run();
-
+	Serial.println();
+	Serial.println();
 	delay(1000);
 }
 
 
-/*
-RESULTS_1
-ConstantPlan Forward - no period: 10.19us
-ConstantPlan Backward - no period: 9.83us
-ConstantPlan Forward - 1/2 period: 12.57us
-ConstantPlan Backward - 1/2 no period: 12.19us
-ConstantPlan Forward - 1/200 period: 12.17us
-ConstantPlan Backward - 1/200 no period: 11.79us
-
-AccelerationPlan Forward - 1000|2000|100: 18.71us
-AccelerationPlan Backward - 1000|2000|100: 18.32us
-AccelerationPlan Forward - 5000|2000|100: 16.54us
-AccelerationPlan Backward - 5000|2000|100: 16.16us
-AccelerationPlan Forward - 5000|20000|100: 22.18us
-AccelerationPlan Backward - 5000|20000|100: 21.81us
-AccelerationPlan Forward - 5000|20000|10: 22.89us
-AccelerationPlan Backward - 5000|20000|10: 22.51us
-
-
-*/

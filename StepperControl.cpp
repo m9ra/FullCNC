@@ -17,17 +17,14 @@ volatile int32_t SLOT2_STEPS = 0;
 volatile int32_t SLOT3_STEPS = 0;
 
 ISR(TIMER1_OVF_vect) {
-	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
-
 	//pins go LOW here (pulse start)
 	byte activation = SCHEDULE_ACTIVATIONS[SCHEDULE_END] | ACTIVATION_MASK;
+
+	//THE TIMER RESET IS TUNED HERE (!!!NO CHANGES BEFORE THIS!!!)
+	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
+	
 	PORTB = B_SLOTS_MASK & activation;
 	PORTD = D_SLOTS_MASK & activation;
-	/*///interrupts();
-	Serial.print("|T:");
-	Serial.print(UINT16_MAX - SCHEDULE_BUFFER[SCHEDULE_END]);
-	Serial.print("B:");
-	Serial.println(PORTB);/**/
 
 	if (SCHEDULE_START == SCHEDULE_END) {
 		//we are at schedule end

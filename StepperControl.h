@@ -24,6 +24,7 @@ Editor:	http://www.visualmicro.com
 #define READ_INT32(buff, position) ((((int32_t)buff[(position)]) << 24)+(((int32_t)buff[(position) + 1]) << 16)+(((int32_t)buff[(position) + 2]) << 8) + buff[(position) + 3])
 #define READ_UINT16(buff, position) ((((uint16_t)buff[(position)]) << 8) + buff[(position) + 1])
 #define INT32_TO_BYTES(vl) (((byte*)&vl)[3]), (((byte*)&vl)[2]), (((byte*)&vl)[1]), (((byte*)&vl)[0])
+#define INT16_TO_BYTES(vl) (((byte*)&vl)[1]), (((byte*)&vl)[0])
 #define UINT16_MAX 65535
 #define INT32_MAX 2147483647
 
@@ -71,9 +72,14 @@ Editor:	http://www.visualmicro.com
 
 // how long (on 0.5us scale)
 //	* before pulse the dir has to be specified 
-//  * after pulse start pulse end has to be specified
 // KEEPING BOTH VALUES SAME enables computation optimization
-#define PORT_CHANGE_DELAY 5*2
+#define PORT_CHANGE_DELAY (20 * 2)
+
+// minimal time between two activations (is used for activation grouping)
+#define MIN_ACTIVATION_DELAY (10 * 2)
+
+// compensetaion subtracted for every activation (has to be smaller than min activation delay)
+#define TIMER_RESET_COMPENSATION 10
 
 // length of the schedule buffer (CANNOT be changed easily - it counts on byte overflows)
 #define SCHEDULE_BUFFER_LEN 256
@@ -290,7 +296,7 @@ public:
 
 	// fills schedule buffer with plan data
 	// returns true when buffer is full (temporarly), false when plan is over
-	bool fillSchedule() {
+	bool fillSchedule(bool startScheduler = true) {
 		while (_d1.isActive || _d2.isActive || _d3.isActive || _d4.isActive) {
 			//find earliest plan
 			int32_t minActiveActivationTime = INT32_MAX;
@@ -327,12 +333,12 @@ public:
 			triggerPlan(_d4, earliestActivationTime);
 
 			//schedule
-			while ((byte)(SCHEDULE_START + 1) == SCHEDULE_END) {
-				//wait until schedule buffer has empty space
+			while ((byte)(SCHEDULE_START + 1) == SCHEDULE_END && startScheduler) {
+				//wait until schedule buffer has empty space				
 				Steppers::startScheduler();
 			}
 
-			SCHEDULE_BUFFER[SCHEDULE_START] = UINT16_MAX - earliestActivationTime;
+			SCHEDULE_BUFFER[SCHEDULE_START] = UINT16_MAX - earliestActivationTime + TIMER_RESET_COMPENSATION;
 			SCHEDULE_ACTIVATIONS[(byte)(SCHEDULE_START + 1)] = CUMULATIVE_SCHEDULE_ACTIVATION;
 			//we can shift the start after activation is properly saved to array
 			++SCHEDULE_START;
@@ -350,7 +356,8 @@ public:
 		this->slack.d2 = _d2.nextActivationTime;
 		this->slack.d3 = _d3.nextActivationTime;
 		this->slack.d4 = _d4.nextActivationTime;
-		Steppers::startScheduler();
+		if(startScheduler)
+			Steppers::startScheduler();
 		return false;
 	}
 private:
@@ -382,15 +389,23 @@ private:
 
 		plan.nextActivationTime -= nextActivationTime;
 
-		if (plan.nextActivationTime > 0)
+		if (plan.nextActivationTime > MIN_ACTIVATION_DELAY)
 			//no steps for the plan now
 			return;
 
 		// make the appropriate pin LOW
 		CUMULATIVE_SCHEDULE_ACTIVATION &= ~(plan.clkMask);
 
-		//compute next activation
-		plan.createNextActivation();
+		if (plan.nextActivationTime > 0) {
+			//activations would come too early one after another - we will group them
+			byte skippedTime = plan.nextActivationTime;
+			plan.createNextActivation();
+			plan.nextActivationTime += skippedTime;
+		}
+		else {
+			//compute next activation
+			plan.createNextActivation();
+		}
 	}
 
 
