@@ -230,7 +230,14 @@
                                     <TextBlock FontSize="30" FontWeight="Bold">Cutting speed</TextBlock>
                                     <TextBlock Name="CuttingSpeed" FontSize="30" TextAlignment="Center">0mm/s</TextBlock>
                                     <Slider IsDirectionReversed="True" Name="CuttingDeltaT" Minimum="2000" Maximum="15000" ValueChanged="CuttingDeltaT_ValueChanged"/>
+
+                                    <TextBlock FontSize="30" FontWeight="Bold">Cutting kerf</TextBlock>
+                                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                        <TextBox TextChanged="CuttingKerf_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="CuttingKerf" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                                        <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                                    </StackPanel>
                                 </StackPanel>
+                                    
                             </Border>
                         </StackPanel>
                     </Border>

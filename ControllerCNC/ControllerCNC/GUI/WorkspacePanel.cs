@@ -52,7 +52,7 @@ namespace ControllerCNC.GUI
             set
             {
                 if (_cuttingSpeed == value)
-                    //nothing to do
+                    //nothing has changed
                     return;
 
                 _cuttingSpeed = value;
@@ -61,9 +61,40 @@ namespace ControllerCNC.GUI
         }
 
         /// <summary>
+        /// Kerf setup for the workspace.
+        /// </summary>
+        internal double CuttingKerf
+        {
+            get
+            {
+                return _cuttingKerf;
+            }
+
+            set
+            {
+                if (value == _cuttingKerf)
+                    //nothing has changed
+                    return;
+
+                _cuttingKerf = value;
+                fireOnSettingsChanged();
+                this.InvalidateVisual();
+                foreach (FrameworkElement child in Children)
+                {
+                    child.InvalidateVisual();
+                }
+            }
+        }
+
+        /// <summary>
         /// Speed that will be used for cutting.
         /// </summary>
         private Speed _cuttingSpeed;
+
+        /// <summary>
+        /// Kerf for cutting.
+        /// </summary>
+        private double _cuttingKerf;
 
         /// <summary>
         /// Item that is moved by using drag and drop
@@ -144,6 +175,7 @@ namespace ControllerCNC.GUI
 
             var configuration = new Dictionary<string, object>();
             configuration.Add("CuttingSpeed", CuttingSpeed);
+            configuration.Add("CuttingKerf", CuttingKerf);
             var workspaceRepresentation = Tuple.Create<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>(itemsToSave, _itemJoins, configuration);
             formatter.Serialize(stream, workspaceRepresentation);
             stream.Close();
@@ -174,6 +206,8 @@ namespace ControllerCNC.GUI
 
             var configuration = workspaceRepresentation.Item3;
             _cuttingSpeed = (Speed)configuration["CuttingSpeed"];
+            if (configuration.ContainsKey("CuttingKerf"))
+                _cuttingKerf = (double)configuration["CuttingKerf"];
 
             fireOnWorkItemListChanged();
             fireOnSettingsChanged();

@@ -187,6 +187,7 @@ namespace ControllerCNC
             _workspace.OnSettingsChanged += onSettingsChanged;
             _workspace.OnWorkItemClicked += onItemClicked;
             CuttingDeltaT.Value = _workspace.CuttingSpeed.ToDeltaT();
+            CuttingKerf.Text = _workspace.CuttingKerf.ToString();
 
             refreshItemList();
             onSettingsChanged();
@@ -649,7 +650,7 @@ namespace ControllerCNC
         private void AddShape_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.cor;*.4dcor;*.slice_cut|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.cor;*.4dcor|Slice files|*.slice_cut";
+            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor;*.4dcor;*.slice_cut|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor;*.4dcor|Slice files|*.slice_cut";
 
             if (dlg.ShowDialog().Value)
             {
@@ -681,7 +682,11 @@ namespace ControllerCNC
                             break;
                         }
                     case ".cor":
-                        throw new NotImplementedException();
+                        _workspace.Children.Add(corShape(filename, identifier));
+                        break;
+                    case ".dat":
+                        _workspace.Children.Add(datShape(filename, identifier));
+                        break;
                     default:
                         {
                             showMessage("Image processing, please wait.", true);
@@ -696,6 +701,68 @@ namespace ControllerCNC
                         }
                 }
             }
+        }
+
+        private ShapeItem2D corShape(string filename, ReadableIdentifier identifier)
+        {
+            var lines = File.ReadAllLines(filename);
+            var points = new List<Point2Dmm>();
+            foreach (var line in lines)
+            {
+                if (line.Trim() == "")
+                    continue;
+
+                var pointParts = line.Trim().Split('\t');
+                var x = double.Parse(pointParts[0]);
+                var y = double.Parse(pointParts[1]);
+
+                var point = new Point2Dmm(-x, -y);
+                points.Add(point);
+            }
+
+            var shape = new ShapeItem2D(identifier, points);
+            shape.MetricWidth = 50;
+            return shape;
+        }
+
+        private ShapeItem2D datShape(string filename, ReadableIdentifier identifier)
+        {
+            var lines = File.ReadAllLines(filename);
+            var points = new List<Point2Dmm>();
+            foreach (var line in lines)
+            {
+                var pointParts = sanitizeDatLine(line).Split(' ');
+                if (pointParts.Length != 2)
+                    //invalid line
+                    continue;
+
+                double x, y;
+                if (!double.TryParse(pointParts[0], out x) || !double.TryParse(pointParts[1], out y))
+                    continue;
+
+                var point = new Point2Dmm(-x, -y);
+                points.Add(point);
+            }
+            points.Add(points.First());
+            var shape = new ShapeItem2D(identifier, points);
+            shape.MetricWidth = 50;
+            return shape;
+        }
+
+        private string sanitizeDatLine(string line)
+        {
+            var currentLine = line.Trim();
+            var lastLine = "";
+
+            while (currentLine != lastLine)
+            {
+                lastLine = currentLine;
+
+
+                currentLine = currentLine.Replace("\t", " ").Replace("  ", " ");
+            }
+
+            return currentLine;
         }
 
         private ShapeItem2D sliceShape(string filename, ReadableIdentifier identifier)
@@ -773,6 +840,14 @@ namespace ControllerCNC
 
             var speed = Constants.MilimetersPerStep * Constants.TimerFrequency / deltaT;
             CuttingSpeed.Text = string.Format("{0:0.000}mm/s", speed);
+        }
+
+        private void CuttingKerf_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double kerf;
+            double.TryParse(CuttingKerf.Text, out kerf);
+            if (_workspace != null)
+                _workspace.CuttingKerf = kerf;
         }
 
         private void LoadPlan_Click(object sender, RoutedEventArgs e)

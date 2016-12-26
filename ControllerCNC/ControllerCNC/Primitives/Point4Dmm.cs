@@ -37,6 +37,14 @@ namespace ControllerCNC.Primitives
             Y = y;
         }
 
+        public Point4Dmm(Point2Dmm uv, Point2Dmm xy)
+        {
+            U = uv.C1;
+            V = uv.C2;
+            X = xy.C1;
+            Y = xy.C2;
+        }
+
         /// <summary>
         /// Squared eclidian distance to given point
         /// </summary>

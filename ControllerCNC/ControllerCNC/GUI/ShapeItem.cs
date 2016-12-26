@@ -23,7 +23,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Points defining the shape.
         /// </summary>
-        private readonly IEnumerable<Point4Dmm> _shapeDefinition;
+        protected readonly Point4Dmm[] _shapeDefinition;
 
         /// <summary>
         /// First facet of the shape.
@@ -77,6 +77,11 @@ namespace ControllerCNC.GUI
         /// Cos of the current rotation.
         /// </summary>
         private double _rotationCos;
+
+        /// <summary>
+        /// Defines whether shape is clockwise.
+        /// </summary>
+        protected bool _isClockwise;
 
         /// <summary>
         /// Clones the shape item.
@@ -142,24 +147,7 @@ namespace ControllerCNC.GUI
         {
             get
             {
-                var ratioC1 = 1.0 * _shapeMaxC1 - _shapeMinC1;
-                if (ratioC1 == 0)
-                    throw new NotImplementedException("Cannot stretch the width");
-
-                var ratioC2 = 1.0 * _shapeMaxC2 - _shapeMinC2;
-                if (ratioC2 == 0)
-                    throw new NotImplementedException("Cannot stretch the width");
-
-                foreach (var definitionPoint in _shapeDefinition)
-                {
-                    var point = rotate(definitionPoint);
-
-                    var u = (int)Math.Round((point.U - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
-                    var v = (int)Math.Round((point.V - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
-                    var x = (int)Math.Round((point.X - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
-                    var y = (int)Math.Round((point.Y - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
-                    yield return new Point4Dstep(u + PositionC1, v + PositionC2, x + PositionC1, y + PositionC2);
-                }
+                return transformPoints(_shapeDefinition);
             }
         }
 
@@ -218,6 +206,38 @@ namespace ControllerCNC.GUI
             RotationAngle = desiredAngle + 1;
             RotationAngle = desiredAngle;
             initialize();
+
+            var wSum = 0.0;
+            for (var i = 1; i < _shapeDefinition.Length; ++i)
+            {
+                var x1 = _shapeDefinition[i - 1];
+                var x2 = _shapeDefinition[i];
+
+                wSum += (x2.U - x1.U) * (x2.V + x1.V);
+            }
+            _isClockwise = wSum > 0;
+        }
+
+        protected IEnumerable<Point4Dstep> transformPoints(IEnumerable<Point4Dmm> points)
+        {
+            var ratioC1 = 1.0 * _shapeMaxC1 - _shapeMinC1;
+            if (ratioC1 == 0)
+                throw new NotImplementedException("Cannot stretch the width");
+
+            var ratioC2 = 1.0 * _shapeMaxC2 - _shapeMinC2;
+            if (ratioC2 == 0)
+                throw new NotImplementedException("Cannot stretch the width");
+
+            foreach (var definitionPoint in points)
+            {
+                var point = rotate(definitionPoint);
+
+                var u = (int)Math.Round((point.U - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
+                var v = (int)Math.Round((point.V - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
+                var x = (int)Math.Round((point.X - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
+                var y = (int)Math.Round((point.Y - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
+                yield return new Point4Dstep(u + PositionC1, v + PositionC2, x + PositionC1, y + PositionC2);
+            }
         }
 
         /// <inheritdoc/>
