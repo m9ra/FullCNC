@@ -25,6 +25,16 @@ namespace ControllerCNC.GUI
     class WorkspacePanel : Panel
     {
         /// <summary>
+        /// Head display for UV.
+        /// </summary>
+        internal readonly HeadCNC HeadUV;
+
+        /// <summary>
+        /// Head display for XY.
+        /// </summary>
+        internal readonly HeadCNC HeadXY;
+
+        /// <summary>
         /// Maximum number of steps in x axis.
         /// </summary>
         internal readonly int StepCountX;
@@ -34,8 +44,14 @@ namespace ControllerCNC.GUI
         /// </summary>
         internal readonly int StepCountY;
 
+        /// <summary>
+        /// Maximum number of steps in u axis.
+        /// </summary>        
         internal readonly int StepCountU;
 
+        /// <summary>
+        /// Maximum number of steps in v axis.
+        /// </summary>        
         internal readonly int StepCountV;
 
         /// <summary>
@@ -121,9 +137,13 @@ namespace ControllerCNC.GUI
         /// </summary>
         private EntryPoint _entryPoint;
 
-        private readonly Pen _joinPenUV = new Pen(Brushes.Blue, 2.0);
+        private static readonly Color _uvColor = Colors.Blue;
 
-        private readonly Pen _joinPenXY = new Pen(Brushes.Red, 2.0);
+        private static readonly Color _xyColor = Colors.Red;
+
+        private static readonly Pen _joinPenUV = new Pen(new SolidColorBrush(_uvColor), 2.0);
+
+        private static readonly Pen _joinPenXY = new Pen(new SolidColorBrush(_xyColor), 2.0);
 
         internal event Action OnSettingsChanged;
 
@@ -133,6 +153,9 @@ namespace ControllerCNC.GUI
 
         internal WorkspacePanel(int stepCountC1, int stepCountC2)
         {
+            HeadUV = new HeadCNC(_uvColor, this);
+            HeadXY = new HeadCNC(_xyColor, this);
+
             StepCountU = StepCountX = stepCountC1;
             StepCountV = StepCountY = stepCountC2;
 
@@ -425,6 +448,9 @@ namespace ControllerCNC.GUI
                 dc.DrawGeometry(null, _joinPenUV, geometryUV);
                 dc.DrawGeometry(null, _joinPenXY, geometryXY);
             }
+
+            HeadUV.Draw(dc);
+            HeadXY.Draw(dc);
         }
 
         /// <inheritdoc/>
@@ -508,7 +534,7 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Size ArrangeOverride(Size finalSize)
         {
-            InvalidateVisual();
+            //InvalidateVisual();
             finalSize = this.DesiredSize;
             foreach (WorkspaceItem child in Children)
             {

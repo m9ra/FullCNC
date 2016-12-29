@@ -53,10 +53,6 @@ namespace ControllerCNC
 
         private readonly DispatcherTimer _autosaveTime = new DispatcherTimer();
 
-        private readonly WorkspaceItem _uvHead = new HeadCNC(Colors.Blue, true);
-
-        private readonly WorkspaceItem _xyHead = new HeadCNC(Colors.Red, false);
-
         private readonly int _messageShowDelay = 3000;
 
         private WorkspacePanel _workspace;
@@ -166,8 +162,6 @@ namespace ControllerCNC
             _workspaceFile = _autosaveFile;
             if (_workspace != null)
             {
-                _workspace.Children.Remove(_uvHead);
-                _workspace.Children.Remove(_xyHead);
                 _autosaveTime.IsEnabled = false;
             }
 
@@ -176,11 +170,6 @@ namespace ControllerCNC
             if (withReload)
             {
                 reloadWorkspace();
-            }
-            else
-            {
-                _workspace.Children.Add(_xyHead);
-                _workspace.Children.Add(_uvHead);
             }
 
             _workspace.OnWorkItemListChanged += refreshItemList;
@@ -197,9 +186,6 @@ namespace ControllerCNC
         {
             if (File.Exists(_workspaceFile))
                 _workspace.LoadFrom(_workspaceFile);
-
-            _workspace.Children.Add(_xyHead);
-            _workspace.Children.Add(_uvHead);
         }
 
         private void onItemClicked(WorkspaceItem item)
@@ -400,11 +386,11 @@ namespace ControllerCNC
             PositionX.Text = positionX.ToString("0.000");
             PositionY.Text = positionY.ToString("0.000");
 
-            _uvHead.PositionC1 = currentU;
-            _uvHead.PositionC2 = currentV;
+            var uv = new Point2Dmm(positionU, positionV);
+            var xy = new Point2Dmm(positionX, positionY);
 
-            _xyHead.PositionC1 = currentX;
-            _xyHead.PositionC2 = currentY;
+            _workspace.HeadUV.Position = uv;
+            _workspace.HeadXY.Position = xy;
 
             if (_isPlanRunning)
             {

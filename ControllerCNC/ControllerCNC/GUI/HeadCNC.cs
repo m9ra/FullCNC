@@ -12,72 +12,68 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC.GUI
 {
-    class HeadCNC : WorkspaceItem
+    class HeadCNC
     {
-        private readonly Color _fillColor;
+        /// <summary>
+        /// Color of the head.
+        /// </summary>
+        private readonly Pen _headPen;
 
-        private readonly bool _isTopDown;
+        /// <summary>
+        /// Actual position in mm.
+        /// </summary>
+        private Point2Dmm _position;
 
-        internal HeadCNC(Color fillColor, bool isTopDown)
-            : base(new ReadableIdentifier("HEAD"))
+        /// <summary>
+        /// Parent panel.
+        /// </summary>
+        private readonly WorkspacePanel _parent;
+
+        /// <summary>
+        /// Actual position in mm.
+        /// </summary>
+        internal Point2Dmm Position
         {
-            _fillColor = fillColor;
-            _isTopDown = isTopDown;
+            get
+            {
+                return _position;
+            }
+            set
+            {
+                if (value.Equals(_position))
+                    //nothing has changed
+                    return;
 
-            initialize();
+                _position = value;
+                _parent.InvalidateVisual();
+            }
         }
 
-        /// <inheritdoc/>
-        public override void GetObjectData(System.Runtime.Serialization.SerializationInfo info, System.Runtime.Serialization.StreamingContext context)
+        internal HeadCNC(Color headColor, WorkspacePanel parent)
         {
-            throw new NotImplementedException();
+            var brush = new SolidColorBrush(headColor);
+            brush.Opacity = 0.8;
+            _headPen = new Pen(brush, 4.0);
+            _parent = parent;
+
+            Position = new Point2Dmm(0, 0);
         }
 
-        /// <inheritdoc/>
-        protected override object createContent()
+        internal void Draw(DrawingContext dc)
         {
-            var polygon = new Polygon();
-
-            var yCoord = 50;
-            var xCoord = 50;
+            var armLength = 50;
             var crossWidth = 2;
 
-            fillCrossArm(polygon, xCoord, crossWidth);
-            fillCrossArm(polygon, crossWidth, yCoord);
+            var mmToStep = Machine.Constants.MilimetersPerStep;
+            var c1Factor = _parent.ActualWidth / _parent.StepCountU / mmToStep;
+            var c2Factor = _parent.ActualHeight / _parent.StepCountV / mmToStep;
 
-
-            var fillBrush = new SolidColorBrush(_fillColor);
-            fillBrush.Opacity = 0.8;
-            polygon.Fill = fillBrush;
-            return polygon;
+            var c1 = Position.C1 * c1Factor;
+            var c2 = Position.C2 * c2Factor;
+            dc.DrawLine(_headPen, new Point(-armLength + c1, 0 + c2), new Point(-crossWidth + c1, 0 + c2));
+            dc.DrawLine(_headPen, new Point(armLength + c1, 0 + c2), new Point(crossWidth + c1, 0 + c2));
+            dc.DrawLine(_headPen, new Point(0 + c1, -armLength + c2), new Point(0 + c1, -crossWidth + c2));
+            dc.DrawLine(_headPen, new Point(0 + c1, armLength + c2), new Point(0 + c1, crossWidth + c2));
         }
-
-        private static void fillCrossArm(Polygon polygon, int xCoord, int width)
-        {
-            polygon.Points.Add(new Point(0, 0));
-            polygon.Points.Add(new Point(xCoord, 0));
-            polygon.Points.Add(new Point(xCoord, width));
-            polygon.Points.Add(new Point(0, width));
-            polygon.Points.Add(new Point(0, 0));
-
-            polygon.Points.Add(new Point(0, 0));
-            polygon.Points.Add(new Point(xCoord, 0));
-            polygon.Points.Add(new Point(xCoord, -width));
-            polygon.Points.Add(new Point(0, -width));
-            polygon.Points.Add(new Point(0, 0));
-
-            polygon.Points.Add(new Point(0, 0));
-            polygon.Points.Add(new Point(-xCoord, 0));
-            polygon.Points.Add(new Point(-xCoord, width));
-            polygon.Points.Add(new Point(0, width));
-            polygon.Points.Add(new Point(0, 0));
-
-            polygon.Points.Add(new Point(0, 0));
-            polygon.Points.Add(new Point(-xCoord, 0));
-            polygon.Points.Add(new Point(-xCoord, -width));
-            polygon.Points.Add(new Point(0, -width));
-            polygon.Points.Add(new Point(0, 0));
-        }
-
     }
 }
