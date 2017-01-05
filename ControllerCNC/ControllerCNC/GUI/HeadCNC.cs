@@ -45,7 +45,7 @@ namespace ControllerCNC.GUI
                     return;
 
                 _position = value;
-                _parent.InvalidateVisual();
+                _parent.InvalidateVisualOnly();
             }
         }
 

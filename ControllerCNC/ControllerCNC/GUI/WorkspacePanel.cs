@@ -137,6 +137,10 @@ namespace ControllerCNC.GUI
         /// </summary>
         private EntryPoint _entryPoint;
 
+        private bool _invalidateArrange = true;
+
+        private bool _isArrangeInitialized = false;
+
         private static readonly Color _uvColor = Colors.Blue;
 
         private static readonly Color _xyColor = Colors.Red;
@@ -183,6 +187,13 @@ namespace ControllerCNC.GUI
         internal void EnableChanges()
         {
             _changesDisabled = false;
+        }
+
+        internal void InvalidateVisualOnly()
+        {
+            InvalidateVisual();
+            if (_isArrangeInitialized)
+                _invalidateArrange = false;
         }
 
         internal void SaveTo(string filename)
@@ -456,7 +467,6 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override void OnVisualChildrenChanged(DependencyObject visualAdded, DependencyObject visualRemoved)
         {
-
             if (visualRemoved != null)
             {
                 //TODO cleanup handlers 
@@ -513,6 +523,9 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Size MeasureOverride(Size availableSize)
         {
+            if (!_invalidateArrange)
+                return DesiredSize;
+
             var ratioX = 1.0 * StepCountX / StepCountY;
             var ratioY = 1.0 * StepCountY / StepCountX;
 
@@ -534,7 +547,13 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Size ArrangeOverride(Size finalSize)
         {
-            //InvalidateVisual();
+            if (!_invalidateArrange)
+            {
+                _invalidateArrange = true;
+                return this.DesiredSize;
+            }
+
+            InvalidateVisual();
             finalSize = this.DesiredSize;
             foreach (WorkspaceItem child in Children)
             {
@@ -545,6 +564,7 @@ namespace ControllerCNC.GUI
                 child.Arrange(new Rect(new Point(positionX, positionY), child.DesiredSize));
             }
 
+            _isArrangeInitialized = true;
             return finalSize;
         }
 
