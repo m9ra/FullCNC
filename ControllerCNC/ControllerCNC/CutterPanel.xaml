@@ -236,6 +236,12 @@
                                         <TextBox TextChanged="CuttingKerf_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="CuttingKerf" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
                                         <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
                                     </StackPanel>
+
+                                    <TextBlock FontSize="30" FontWeight="Bold">Wire length</TextBlock>
+                                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                        <TextBox TextChanged="WireLength_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="WireLength" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                                        <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                                    </StackPanel>
                                 </StackPanel>
                                     
                             </Border>

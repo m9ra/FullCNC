@@ -176,6 +176,7 @@ namespace ControllerCNC
             _workspace.OnSettingsChanged += onSettingsChanged;
             _workspace.OnWorkItemClicked += onItemClicked;
             CuttingDeltaT.Value = _workspace.CuttingSpeed.ToDeltaT();
+            WireLength.Text = _workspace.WireLength.ToString();
             CuttingKerf.Text = _workspace.CuttingKerf.ToString();
 
             refreshItemList();
@@ -834,6 +835,15 @@ namespace ControllerCNC
             double.TryParse(CuttingKerf.Text, out kerf);
             if (_workspace != null)
                 _workspace.CuttingKerf = kerf;
+        }        
+
+        private void WireLength_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double length;
+            double.TryParse(WireLength.Text,out length);
+
+            if (_workspace != null)
+                _workspace.WireLength = length;
         }
 
         private void LoadPlan_Click(object sender, RoutedEventArgs e)
@@ -873,6 +883,7 @@ namespace ControllerCNC
         {
             hideMessage();
         }
+
         #endregion
     }
 }

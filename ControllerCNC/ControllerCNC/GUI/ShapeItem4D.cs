@@ -26,6 +26,11 @@ namespace ControllerCNC.GUI
         private double _shapeMetricThickness;
 
         /// <summary>
+        /// Actual length of the wire.
+        /// </summary>
+        private double _wireLength;
+
+        /// <summary>
         /// Brush for the first facet fill.
         /// </summary>
         private Brush _itemBrushUV;
@@ -72,7 +77,7 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         internal override IEnumerable<Point4Dstep> CutPoints
         {
-            get { return new PlaneProjector(_shapeMetricThickness).Project(ItemPoints); }
+            get { return new PlaneProjector(_shapeMetricThickness,_wireLength).Project(ItemPoints); }
         }
 
 
@@ -103,6 +108,12 @@ namespace ControllerCNC.GUI
             shapeItem.MetricHeight = MetricHeight;
             shapeItem.MetricThickness = MetricThickness;
             return shapeItem;
+        }
+
+        internal override void RecalculateToWorkspace(WorkspacePanel workspace, Size size)
+        {
+            base.RecalculateToWorkspace(workspace, size);
+            _wireLength = workspace.WireLength;
         }
 
         /// <inheritdoc/>

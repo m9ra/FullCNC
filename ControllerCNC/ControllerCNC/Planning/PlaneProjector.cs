@@ -23,15 +23,18 @@ namespace ControllerCNC.Planning
         /// </summary>
         private readonly double _shapeMetricThickness;
 
-        internal PlaneProjector(double shapeMetricThickness)
+        private readonly double _wireLength;
+
+        internal PlaneProjector(double shapeMetricThickness, double wireLength)
         {
             _shapeMetricThickness = shapeMetricThickness;
+            _wireLength = wireLength;
         }
 
         internal IEnumerable<Primitives.Point4Dstep> Project(IEnumerable<Primitives.Point4Dstep> shape)
         {
             var result = new List<Primitives.Point4Dstep>();
-            var shapeToTowerDistance = _shapeMetricThickness - Constants.TowerMetricDistance;
+            var shapeToTowerDistance = _shapeMetricThickness - _wireLength;
 
 
             foreach (var point in shape)

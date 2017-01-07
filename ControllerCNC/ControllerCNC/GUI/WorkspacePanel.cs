@@ -76,6 +76,33 @@ namespace ControllerCNC.GUI
             }
         }
 
+
+        /// <summary>
+        /// Wire setup for the workspace.
+        /// </summary>
+        internal double WireLength
+        {
+            get
+            {
+                return _wireLength;
+            }
+
+            set
+            {
+                if (value == _wireLength)
+                    //nothing has changed
+                    return;
+
+                _wireLength = value;
+                fireOnSettingsChanged();
+                this.InvalidateVisual();
+                foreach (FrameworkElement child in Children)
+                {
+                    child.InvalidateVisual();
+                }
+            }
+        }
+
         /// <summary>
         /// Kerf setup for the workspace.
         /// </summary>
@@ -111,6 +138,11 @@ namespace ControllerCNC.GUI
         /// Kerf for cutting.
         /// </summary>
         private double _cuttingKerf;
+
+        /// <summary>
+        /// Length of wire for cutting.
+        /// </summary>
+        private double _wireLength;
 
         /// <summary>
         /// Item that is moved by using drag and drop
@@ -210,6 +242,7 @@ namespace ControllerCNC.GUI
             var configuration = new Dictionary<string, object>();
             configuration.Add("CuttingSpeed", CuttingSpeed);
             configuration.Add("CuttingKerf", CuttingKerf);
+            configuration.Add("WireLength", WireLength);
             var workspaceRepresentation = Tuple.Create<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>(itemsToSave, _itemJoins, configuration);
             formatter.Serialize(stream, workspaceRepresentation);
             stream.Close();
@@ -242,6 +275,10 @@ namespace ControllerCNC.GUI
             _cuttingSpeed = (Speed)configuration["CuttingSpeed"];
             if (configuration.ContainsKey("CuttingKerf"))
                 _cuttingKerf = (double)configuration["CuttingKerf"];
+            if (configuration.ContainsKey("WireLength"))
+                _wireLength = (double)configuration["WireLength"];
+            else 
+                _wireLength = Constants.FullWireLength;
 
             fireOnWorkItemListChanged();
             fireOnSettingsChanged();
