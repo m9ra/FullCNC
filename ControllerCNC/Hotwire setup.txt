@@ -1,0 +1,2 @@
+gray XPS - 23V 2mm/s
+pink XPS - 23V 2mm/s 0.5kerf (overheated surface, no wire drag)

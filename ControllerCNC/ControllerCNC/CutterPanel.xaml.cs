@@ -27,6 +27,7 @@ using ControllerCNC.Demos;
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
+using ControllerCNC.Loading;
 
 namespace ControllerCNC
 {
@@ -38,6 +39,8 @@ namespace ControllerCNC
         private static string _autosaveFile = "workspace_autosave.cwspc";
 
         private string _workspaceFile;
+
+        private readonly ShapeFactory _factory;
 
         private readonly DriverCNC _cnc;
 
@@ -77,9 +80,9 @@ namespace ControllerCNC
 
         public CutterPanel()
         {
-            System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)System.Threading.Thread.CurrentThread.CurrentCulture.Clone();
+            System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
-            System.Threading.Thread.CurrentThread.CurrentCulture = customCulture;
+            Thread.CurrentThread.CurrentCulture = customCulture;
 
             InitializeComponent();
             MessageBox.Visibility = Visibility.Hidden;
@@ -113,19 +116,36 @@ namespace ControllerCNC
 
             resetWorkspace(true);
             initializeTransitionHandlers();
+
+            _factory = new ShapeFactory(this);
         }
 
+        #region Panel service
+
+        internal ReadableIdentifier UnusedVersion(ReadableIdentifier identifier)
+        {
+            return _workspace.UnusedVersion(identifier);
+        }
+
+        #endregion
 
         #region Message handling
 
-        private void showError(string message, bool forceRefresh = false)
+        internal void ShowError(string message, bool forceRefresh = false)
         {
             setMessageText(message, Brushes.DarkRed, Brushes.Red, forceRefresh);
         }
 
-        private void showMessage(string message, bool forceRefresh = false)
+        internal void ShowMessage(string message, bool forceRefresh = false)
         {
             setMessageText(message, Brushes.DarkOrchid, Brushes.Orchid, forceRefresh);
+        }
+
+        internal void HideMessage()
+        {
+            _messageTimer.IsEnabled = false;
+            Message.Text = "";
+            MessageBox.Visibility = Visibility.Hidden;
         }
 
         private void setMessageText(string message, Brush borderColor, Brush color, bool forceRefresh)
@@ -143,14 +163,7 @@ namespace ControllerCNC
 
         void _messageTimer_Tick(object sender, EventArgs e)
         {
-            hideMessage();
-        }
-
-        private void hideMessage()
-        {
-            _messageTimer.IsEnabled = false;
-            Message.Text = "";
-            MessageBox.Visibility = Visibility.Hidden;
+            HideMessage();
         }
 
         #endregion
@@ -232,7 +245,7 @@ namespace ControllerCNC
             foreach (var child in _workspace.Children)
             {
                 var workItem = child as WorkspaceItem;
-                if (workItem == null || workItem is HeadCNC)
+                if (workItem == null)
                     continue;
 
                 var item = createListItem(workItem);
@@ -405,7 +418,7 @@ namespace ControllerCNC
 
                     if (remainingTime.TotalDays < 2)
                     {
-                        showMessage(elapsedTime.ToString() + "/" + remainingTime.ToString());
+                        ShowMessage(elapsedTime.ToString() + "/" + remainingTime.ToString());
                     }
                 }
             }
@@ -437,7 +450,7 @@ namespace ControllerCNC
         {
             if (!_cnc.IsHomeCalibrated)
             {
-                showError("Calibration is required!");
+                ShowError("Calibration is required!");
                 return;
             }
 
@@ -463,7 +476,7 @@ namespace ControllerCNC
             if (!_cnc.SEND(plan))
             {
                 planCompleted();
-                showError("Plan overflows the workspace!");
+                ShowError("Plan overflows the workspace!");
                 return;
             }
 
@@ -637,165 +650,15 @@ namespace ControllerCNC
         private void AddShape_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor;*.4dcor;*.slice_cut|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor;*.4dcor|Slice files|*.slice_cut";
+            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor;*.4dcor;*.slice_cut;*.line_path|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor;*.4dcor|Slice files|*.slice_cut|Line path files|*.line_path";
 
             if (dlg.ShowDialog().Value)
             {
-                string filename = dlg.FileName;
-                var extension = System.IO.Path.GetExtension(filename);
-                var name = System.IO.Path.GetFileNameWithoutExtension(filename);
-                var identifier = _workspace.UnusedVersion(new ReadableIdentifier(name));
-
-                IEnumerable<Point2Dmm> coordinates;
-                switch (extension.ToLower())
-                {
-                    case ".4dcor":
-                        {
-                            var formatter = new BinaryFormatter();
-                            using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
-                            {
-                                var definition = (ShapeDefinition4D)formatter.Deserialize(stream);
-                                var shape = new ShapeItem4D(identifier, definition.Points);
-                                shape.MetricThickness = definition.Thickness;
-                                shape.SetOriginalSize();
-                                _workspace.Children.Add(shape);
-                            }
-                            break;
-                        }
-                    case ".slice_cut":
-                        {
-                            var shape = sliceShape(filename, identifier);
-                            _workspace.Children.Add(shape);
-                            break;
-                        }
-                    case ".cor":
-                        _workspace.Children.Add(corShape(filename, identifier));
-                        break;
-                    case ".dat":
-                        _workspace.Children.Add(datShape(filename, identifier));
-                        break;
-                    default:
-                        {
-                            showMessage("Image processing, please wait.", true);
-                            var interpolator = new ImageInterpolator(filename);
-                            coordinates = interpolator.InterpolateCoordinates();
-                            hideMessage();
-
-                            var shape = new ShapeItem2D(identifier, coordinates);
-                            shape.MetricWidth = 50;
-                            _workspace.Children.Add(shape);
-                            break;
-                        }
-                }
+                var filename = dlg.FileName;
+                var shape = _factory.Load(filename);
+                if (shape != null)
+                    _workspace.Children.Add(shape);
             }
-        }
-
-        private ShapeItem2D corShape(string filename, ReadableIdentifier identifier)
-        {
-            var lines = File.ReadAllLines(filename);
-            var points = new List<Point2Dmm>();
-            foreach (var line in lines)
-            {
-                if (line.Trim() == "")
-                    continue;
-
-                var pointParts = line.Trim().Split('\t');
-                var x = double.Parse(pointParts[0]);
-                var y = double.Parse(pointParts[1]);
-
-                var point = new Point2Dmm(-x, -y);
-                points.Add(point);
-            }
-
-            var shape = new ShapeItem2D(identifier, points);
-            shape.MetricWidth = 50;
-            return shape;
-        }
-
-        private ShapeItem2D datShape(string filename, ReadableIdentifier identifier)
-        {
-            var lines = File.ReadAllLines(filename);
-            var points = new List<Point2Dmm>();
-            foreach (var line in lines)
-            {
-                var pointParts = sanitizeDatLine(line).Split(' ');
-                if (pointParts.Length != 2)
-                    //invalid line
-                    continue;
-
-                double x, y;
-                if (!double.TryParse(pointParts[0], out x) || !double.TryParse(pointParts[1], out y))
-                    continue;
-
-                var point = new Point2Dmm(-x, -y);
-                points.Add(point);
-            }
-            points.Add(points.First());
-            var shape = new ShapeItem2D(identifier, points);
-            shape.MetricWidth = 50;
-            return shape;
-        }
-
-        private string sanitizeDatLine(string line)
-        {
-            var currentLine = line.Trim();
-            var lastLine = "";
-
-            while (currentLine != lastLine)
-            {
-                lastLine = currentLine;
-
-
-                currentLine = currentLine.Replace("\t", " ").Replace("  ", " ");
-            }
-
-            return currentLine;
-        }
-
-        private ShapeItem2D sliceShape(string filename, ReadableIdentifier identifier)
-        {
-            var lines = File.ReadAllLines(filename);
-            var dimensions = new List<double>();
-            foreach (var line in lines)
-            {
-                var parts = line.Split(' ');
-                if (parts.Length == 0)
-                    continue;
-
-                var dimension = double.Parse(parts[0]);
-                dimensions.Add(dimension);
-            }
-
-            var sliceThickness = dimensions[0];
-            var sliceLength = dimensions[1];
-            var sliceCount = (int)Math.Round(dimensions[2]);
-
-            //TODO even counts are now not supported
-            sliceCount = ((sliceCount + 1) / 2) * 2;
-
-            var slicePoints = new List<Point2Dmm>();
-            for (var i = 0; i < sliceCount; ++i)
-            {
-                var totalHeight = i * sliceThickness;
-                if (i % 2 == 0)
-                {
-                    slicePoints.Add(new Point2Dmm(0, totalHeight));
-                    slicePoints.Add(new Point2Dmm(sliceLength, totalHeight));
-                }
-                else
-                {
-                    slicePoints.Add(new Point2Dmm(sliceLength, totalHeight));
-                    slicePoints.Add(new Point2Dmm(0, totalHeight));
-                }
-            }
-
-            //this we can do only for odd slice counts
-            slicePoints.Add(new Point2Dmm(0, 0));
-            slicePoints.Reverse();
-
-            var item = new ShapeItem2D(identifier, slicePoints);
-            item.SetOriginalSize();
-            return item;
         }
 
         private void RefreshJoins_Click(object sender, RoutedEventArgs e)
@@ -835,12 +698,12 @@ namespace ControllerCNC
             double.TryParse(CuttingKerf.Text, out kerf);
             if (_workspace != null)
                 _workspace.CuttingKerf = kerf;
-        }        
+        }
 
         private void WireLength_TextChanged(object sender, TextChangedEventArgs e)
         {
             double length;
-            double.TryParse(WireLength.Text,out length);
+            double.TryParse(WireLength.Text, out length);
 
             if (_workspace != null)
                 _workspace.WireLength = length;
@@ -881,7 +744,7 @@ namespace ControllerCNC
 
         private void MessageBox_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
-            hideMessage();
+            HideMessage();
         }
 
         #endregion

@@ -21,6 +21,16 @@ namespace ControllerCNC.Machine
     class DriverCNC
     {
         /// <summary>
+        /// If set to true, simulation mode is used instead of the real device.
+        /// </summary>
+        private readonly bool FAKE_ONLINE_MODE = true;
+
+        /// <summary>
+        /// Determine whether simulator should use real speeds.
+        /// </summary>
+        private readonly bool SIMULATE_REAL_DELAY = true;
+
+        /// <summary>
         /// Port where we will communicate with the machine.
         /// </summary>
         private SerialPort _port;
@@ -224,7 +234,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Determine whether last homing attempt was successful.
         /// </summary>
-        public bool IsHomeCalibrated { get { return CompletedState.IsHomeCalibrated; } }
+        public bool IsHomeCalibrated { get { return CompletedState.IsHomeCalibrated || FAKE_ONLINE_MODE; } }
 
         public DriverCNC()
         {
@@ -407,7 +417,6 @@ namespace ControllerCNC.Machine
                         lock (_L_instructionCompletition)
                         {
                             onInstructionCompleted();
-                            --_incompleteInstructions;
                             Monitor.Pulse(_L_instructionCompletition);
                         }
 
@@ -427,11 +436,7 @@ namespace ControllerCNC.Machine
                         var incompleteInstrutionCount = 0;
                         lock (_L_instructionCompletition)
                         {
-                            var now = DateTime.Now;
-                            _lastInstructionStartTime = now;
-                            _uEstimation = _vEstimation = _xEstimation = _yEstimation = 0;
                             onInstructionCompleted();
-                            --_incompleteInstructions;
                             incompleteInstrutionCount = _incompleteInstructionQueue.Count;
                             Monitor.Pulse(_L_instructionCompletition);
                         }
@@ -464,15 +469,21 @@ namespace ControllerCNC.Machine
         }
 
         /// <summary>
-        /// HAS TO BE COLLED WITH _L_instrutionCompletition
+        /// HAS TO BE CALLED WITH _L_instrutionCompletition
         /// </summary>
         private void onInstructionCompleted()
         {
+            var now = DateTime.Now;
+            _lastInstructionStartTime = now;
+            _uEstimation = _vEstimation = _xEstimation = _yEstimation = 0;
+
             if (_incompleteInstructionQueue.Count == 0)
                 //TODO probably garbage from buffer
                 return;
+
             var instruction = _incompleteInstructionQueue.Dequeue();
             _completedState.Completed(instruction);
+            --_incompleteInstructions;
         }
 
         private bool checkBoundaries(InstructionCNC instruction, ref StateInfo state)
@@ -504,7 +515,10 @@ namespace ControllerCNC.Machine
 
         private void SERIAL_worker()
         {
-            for (; ; )
+            if (FAKE_ONLINE_MODE)
+                runCncSimulator();
+
+            for (;;)
             {
                 //loop forever and try to establish connection
 
@@ -538,8 +552,8 @@ namespace ControllerCNC.Machine
                     }
 
                     IsConnected = true;
-                    if (OnConnectionStatusChange != null)
-                        OnConnectionStatusChange();
+                    fireOnConnectionStatusChange();
+
                     try
                     {
                         //the communication handler can return only by throwing exception
@@ -553,8 +567,7 @@ namespace ControllerCNC.Machine
                     {
                         _port = null;
                         IsConnected = false;
-                        if (OnConnectionStatusChange != null)
-                            OnConnectionStatusChange();
+                        fireOnConnectionStatusChange();
                     }
                 }
 
@@ -568,7 +581,7 @@ namespace ControllerCNC.Machine
             //welcome message
             send(new InitializationInstruction());
 
-            for (; ; )
+            for (;;)
             {
                 byte[] data;
                 lock (_L_sendQueue)
@@ -655,6 +668,55 @@ namespace ControllerCNC.Machine
             {
                 _sendQueue.Enqueue(dataBuffer);
                 Monitor.Pulse(_L_sendQueue);
+            }
+        }
+
+        private void fireOnConnectionStatusChange()
+        {
+            if (OnConnectionStatusChange != null)
+                OnConnectionStatusChange();
+        }
+
+        private void runCncSimulator()
+        {
+            IsConnected = true;
+            fireOnConnectionStatusChange();
+            _plannedState.Completed(new HomingInstruction());
+            _completedState.Completed(new HomingInstruction());
+
+            var simulationDelay = 100;
+            while (true)
+            {
+                Thread.Sleep(simulationDelay);
+
+                if (_incompleteInstructionQueue.Count > 0)
+                {
+                    InstructionCNC instruction;
+                    lock (_L_instructionCompletition)
+                    {
+                        _lastInstructionStartTime = DateTime.Now;
+                        instruction = _incompleteInstructionQueue.Peek();
+                    }
+
+                    var tickCount = instruction.CalculateTotalTime();
+                    var time = 1000 * tickCount / Constants.TimerFrequency;
+
+                    if (SIMULATE_REAL_DELAY)
+                    {
+                        Thread.Sleep((int)Math.Max(0, (long)time - (long)simulationDelay));
+                    }else
+                    {
+                        Thread.Sleep(200);
+                    }
+
+                    lock (_L_instructionCompletition)
+                    {
+                        onInstructionCompleted();
+
+                        if (_incompleteInstructionQueue.Count == 0 && OnInstructionQueueIsComplete != null)
+                            OnInstructionQueueIsComplete();
+                    }
+                }
             }
         }
 

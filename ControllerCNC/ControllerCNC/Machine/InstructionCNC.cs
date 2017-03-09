@@ -54,5 +54,14 @@ namespace ControllerCNC.Machine
                 (byte)(value & 255)
             };
         }
+
+        internal ulong CalculateTotalTime()
+        {
+            var axes = this as Axes;
+            if (axes == null)
+                return 0;
+
+            return axes.GetInstructionDuration();
+        }
     }
 }

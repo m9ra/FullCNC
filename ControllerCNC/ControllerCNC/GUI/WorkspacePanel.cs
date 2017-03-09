@@ -76,7 +76,6 @@ namespace ControllerCNC.GUI
             }
         }
 
-
         /// <summary>
         /// Wire setup for the workspace.
         /// </summary>
@@ -277,7 +276,7 @@ namespace ControllerCNC.GUI
                 _cuttingKerf = (double)configuration["CuttingKerf"];
             if (configuration.ContainsKey("WireLength"))
                 _wireLength = (double)configuration["WireLength"];
-            else 
+            else
                 _wireLength = Constants.FullWireLength;
 
             fireOnWorkItemListChanged();
@@ -311,26 +310,47 @@ namespace ControllerCNC.GUI
         internal void BuildPlan(PlanBuilder plan)
         {
             var planPoints = new List<Point4Dstep>();
+            var segmentSpeeds = new List<Speed>();
 
             //the plan starts from entry point (recursively)
-            fillPlanBy(planPoints, _entryPoint, 0);
+            fillPlanBy(planPoints, segmentSpeeds, _entryPoint, 0);
+
+            if (segmentSpeeds.Count > 0)
+            {
+                //TODO this needs to be refactored - ShapeItem should have this control on itself
+
+                //HACK - only NativeControl item will be here - we add speed for start
+                segmentSpeeds.Insert(0, CuttingSpeed);
+
+                planPoints.RemoveAt(planPoints.Count - 1); //remove entry point return1
+                planPoints.RemoveAt(planPoints.Count - 1); //remove entry point return2
+                planPoints.RemoveAt(planPoints.Count - 1); //remove shape point return
+            }
 
             var scheduler = new StraightLinePlanner4D(CuttingSpeed);
-            var trajectoryPlan = scheduler.CreateConstantPlan(new Trajectory4D(planPoints));
+            var trajectoryPlan = scheduler.CreateConstantPlan(new Trajectory4D(planPoints), segmentSpeeds);
 
             plan.Add(trajectoryPlan.Build());
         }
 
-        private void fillPlanBy(List<Point4Dstep> planPoints, PointProviderItem item, int incommingPointIndex)
+        private void fillPlanBy(List<Point4Dstep> planPoints, List<Speed> segmentSpeeds, PointProviderItem item, int incommingPointIndex)
         {
             var points = item.CutPoints.ToArray();
             var isClosedShape = points.First().Equals(points.Last());
-            if (!isClosedShape)
-                throw new NotImplementedException("Plan non-closed shape items.");
+
+            if (item is NativeControlItem)
+            {
+                segmentSpeeds.AddRange(((NativeControlItem)item).SegmentSpeeds);
+            }
+            else
+            {
+                if (!isClosedShape)
+                    throw new NotImplementedException("Plan non-closed shape items.");
+            }
 
             var outgoingJoins = findOutgoingJoins(item);
             //we have to go one point further (to have the shape closed)
-            for (var i = incommingPointIndex; i < incommingPointIndex + points.Length + 1; ++i)
+            for (var i = incommingPointIndex; i <= incommingPointIndex + points.Length; ++i)
             {
                 var currentIndex = i % points.Length;
                 var currentPoint = points[currentIndex];
@@ -343,7 +363,7 @@ namespace ControllerCNC.GUI
                 foreach (var currentOutgoingJoin in currentOutgoingJoins)
                 {
                     //insert connected shape
-                    fillPlanBy(planPoints, currentOutgoingJoin.Item2, currentOutgoingJoin.JoinPointIndex2);
+                    fillPlanBy(planPoints, segmentSpeeds, currentOutgoingJoin.Item2, currentOutgoingJoin.JoinPointIndex2);
                     //plan the returning point
                     planPoints.Add(currentPoint);
                 }
@@ -383,6 +403,14 @@ namespace ControllerCNC.GUI
 
         internal void SetJoin(PointProviderItem shape1, int joinPointIndex1, PointProviderItem shape2, int joinPointIndex2)
         {
+            if (shape1 is NativeControlItem || (shape2 is NativeControlItem && !(shape1 is EntryPoint)))
+                //native items cant be joined with other items
+                return;
+
+            if (shape2 is NativeControlItem)
+                //native items can run only separately
+                _itemJoins.Clear();
+
             var joinCopy = _itemJoins.ToArray();
             foreach (var join in joinCopy)
             {
@@ -427,6 +455,9 @@ namespace ControllerCNC.GUI
                     }
                 }
             }
+
+            if (shape2 is NativeControlItem)
+                best2 = 0;
 
             SetJoin(shape1, best1, shape2, best2);
         }

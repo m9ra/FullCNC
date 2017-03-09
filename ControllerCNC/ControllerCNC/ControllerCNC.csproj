@@ -62,6 +62,7 @@
     </Compile>
     <Compile Include="Demos\MachineTesting.cs" />
     <Compile Include="Demos\ShapeDrawing.cs" />
+    <Compile Include="GUI\NativeControlItem.cs" />
     <Compile Include="GUI\ShapeItem.cs" />
     <Compile Include="GUI\EntryPoint.cs" />
     <Compile Include="GUI\HeadCNC.cs" />
@@ -76,6 +77,14 @@
     <Compile Include="GUI\ShapeItem4D.cs" />
     <Compile Include="GUI\WorkspaceItem.cs" />
     <Compile Include="GUI\WorkspacePanel.cs" />
+    <Compile Include="Loading\Loaders\Cor4dLoader.cs" />
+    <Compile Include="Loading\Loaders\CorLoader.cs" />
+    <Compile Include="Loading\Loaders\DatLoader.cs" />
+    <Compile Include="Loading\Loaders\ImageLoader.cs" />
+    <Compile Include="Loading\Loaders\LinePathLoader.cs" />
+    <Compile Include="Loading\Loaders\LoaderBase.cs" />
+    <Compile Include="Loading\Loaders\SliceCutLoader.cs" />
+    <Compile Include="Loading\ShapeFactory.cs" />
     <Compile Include="Machine\Axes.cs" />
     <Compile Include="Machine\HomingInstruction.cs" />
     <Compile Include="Machine\InitializationInstruction.cs" />
