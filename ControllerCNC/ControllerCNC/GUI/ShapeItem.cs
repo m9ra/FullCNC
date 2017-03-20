@@ -89,6 +89,16 @@ namespace ControllerCNC.GUI
         internal abstract ShapeItem Clone(ReadableIdentifier cloneName);
 
         /// <summary>
+        /// Calculates kerf on the p2 point.
+        /// </summary>
+        /// <param name="p1">Preceding point.</param>
+        /// <param name="p2">Kerfed point.</param>
+        /// <param name="p3">Following point.</param>
+        /// <param name="workspace">Workspace defining the kerf.</param>
+        /// <returns></returns>
+        protected abstract Point4Dmm applyKerf(Point4Dmm p1, Point4Dmm p2, Point4Dmm p3, WorkspacePanel workspace);
+
+        /// <summary>
         /// Rotation in degrees.
         /// </summary>
         internal double RotationAngle
@@ -222,11 +232,11 @@ namespace ControllerCNC.GUI
         {
             var ratioC1 = 1.0 * _shapeMaxC1 - _shapeMinC1;
             if (ratioC1 == 0)
-                throw new NotImplementedException("Cannot stretch the width");
+                ratioC1 = 1;
 
             var ratioC2 = 1.0 * _shapeMaxC2 - _shapeMinC2;
             if (ratioC2 == 0)
-                throw new NotImplementedException("Cannot stretch the width");
+                ratioC2 = 1;
 
             foreach (var definitionPoint in points)
             {
@@ -313,5 +323,104 @@ namespace ControllerCNC.GUI
                 rotatedX + c1, rotatedY + c2
                 );
         }
+
+        #region Kerf calculation
+
+        protected Vector calculateKerfShift(Point2Dmm p1, Point2Dmm p2, Point2Dmm p3, double kerf)
+        {
+            var diff12_C1 = p2.C1 - p1.C1;
+            var diff12_C2 = p2.C2 - p1.C2;
+
+            var diff23_C1 = p3.C1 - p2.C1;
+            var diff23_C2 = p3.C2 - p2.C2;
+
+            var v1 = new Vector(diff12_C1, diff12_C2);
+            var v2 = new Vector(diff23_C1, diff23_C2);
+
+            var nV1 = new Vector(v1.Y, -v1.X);
+            var nV2 = new Vector(v2.Y, -v2.X);
+
+            nV1.Normalize();
+            nV2.Normalize();
+
+            var shift = (nV1 + nV2) * kerf / 2;
+            return shift;
+        }
+
+        protected IEnumerable<Point4Dmm> pointsWithKerf()
+        {
+            var workspace = Parent as WorkspacePanel;
+            if (workspace == null || workspace.CuttingKerf == 0.0)
+                //there is no change
+                return _shapeDefinition;
+
+            var kerf = workspace.CuttingKerf;
+            if (MetricWidth > MetricHeight)
+            {
+                var ratio = (_shapeMaxC1 - _shapeMinC1) / MetricWidth;
+                kerf *= ratio;
+            }
+            else
+            {
+                var ratio = (_shapeMaxC2 - _shapeMinC2) / MetricHeight;
+                kerf *= ratio;
+            }
+
+            if (!_isClockwise)
+                kerf *= -1;
+
+            var result = applyKerf(_shapeDefinition.Reverse(), workspace);
+            return result;
+        }
+
+        protected Point4Dmm[] applyKerf(IEnumerable<Point4Dmm> points, WorkspacePanel workspace)
+        {
+            var pointsArr = points.ToArray();
+
+            var result = new List<Point4Dmm>();
+            for (var i = 0; i < pointsArr.Length; ++i)
+            {
+                var prevPoint = getNextDifferent(pointsArr, i, -1);
+                var point = pointsArr[i];
+                var nextPoint = getNextDifferent(pointsArr, i, 1);
+
+                result.Add(applyKerf(prevPoint, point, nextPoint, workspace));
+            }
+
+            return result.ToArray();
+        }
+
+        private Point4Dmm getNextDifferent(Point4Dmm[] points, int startIndex, int increment)
+        {
+            var startPoint = points[startIndex];
+            var i = (startIndex + increment + points.Length) % points.Length;
+            while (points[i].Equals(startPoint))
+            {
+                i = (i + increment + points.Length) % points.Length;
+            }
+
+            return points[i];
+        }
+
+        protected double reCalculateKerf(double kerf)
+        {
+            if (MetricWidth > MetricHeight)
+            {
+                var ratio = (_shapeMaxC1 - _shapeMinC1) / MetricWidth;
+                kerf *= ratio;
+            }
+            else
+            {
+                var ratio = (_shapeMaxC2 - _shapeMinC2) / MetricHeight;
+                kerf *= ratio;
+            }
+
+            if (!_isClockwise)
+                kerf *= -1;
+
+            return kerf;
+        }
+
+        #endregion
     }
 }

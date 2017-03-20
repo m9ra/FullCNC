@@ -15,6 +15,11 @@ namespace ControllerCNC.Machine
     static class Constants
     {
         /// <summary>
+        /// Thickness of the hotwire [mm].
+        /// </summary>
+        public static readonly double HotwireThickness = 0.28;
+
+        /// <summary>
         /// Time scale of the machine. (2MHz)
         /// </summary>
         public static readonly uint TimerFrequency = 2000000;

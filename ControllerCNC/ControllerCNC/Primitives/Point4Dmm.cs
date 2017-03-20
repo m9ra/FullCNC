@@ -46,7 +46,7 @@ namespace ControllerCNC.Primitives
         }
 
         /// <summary>
-        /// Squared eclidian distance to given point
+        /// Squared euclidian distance to given point
         /// </summary>
         public double DistanceSquaredTo(Point4Dmm point)
         {

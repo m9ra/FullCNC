@@ -36,7 +36,8 @@ namespace ControllerCNC.Loading.Loaders
                 var coord2 = double.Parse(coords[1]);
                 var speed = double.Parse(coords[2]);
 
-                coordinates.Add(new Point2Dmm(coord1, coord2));
+                var lastP = coordinates.Last();
+                coordinates.Add(new Point2Dmm(coord1 + lastP.C1, coord2 + lastP.C2));
                 var deltaT = Constants.MilimetersPerStep * Constants.TimerFrequency / speed;
                 segmentSpeeds.Add(Speed.FromDeltaT((int)Math.Round(deltaT)));
             }

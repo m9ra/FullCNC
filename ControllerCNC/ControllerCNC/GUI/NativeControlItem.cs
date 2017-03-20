@@ -70,5 +70,12 @@ namespace ControllerCNC.GUI
             var geometry = new PathGeometry(new[] { figure }, FillRule.EvenOdd, Transform.Identity);
             drawingContext.DrawGeometry(null, _itemPen, geometry);
         }
+
+        /// <inheritdoc/>
+        protected override Point4Dmm applyKerf(Point4Dmm p1, Point4Dmm p2, Point4Dmm p3, WorkspacePanel workspace)
+        {
+            // Native item does not follow kerf settup.
+            return p2;
+        }
     }
 }

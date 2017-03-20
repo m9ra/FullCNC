@@ -23,7 +23,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// If set to true, simulation mode is used instead of the real device.
         /// </summary>
-        private readonly bool FAKE_ONLINE_MODE = true;
+        private readonly bool FAKE_ONLINE_MODE = false;
 
         /// <summary>
         /// Determine whether simulator should use real speeds.
@@ -704,7 +704,8 @@ namespace ControllerCNC.Machine
                     if (SIMULATE_REAL_DELAY)
                     {
                         Thread.Sleep((int)Math.Max(0, (long)time - (long)simulationDelay));
-                    }else
+                    }
+                    else
                     {
                         Thread.Sleep(200);
                     }

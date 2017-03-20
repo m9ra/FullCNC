@@ -77,7 +77,7 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         internal override IEnumerable<Point4Dstep> CutPoints
         {
-            get { return new PlaneProjector(_shapeMetricThickness,_wireLength).Project(ItemPoints); }
+            get { return new PlaneProjector(_shapeMetricThickness, _wireLength).Project(ItemPoints); }
         }
 
 
@@ -153,6 +153,21 @@ namespace ControllerCNC.GUI
             drawingContext.DrawGeometry(_itemBrushXY, _itemPen, geometryXY);
             drawingContext.DrawGeometry(null, _cutPenUV, geometryCutUV);
             drawingContext.DrawGeometry(null, _cutPenXY, geometryCutXY);
+        }
+
+        /// <inheritdoc/>
+        protected override Point4Dmm applyKerf(Point4Dmm p1, Point4Dmm p2, Point4Dmm p3, WorkspacePanel workspace)
+        {
+            var distanceUV = p1.ToUV().DistanceTo(p2.ToUV()) + p2.ToUV().DistanceTo(p3.ToUV()); ;
+            var distanceXY = p1.ToXY().DistanceTo(p2.ToXY()) + p2.ToXY().DistanceTo(p3.ToXY());
+
+            var referentialSpeed = workspace.CuttingSpeed;
+            var kerf = workspace.CuttingKerf;
+
+            var kerfUVRatio = distanceUV / distanceXY;
+            var kerfXYRatio = distanceXY / distanceUV;
+
+            throw new NotImplementedException("calculate projected speed");
         }
     }
 }

@@ -20,7 +20,7 @@ namespace ControllerCNC.ShapeEditor
             var previousPoint = DefinitionPoints.First();
             foreach (var point in DefinitionPoints)
             {
-                var lineLength = previousPoint.GetDistance(point);
+                var lineLength = previousPoint.DistanceTo(point);
                 _totalLength += lineLength;
                 previousPoint = point;
             }
@@ -36,7 +36,7 @@ namespace ControllerCNC.ShapeEditor
                 if (currentPercentage > startPercentage)
                     return currentPercentage;
 
-                var lineLength = previousPoint.GetDistance(point);
+                var lineLength = previousPoint.DistanceTo(point);
                 currentLength += lineLength;
                 previousPoint = point;
             }
@@ -51,7 +51,7 @@ namespace ControllerCNC.ShapeEditor
             if (percentage > 0)
                 foreach (var point in DefinitionPoints.Skip(1))
                 {
-                    var lineLength = previousPoint.GetDistance(point);
+                    var lineLength = previousPoint.DistanceTo(point);
                     var previousPercentage = currentLength / _totalLength;
                     currentLength += lineLength;
                     var currentPercentage = currentLength / _totalLength;

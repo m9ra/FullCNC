@@ -199,6 +199,7 @@ namespace ControllerCNC.GUI
             PreviewMouseUp += _mouseUp;
             PreviewMouseMove += _mouseMove;
             CuttingSpeed = Speed.FromDeltaT(6000);
+            WireLength = Constants.FullWireLength;
 
             _entryPoint = new EntryPoint();
             Children.Add(_entryPoint);
@@ -272,8 +273,10 @@ namespace ControllerCNC.GUI
 
             var configuration = workspaceRepresentation.Item3;
             _cuttingSpeed = (Speed)configuration["CuttingSpeed"];
+
             if (configuration.ContainsKey("CuttingKerf"))
                 _cuttingKerf = (double)configuration["CuttingKerf"];
+
             if (configuration.ContainsKey("WireLength"))
                 _wireLength = (double)configuration["WireLength"];
             else

@@ -25,7 +25,7 @@ namespace ControllerCNC.Primitives
             C2 = c2;
         }
 
-        internal double GetDistance(Point2Dmm point)
+        internal double DistanceTo(Point2Dmm point)
         {
             var diff1 = C1 - point.C1;
             var diff2 = C2 - point.C2;
