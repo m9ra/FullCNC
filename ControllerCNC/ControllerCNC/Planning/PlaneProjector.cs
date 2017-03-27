@@ -53,6 +53,20 @@ namespace ControllerCNC.Planning
             return result;
         }
 
+        internal static Point4Dmm Project(Point4Dmm point, double shapeMetricThickness, double wireLength)
+        {
+            var shapeToTowerDistance = shapeMetricThickness - wireLength;
+
+            var uvPoint = new Vector3D(point.U, point.V, -shapeMetricThickness / 2);
+            var xyPoint = new Vector3D(point.X, point.Y, +shapeMetricThickness / 2);
+
+            var projectionVector = uvPoint - xyPoint;
+            var projectionVectorScale = shapeToTowerDistance / projectionVector.Z;
+            var uvPointProjected = uvPoint + projectionVector * projectionVectorScale;
+            var xyPointProjected = xyPoint - projectionVector * projectionVectorScale;
+            return new Point4Dmm(uvPointProjected.X, uvPointProjected.Y, xyPointProjected.X, xyPointProjected.Y);
+        }
+
         private Primitives.Point4Dstep point4D(double u, double v, double x, double y)
         {
             return new Primitives.Point4Dstep((int)Math.Round(u), (int)Math.Round(v), (int)Math.Round(x), (int)Math.Round(y));

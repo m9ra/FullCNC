@@ -18,6 +18,7 @@ using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 
 using ControllerCNC.Demos;
+using ControllerCNC.Loading;
 using ControllerCNC.Machine;
 using ControllerCNC.Primitives;
 
@@ -30,12 +31,17 @@ namespace ControllerCNC.ShapeEditor
     {
         private readonly double _shapeThickness = 10;
 
+        private readonly ShapeFactory _factory;
+
         public EditorWindow()
         {
             InitializeComponent();
             var points = ShapeDrawing.CircleToSquare().ToArray();
-         /*   var snowflake = ShapeDrawing.InterpolateImage("snowflake.png");
-            snowflake = snowflake.Reverse().Select(p => new Point2Dmm(p.C1 / 40, p.C2 / 40));*/
+            /*   var snowflake = ShapeDrawing.InterpolateImage("snowflake.png");
+               snowflake = snowflake.Reverse().Select(p => new Point2Dmm(p.C1 / 40, p.C2 / 40));*/
+
+
+            _factory = new ShapeFactory();
 
             var facet1 = new FacetShape(points.ToUV());
             var facet2 = new FacetShape(points.ToXY());
@@ -293,7 +299,50 @@ namespace ControllerCNC.ShapeEditor
             this.Close();
         }
 
-        #endregion
+        private void LoadFacet1_Click(object sender, RoutedEventArgs e)
+        {
+            setupFacetFromFile(Facet1Pane);
+        }
 
+        private void LoadFacet2_Click(object sender, RoutedEventArgs e)
+        {
+            setupFacetFromFile(Facet2Pane);
+        }
+
+        private void Binding_Click(object sender, RoutedEventArgs e)
+        {
+            //drawShape(alignedPoints.As4Dstep(), _shapeThickness);
+            throw new NotImplementedException("Create facet binding");
+        }
+
+        private void setupFacetFromFile(FacetPanel facetPane)
+        {
+            var points = load2DPointsFromFile();
+
+            var centeredPoints = centered(points).ToArray();
+            facetPane.ClearParts();
+            facetPane.AddPart(new EditorShapePart(centeredPoints));
+        }
+
+        private IEnumerable<Point2Dmm> load2DPointsFromFile()
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog();
+            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor";
+
+            if (dlg.ShowDialog().Value)
+            {
+                var filename = dlg.FileName;
+                var shape = _factory.Load(filename);
+
+                if (shape == null)
+                    return null;
+
+                return shape.ShapeDefinition.ToUV();
+            }
+
+            return null;
+        }
+
+        #endregion
     }
 }

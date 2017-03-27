@@ -14,6 +14,18 @@
                         <Button Height="50" FontSize="30" Name="Exit" Click="Exit_Click">
                             Exit
                         </Button>
+
+                        <Button Height="50" FontSize="30" Name="LoadFacet1" Click="LoadFacet1_Click">
+                            Load Facet 1
+                        </Button>
+
+                        <Button Height="50" FontSize="30" Name="LoadFacet2" Click="LoadFacet2_Click">
+                            Load Facet 2
+                        </Button>
+
+                        <Button Height="50" FontSize="30" Name="Binding" Click="Binding_Click">
+                            Bind Proport.
+                        </Button>
                     </StackPanel>
                 </Border>
                 <Grid>

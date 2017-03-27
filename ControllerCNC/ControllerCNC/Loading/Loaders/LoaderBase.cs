@@ -27,16 +27,25 @@ namespace ControllerCNC.Loading.Loaders
 
         protected void Message(string message)
         {
+            if (_panel == null)
+                return;
+
             _panel.ShowMessage(message, forceRefresh: true);
         }
 
         protected void Error(string message)
         {
+            if (_panel == null)
+                return;
+
             _panel.ShowError(message, forceRefresh: true);
         }
 
         protected void HideMessage()
         {
+            if (_panel == null)
+                return;
+
             _panel.HideMessage();
         }
     }

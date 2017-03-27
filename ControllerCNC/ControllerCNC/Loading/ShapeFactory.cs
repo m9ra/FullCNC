@@ -20,7 +20,7 @@ namespace ControllerCNC.Loading
 
         private readonly Dictionary<string, LoaderBase> _loaders = new Dictionary<string, LoaderBase>();
 
-        internal ShapeFactory(CutterPanel panel)
+        internal ShapeFactory(CutterPanel panel = null)
         {
             _panel = panel;
 
@@ -36,11 +36,14 @@ namespace ControllerCNC.Loading
         {
             var extension = Path.GetExtension(path).ToLowerInvariant();
             var name = Path.GetFileNameWithoutExtension(path);
-            var identifier = _panel.UnusedVersion(new ReadableIdentifier(name));
+            var identifier = new ReadableIdentifier(name);
+
+            if (_panel != null)
+                identifier = _panel.UnusedVersion(identifier);
 
             if (!_loaders.ContainsKey(extension))
             {
-                _panel.ShowError("No available loader found.");
+                ShowError("No available loader found.");
                 return null;
             }
 
@@ -50,7 +53,7 @@ namespace ControllerCNC.Loading
             }
             catch (Exception ex)
             {
-                _panel.ShowError("Loading failed with an error: " + ex.Message);
+                ShowError("Loading failed with an error: " + ex.Message);
                 return null;
             }
         }
@@ -68,6 +71,14 @@ namespace ControllerCNC.Loading
             {
                 _loaders.Add("." + extension.ToLowerInvariant(), loader);
             }
+        }
+
+        internal void ShowError(string message)
+        {
+            if (_panel == null)
+                return;
+
+            _panel.ShowError(message);
         }
     }
 }

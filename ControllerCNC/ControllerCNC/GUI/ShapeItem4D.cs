@@ -77,7 +77,12 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         internal override IEnumerable<Point4Dstep> CutPoints
         {
-            get { return new PlaneProjector(_shapeMetricThickness, _wireLength).Project(ItemPoints); }
+            get
+            {
+                var kerfPoints = transformPoints(pointsWithKerf()).ToArray();
+                //kerfPoints = ItemPoints.ToArray();
+                return new PlaneProjector(_shapeMetricThickness, _wireLength).Project(kerfPoints);
+            }
         }
 
 
@@ -140,7 +145,7 @@ namespace ControllerCNC.GUI
             var figureUV = CreatePathFigure(points.ToUV());
             var figureXY = CreatePathFigure(points.ToXY());
 
-            var cutPoints = CutPoints;
+            var cutPoints = CutPoints.ToArray();
             var cutUV = CreatePathFigure(cutPoints.ToUV());
             var cutXY = CreatePathFigure(cutPoints.ToXY());
 
@@ -158,16 +163,80 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Point4Dmm applyKerf(Point4Dmm p1, Point4Dmm p2, Point4Dmm p3, WorkspacePanel workspace)
         {
-            var distanceUV = p1.ToUV().DistanceTo(p2.ToUV()) + p2.ToUV().DistanceTo(p3.ToUV()); ;
-            var distanceXY = p1.ToXY().DistanceTo(p2.ToXY()) + p2.ToXY().DistanceTo(p3.ToXY());
+            getShapeSpeedVectors(workspace, p1, p2, out Vector speedVector12UV, out Vector speedVector12XY);
+            getShapeSpeedVectors(workspace, p2, p3, out Vector speedVector23UV, out Vector speedVector23XY);
 
+            var speedUV = (speedVector12UV.Length + speedVector23UV.Length) / 2;
+            var speedXY = (speedVector12XY.Length + speedVector23XY.Length) / 2;
+
+            var referentialKerf = workspace.CuttingKerf;
+            var kerfUV = reCalculateKerf(referentialKerf, speedUV, workspace);
+            var kerfXY = reCalculateKerf(referentialKerf, speedXY, workspace);
+
+            var shiftUV = calculateKerfShift(p1.ToUV(), p2.ToUV(), p3.ToUV(), kerfUV);
+            var shiftXY = calculateKerfShift(p1.ToXY(), p2.ToXY(), p3.ToXY(), kerfXY);
+
+            return new Point4Dmm(p2.U + shiftUV.X, p2.V + shiftUV.Y, p2.X + shiftXY.X, p2.Y + shiftXY.Y);
+        }
+
+        double reCalculateKerf(double referentialKerf, double metricSpeed, WorkspacePanel workspace)
+        {
+            referentialKerf = reCalculateKerf(referentialKerf);
             var referentialSpeed = workspace.CuttingSpeed;
-            var kerf = workspace.CuttingKerf;
+            var metricReferentialSpeed = Constants.MilimetersPerStep * referentialSpeed.StepCount / (1.0 * referentialSpeed.Ticks / Constants.TimerFrequency);
 
-            var kerfUVRatio = distanceUV / distanceXY;
-            var kerfXYRatio = distanceXY / distanceUV;
+            var referenceFactor = metricSpeed / metricReferentialSpeed;
 
-            throw new NotImplementedException("calculate projected speed");
+            return referentialKerf * referenceFactor;
+        }
+
+        private void getShapeSpeedVectors(WorkspacePanel workspace, Point4Dmm p1, Point4Dmm p2, out Vector speedVector12UV, out Vector speedVector12XY)
+        {
+            var wireLength = workspace.WireLength;
+
+            var t1 = projectToTowers(p1, wireLength);
+            var t2 = projectToTowers(p2, wireLength);
+
+            //tower speeds
+            getSpeedVectors(workspace, t1, t2, out Vector speedVector12UVt, out Vector speedVector12XYt);
+
+            var facetDistance = wireLength / 2 - MetricThickness / 2;
+            var facetRatio = 1.0 - facetDistance / wireLength;
+            speedVector12UV = speedVector12UVt * facetRatio + speedVector12XYt * (1.0 - facetRatio);
+            speedVector12XY = speedVector12XYt * facetRatio + speedVector12UVt * (1.0 - facetRatio);
+        }
+
+        private void getSpeedVectors(WorkspacePanel workspace, Point4Dmm t1, Point4Dmm t2, out Vector speedVector12UVt, out Vector speedVector12XYt)
+        {
+            var maxSpeed = workspace.CuttingSpeed;
+            var maxSpeedRatio = (maxSpeed.StepCount * Constants.MilimetersPerStep) / (1.0 * maxSpeed.Ticks / Constants.TimerFrequency);
+
+            //tower speeds
+            speedVector12UVt = diffVector(t1.ToUV(), t2.ToUV());
+            speedVector12XYt = diffVector(t1.ToXY(), t2.ToXY());
+            if (speedVector12UVt.Length > speedVector12XYt.Length)
+            {
+                var speedRatio = speedVector12XYt.Length / speedVector12UVt.Length;
+                speedVector12UVt.Normalize();
+                speedVector12XYt.Normalize();
+
+                speedVector12UVt = speedVector12UVt * maxSpeedRatio;
+                speedVector12XYt = speedVector12XYt * speedRatio;
+            }
+            else
+            {
+                var speedRatio = speedVector12UVt.Length / speedVector12XYt.Length;
+                speedVector12UVt.Normalize();
+                speedVector12XYt.Normalize();
+
+                speedVector12UVt = speedVector12UVt * maxSpeedRatio;
+                speedVector12XYt = speedVector12XYt * speedRatio;
+            }
+        }
+
+        private Point4Dmm projectToTowers(Point4Dmm p, double wireLength)
+        {
+            return PlaneProjector.Project(p, this.MetricThickness, wireLength);
         }
     }
 }

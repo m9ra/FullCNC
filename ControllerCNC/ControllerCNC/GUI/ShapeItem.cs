@@ -46,7 +46,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Definition of the shape.
         /// </summary>
-        protected IEnumerable<Point4Dmm> ShapeDefinition { get { return _shapeDefinition; } }
+        internal IEnumerable<Point4Dmm> ShapeDefinition { get { return _shapeDefinition; } }
 
         /// <summary>
         /// Determine size of the shape in milimeters.
@@ -328,23 +328,31 @@ namespace ControllerCNC.GUI
 
         protected Vector calculateKerfShift(Point2Dmm p1, Point2Dmm p2, Point2Dmm p3, double kerf)
         {
-            var diff12_C1 = p2.C1 - p1.C1;
-            var diff12_C2 = p2.C2 - p1.C2;
-
-            var diff23_C1 = p3.C1 - p2.C1;
-            var diff23_C2 = p3.C2 - p2.C2;
-
-            var v1 = new Vector(diff12_C1, diff12_C2);
-            var v2 = new Vector(diff23_C1, diff23_C2);
+            var v1 = diffVector(p1, p2);
+            var v2 = diffVector(p2, p3);
 
             var nV1 = new Vector(v1.Y, -v1.X);
             var nV2 = new Vector(v2.Y, -v2.X);
+
+            if (nV1.Length == 0)
+                nV1 = nV2;
+
+            if (nV2.Length == 0)
+                nV2 = nV1;
 
             nV1.Normalize();
             nV2.Normalize();
 
             var shift = (nV1 + nV2) * kerf / 2;
             return shift;
+        }
+
+        protected Vector diffVector(Point2Dmm p1, Point2Dmm p2)
+        {
+            var diff12_C1 = p2.C1 - p1.C1;
+            var diff12_C2 = p2.C2 - p1.C2;
+
+            return new Vector(diff12_C1, diff12_C2);
         }
 
         protected IEnumerable<Point4Dmm> pointsWithKerf()

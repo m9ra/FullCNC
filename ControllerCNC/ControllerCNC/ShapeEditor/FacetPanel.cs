@@ -55,6 +55,12 @@ namespace ControllerCNC.ShapeEditor
             InvalidateVisual();
         }
 
+        public void ClearParts()
+        {
+            _parts.Clear();
+            InvalidateVisual();
+        }
+
         public FacetShape CreateFacetShape()
         {
             if (_parts.Count != 1)
