@@ -66,7 +66,7 @@ namespace ControllerCNC.Planning
             _backgroundColor = _data[0];
         }
 
-        public IEnumerable<Point2Dmm> InterpolateCoordinates()
+        public IEnumerable<Point2Dmm> InterpolatePoints()
         {
             //initialize datastructures
             _contourPoints = new Dictionary<Tuple<int, int>, ContourPoint>();
@@ -134,7 +134,7 @@ namespace ControllerCNC.Planning
 
         internal IEnumerable<Point4Dstep> InterpolateCoordinates(double scale)
         {
-            var points = InterpolateCoordinates();
+            var points = InterpolatePoints();
 
             var result = new List<Point4Dstep>();
             foreach (var point in points)

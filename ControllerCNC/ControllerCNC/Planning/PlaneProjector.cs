@@ -34,7 +34,7 @@ namespace ControllerCNC.Planning
         internal IEnumerable<Primitives.Point4Dstep> Project(IEnumerable<Primitives.Point4Dstep> shape)
         {
             var result = new List<Primitives.Point4Dstep>();
-            var shapeToTowerDistance = _shapeMetricThickness - _wireLength;
+            var shapeToTowerDistance = (_shapeMetricThickness - _wireLength) / 2;
 
 
             foreach (var point in shape)
@@ -47,7 +47,8 @@ namespace ControllerCNC.Planning
                 var uvPointProjected = uvPoint + projectionVector * projectionVectorScale;
                 var xyPointProjected = xyPoint - projectionVector * projectionVectorScale;
 
-                result.Add(point4D(uvPointProjected.X, uvPointProjected.Y, xyPointProjected.X, xyPointProjected.Y));
+                var projectedPoint = point4D(uvPointProjected.X, uvPointProjected.Y, xyPointProjected.X, xyPointProjected.Y);
+                result.Add(projectedPoint);
             }
 
             return result;
@@ -55,7 +56,7 @@ namespace ControllerCNC.Planning
 
         internal static Point4Dmm Project(Point4Dmm point, double shapeMetricThickness, double wireLength)
         {
-            var shapeToTowerDistance = shapeMetricThickness - wireLength;
+            var shapeToTowerDistance = (shapeMetricThickness - wireLength) / 2;
 
             var uvPoint = new Vector3D(point.U, point.V, -shapeMetricThickness / 2);
             var xyPoint = new Vector3D(point.X, point.Y, +shapeMetricThickness / 2);

@@ -58,6 +58,23 @@ namespace ControllerCNC.Loading
             }
         }
 
+        internal static IEnumerable<Point2Dmm> Centered(IEnumerable<Point2Dmm> points)
+        {
+            var maxC1 = points.Select(p => p.C1).Max();
+            var maxC2 = points.Select(p => p.C2).Max();
+
+            var minC1 = points.Select(p => p.C1).Min();
+            var minC2 = points.Select(p => p.C2).Min();
+
+            var diffC1 = maxC1 - minC1;
+            var diffC2 = maxC2 - minC2;
+
+            var c1Offset = -minC1 - diffC1 / 2;
+            var c2Offset = -minC2 - diffC2 / 2;
+
+            return points.Select(p => new Point2Dmm(p.C1 + c1Offset, p.C2 + c2Offset)).ToArray();
+        }
+
         /// <summary>
         /// Registers loader for all given extensions.
         /// </summary>

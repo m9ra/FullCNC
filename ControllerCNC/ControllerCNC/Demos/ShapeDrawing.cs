@@ -250,7 +250,7 @@ namespace ControllerCNC.Demos
         public static IEnumerable<Point2Dmm> InterpolateImage(string filename)
         {
             var interpolator = new ImageInterpolator(filename);
-            return interpolator.InterpolateCoordinates();
+            return interpolator.InterpolatePoints();
         }
 
         /// <summary>

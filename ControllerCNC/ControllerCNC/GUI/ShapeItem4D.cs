@@ -182,6 +182,7 @@ namespace ControllerCNC.GUI
         double reCalculateKerf(double referentialKerf, double metricSpeed, WorkspacePanel workspace)
         {
             referentialKerf = reCalculateKerf(referentialKerf);
+            return referentialKerf;
             var referentialSpeed = workspace.CuttingSpeed;
             var metricReferentialSpeed = Constants.MilimetersPerStep * referentialSpeed.StepCount / (1.0 * referentialSpeed.Ticks / Constants.TimerFrequency);
 

@@ -436,8 +436,8 @@ namespace ControllerCNC.GUI
 
         internal void SetJoin(PointProviderItem shape1, PointProviderItem shape2)
         {
-            var points1 = shape1.CutPoints.ToArray();
-            var points2 = shape2.CutPoints.ToArray();
+            var points1 = shape1.ItemPoints.ToArray();
+            var points2 = shape2.ItemPoints.ToArray();
 
             var best1 = 0;
             var best2 = 0;

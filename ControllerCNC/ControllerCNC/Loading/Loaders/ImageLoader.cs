@@ -16,10 +16,11 @@ namespace ControllerCNC.Loading.Loaders
         {
             Message("Image processing, please wait.");
             var interpolator = new ImageInterpolator(path);
-            var coordinates = interpolator.InterpolateCoordinates();
+            var points = interpolator.InterpolatePoints();
+            points = ShapeFactory.Centered(points);
             HideMessage();
 
-            var shape = new ShapeItem2D(identifier, coordinates);
+            var shape = new ShapeItem2D(identifier, points);
             shape.MetricWidth = 50;
             return shape;
         }

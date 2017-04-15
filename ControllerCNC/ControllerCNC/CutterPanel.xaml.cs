@@ -118,6 +118,11 @@ namespace ControllerCNC
             initializeTransitionHandlers();
 
             _factory = new ShapeFactory(this);
+
+            /*/
+            OpenEditor_Click(null, null);
+            this.Hide();
+            /**/
         }
 
         #region Panel service

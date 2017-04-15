@@ -26,6 +26,47 @@
                         <Button Height="50" FontSize="30" Name="Binding" Click="Binding_Click">
                             Bind Proport.
                         </Button>
+
+                        <TextBlock FontSize="30" FontWeight="Bold">Thickness</TextBlock>
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBox TextChanged="ShapeThickness_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="ShapeThickness" Background="Transparent" FontSize="30" TextAlignment="Center">100.0</TextBox>
+                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                        </StackPanel>
+
+                        <TextBlock FontSize="30" FontWeight="Bold">Facet1 top</TextBlock>
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBox TextChanged="Facet1Top_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="Facet1Top" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                        </StackPanel>
+
+                        <TextBlock FontSize="30" FontWeight="Bold">Facet1 left</TextBlock>
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBox TextChanged="Facet1Left_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="Facet1Left" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                        </StackPanel>
+
+                        <TextBlock FontSize="30" FontWeight="Bold">Facet1 width</TextBlock>
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBox TextChanged="Facet1Width_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="Facet1Width" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                        </StackPanel>
+                        <TextBlock FontSize="30" FontWeight="Bold">Facet1 height</TextBlock>
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBox TextChanged="Facet1Height_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="Facet1Height" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                        </StackPanel>
+
+                        <TextBlock FontSize="30" FontWeight="Bold">Facet2 width</TextBlock>
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBox TextChanged="Facet2Width_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="Facet2Width" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                        </StackPanel>
+                        <TextBlock FontSize="30" FontWeight="Bold">Facet2 height</TextBlock>
+                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                            <TextBox TextChanged="Facet2Height_TextChanged" Margin="0" Padding="0" BorderThickness="0" Name="Facet2Height" Background="Transparent" FontSize="30" TextAlignment="Center">0</TextBox>
+                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                        </StackPanel>
+                       
                     </StackPanel>
                 </Border>
                 <Grid>

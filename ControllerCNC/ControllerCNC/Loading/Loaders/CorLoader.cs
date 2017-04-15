@@ -18,21 +18,22 @@ namespace ControllerCNC.Loading.Loaders
         {
             var lines = File.ReadAllLines(path);
             var points = new List<Point2Dmm>();
+            var pointsScale = 100.0;
             foreach (var line in lines)
             {
                 if (line.Trim() == "")
                     continue;
 
                 var pointParts = line.Trim().Split('\t');
-                var x = double.Parse(pointParts[0]);
-                var y = double.Parse(pointParts[1]);
+                var x = double.Parse(pointParts[0]) * pointsScale;
+                var y = double.Parse(pointParts[1]) * pointsScale;
 
                 var point = new Point2Dmm(-x, -y);
                 points.Add(point);
             }
 
             var shape = new ShapeItem2D(identifier, points);
-            shape.MetricWidth = 50;
+            shape.MetricWidth = pointsScale;
             return shape;
         }
     }

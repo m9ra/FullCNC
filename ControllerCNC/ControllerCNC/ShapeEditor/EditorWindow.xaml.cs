@@ -29,52 +29,25 @@ namespace ControllerCNC.ShapeEditor
     /// </summary>
     public partial class EditorWindow : Window
     {
-        private readonly double _shapeThickness = 10;
-
         private readonly ShapeFactory _factory;
+
+        private ModelVisual3D _3dVisualModel = null;
+
+        private double _shapeThickness = 0;
 
         public EditorWindow()
         {
             InitializeComponent();
-            var points = ShapeDrawing.CircleToSquare().ToArray();
-            /*   var snowflake = ShapeDrawing.InterpolateImage("snowflake.png");
-               snowflake = snowflake.Reverse().Select(p => new Point2Dmm(p.C1 / 40, p.C2 / 40));*/
-
-
             _factory = new ShapeFactory();
 
-            var facet1 = new FacetShape(points.ToUV());
-            var facet2 = new FacetShape(points.ToXY());
-
-            var points1 = centered(facet1.DefinitionPoints).ToArray();
-            var points2 = centered(facet2.DefinitionPoints).ToArray();
-            Facet1Pane.AddPart(new EditorShapePart(points1));
-            Facet2Pane.AddPart(new EditorShapePart(points2));
-
-            var alignedPoints = getAlignedPoints(Facet1Pane.CreateFacetShape(), Facet2Pane.CreateFacetShape());
-            //alignedPoints = ShapeDrawing.CircleToSquare().As4Dstep();
-            drawShape(alignedPoints.As4Dstep(), _shapeThickness);
+            refreshEditorInputs();
         }
 
-        private IEnumerable<Point2Dmm> centered(IEnumerable<Point2Dmm> points)
+        private void drawShape(IEnumerable<Point4Dmm> points, double metricThickness)
         {
-            var maxC1 = points.Select(p => p.C1).Max();
-            var maxC2 = points.Select(p => p.C2).Max();
+            if (_3dVisualModel != null)
+                View3D.Children.Remove(_3dVisualModel);
 
-            var minC1 = points.Select(p => p.C1).Min();
-            var minC2 = points.Select(p => p.C2).Min();
-
-            var diffC1 = maxC1 - minC1;
-            var diffC2 = maxC2 - minC2;
-
-            var c1Offset = -minC1 - diffC1 / 2;
-            var c2Offset = -minC2 - diffC2 / 2;
-
-            return points.Select(p => new Point2Dmm(p.C1 + c1Offset, p.C2 + c2Offset));
-        }
-
-        private void drawShape(IEnumerable<Primitives.Point4Dstep> points, double metricThickness)
-        {
             var facet1Points = points.ToUV();
             var facet2Points = points.ToXY();
             var coordinates = facet1Points.Concat(facet2Points).SelectMany(p => new[] { p.C1, p.C2 }).ToArray();
@@ -83,7 +56,7 @@ namespace ControllerCNC.ShapeEditor
             var coordOffset = minCoord + (maxCoord - minCoord) / 2;
             var coordFactor = 1.0 / (maxCoord - coordOffset);
 
-            var thickness = metricThickness / Constants.MilimetersPerStep;
+            var thickness = metricThickness;
             var facet1Z = -thickness / 2 * coordFactor;
             var facet2Z = thickness / 2 * coordFactor;
 
@@ -92,13 +65,13 @@ namespace ControllerCNC.ShapeEditor
             group.Children.Add(getShapeCoatingModel(facet1Points, facet1Z, facet2Points, facet2Z, coordOffset, coordFactor));
             group.Children.Add(getFacetModel(facet2Points, facet2Z, coordOffset, coordFactor, false));
 
-            var visualModel = new ModelVisual3D();
-            Trackball.Model = visualModel;
-            visualModel.Content = group;
-            View3D.Children.Add(visualModel);
+            _3dVisualModel = new ModelVisual3D();
+            Trackball.Model = _3dVisualModel;
+            _3dVisualModel.Content = group;
+            View3D.Children.Add(_3dVisualModel);
         }
 
-        private static GeometryModel3D getShapeCoatingModel(IEnumerable<Point2Dstep> facet1Points, double facet1Z, IEnumerable<Point2Dstep> facet2Points, double facet2Z, double coordOffset, double coordFactor)
+        private static GeometryModel3D getShapeCoatingModel(IEnumerable<Point2Dmm> facet1Points, double facet1Z, IEnumerable<Point2Dmm> facet2Points, double facet2Z, double coordOffset, double coordFactor)
         {
             var points = new Point3DCollection();
             var triangles = new Int32Collection();
@@ -169,9 +142,9 @@ namespace ControllerCNC.ShapeEditor
             return new int[] { p0, p1, p2, p2 + 1, p1 + 1, p0 + 1 };
         }
 
-        private static GeometryModel3D getFacetModel(IEnumerable<Point2Dstep> facetPoints, double z, double coordOffset, double coordFactor, bool isFrontFace)
+        private static GeometryModel3D getFacetModel(IEnumerable<Point2Dmm> facetPoints, double z, double coordOffset, double coordFactor, bool isFrontFace)
         {
-            var filteredPoints = new List<Point2Dstep>();
+            var filteredPoints = new List<Point2Dmm>();
             foreach (var point in facetPoints)
             {
                 if (filteredPoints.Count == 0)
@@ -184,15 +157,14 @@ namespace ControllerCNC.ShapeEditor
                 filteredPoints.Add(point);
             }
 
-            var facetTriangles = Triangulation2D.Triangulate(filteredPoints.As2Dmm()).ToArray();
+            var facetTriangles = Triangulation2D.Triangulate(filteredPoints).ToArray();
 
             var points = new Point3DCollection();
             var triangles = new Int32Collection();
             foreach (var triangle in facetTriangles)
             {
-                foreach (var pointmm in triangle)
+                foreach (var point in triangle)
                 {
-                    var point = pointmm.As2Dstep();
                     points.Add(new Point3D((point.C1 - coordOffset) * coordFactor, (point.C2 - coordOffset) * coordFactor, z));
                 }
 
@@ -261,6 +233,7 @@ namespace ControllerCNC.ShapeEditor
         {
             var points = new List<Primitives.Point4Dmm>();
             var done = -1.0;
+
             while (done < 1.0)
             {
                 var nextPointPercentage1 = facet1.GetNextPointPercentage(done);
@@ -311,17 +284,18 @@ namespace ControllerCNC.ShapeEditor
 
         private void Binding_Click(object sender, RoutedEventArgs e)
         {
-            //drawShape(alignedPoints.As4Dstep(), _shapeThickness);
-            throw new NotImplementedException("Create facet binding");
+            var alignedPoints = getAlignedPoints(Facet1Pane.CreateFacetShape(), Facet2Pane.CreateFacetShape());
+            drawShape(alignedPoints, _shapeThickness);
         }
 
         private void setupFacetFromFile(FacetPanel facetPane)
         {
             var points = load2DPointsFromFile();
 
-            var centeredPoints = centered(points).ToArray();
             facetPane.ClearParts();
-            facetPane.AddPart(new EditorShapePart(centeredPoints));
+            facetPane.AddPart(new EditorShapePart(points));
+
+            refreshEditorInputs();
         }
 
         private IEnumerable<Point2Dmm> load2DPointsFromFile()
@@ -343,6 +317,89 @@ namespace ControllerCNC.ShapeEditor
             return null;
         }
 
+        private void refreshEditorInputs()
+        {
+            if (Facet1Pane != null)
+            {
+                Facet1Width.Text = Facet1Pane.MetricWidth.ToString();
+                Facet1Height.Text = Facet1Pane.MetricHeight.ToString();
+                Facet1Left.Text = Facet1Pane.MetricShiftX.ToString();
+                Facet1Top.Text = Facet1Pane.MetricShiftY.ToString();
+            }
+
+            if (Facet2Pane != null)
+            {
+                Facet2Width.Text = Facet2Pane.MetricWidth.ToString();
+                Facet2Height.Text = Facet2Pane.MetricHeight.ToString();
+            }
+
+            if (Facet1Pane != null && Facet2Pane != null)
+                Facet1Pane.FitSize(Facet2Pane);
+
+            if (ShapeThickness != null)
+                ShapeThickness.Text = _shapeThickness.ToString();
+        }
+
         #endregion
+
+        private void Facet1Top_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double.TryParse(Facet1Top.Text, out double result);
+            if (Facet1Pane != null)
+                Facet1Pane.MetricShiftY = result;
+
+            refreshEditorInputs();
+        }
+
+        private void Facet1Left_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double.TryParse(Facet1Left.Text, out double result);
+            if (Facet1Pane != null)
+                Facet1Pane.MetricShiftX = result;
+
+            refreshEditorInputs();
+        }
+
+        private void Facet1Width_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double.TryParse(Facet1Width.Text, out double result);
+            if (Facet1Pane != null)
+                Facet1Pane.MetricWidth = result;
+
+            refreshEditorInputs();
+        }
+
+        private void Facet1Height_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double.TryParse(Facet1Height.Text, out double result);
+            if (Facet1Pane != null)
+                Facet1Pane.MetricHeight = result;
+
+            refreshEditorInputs();
+        }
+
+        private void Facet2Width_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double.TryParse(Facet2Width.Text, out double result);
+            if (Facet2Pane != null)
+                Facet2Pane.MetricWidth = result;
+
+            refreshEditorInputs();
+        }
+
+        private void Facet2Height_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double.TryParse(Facet2Height.Text, out double result);
+            if (Facet2Pane != null)
+                Facet2Pane.MetricHeight = result;
+
+            refreshEditorInputs();
+        }
+
+        private void ShapeThickness_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double.TryParse(ShapeThickness.Text, out _shapeThickness);
+            refreshEditorInputs();
+        }
     }
 }
