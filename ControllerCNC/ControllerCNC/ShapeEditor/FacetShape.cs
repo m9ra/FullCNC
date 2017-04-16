@@ -12,7 +12,10 @@ namespace ControllerCNC.ShapeEditor
     {
         internal readonly IEnumerable<Point2Dmm> DefinitionPoints;
 
-        private readonly double _totalLength;
+        internal double TotalPerimeter { get { return _totalPerimeter; } }
+
+        private readonly double _totalPerimeter;
+
 
         internal FacetShape(IEnumerable<Point2Dmm> points)
         {
@@ -21,10 +24,11 @@ namespace ControllerCNC.ShapeEditor
             foreach (var point in DefinitionPoints)
             {
                 var lineLength = previousPoint.DistanceTo(point);
-                _totalLength += lineLength;
+                _totalPerimeter += lineLength;
                 previousPoint = point;
             }
         }
+
 
         internal double GetNextPointPercentage(double startPercentage)
         {
@@ -32,7 +36,7 @@ namespace ControllerCNC.ShapeEditor
             var previousPoint = DefinitionPoints.First();
             foreach (var point in DefinitionPoints.Skip(1))
             {
-                var currentPercentage = currentLength / _totalLength;
+                var currentPercentage = currentLength / _totalPerimeter;
                 if (currentPercentage > startPercentage)
                     return currentPercentage;
 
@@ -52,9 +56,9 @@ namespace ControllerCNC.ShapeEditor
                 foreach (var point in DefinitionPoints.Skip(1))
                 {
                     var lineLength = previousPoint.DistanceTo(point);
-                    var previousPercentage = currentLength / _totalLength;
+                    var previousPercentage = currentLength / _totalPerimeter;
                     currentLength += lineLength;
-                    var currentPercentage = currentLength / _totalLength;
+                    var currentPercentage = currentLength / _totalPerimeter;
                     var percentageRange = currentPercentage - previousPercentage;
 
                     if (currentPercentage >= percentage)

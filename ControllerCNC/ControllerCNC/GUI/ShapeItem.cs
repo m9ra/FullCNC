@@ -401,13 +401,26 @@ namespace ControllerCNC.GUI
         private Point4Dmm getNextDifferent(Point4Dmm[] points, int startIndex, int increment)
         {
             var startPoint = points[startIndex];
+            var startPointUV = startPoint.ToUV();
+            var startPointXY = startPoint.ToXY();
+
+            //find UV next
             var i = (startIndex + increment + points.Length) % points.Length;
-            while (points[i].Equals(startPoint))
+            while (points[i].ToUV().Equals(startPointUV))
             {
                 i = (i + increment + points.Length) % points.Length;
             }
+            var endPointUV = points[i].ToUV();
 
-            return points[i];
+            //find XY next
+            i = (startIndex + increment + points.Length) % points.Length;
+            while (points[i].ToXY().Equals(startPointXY))
+            {
+                i = (i + increment + points.Length) % points.Length;
+            }
+            var endPointXY = points[i].ToXY();
+
+            return new Point4Dmm(endPointUV, endPointXY);
         }
 
         protected double reCalculateKerf(double kerf)

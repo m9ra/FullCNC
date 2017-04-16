@@ -240,7 +240,18 @@ namespace ControllerCNC.ShapeEditor
                 var nextPointPercentage2 = facet2.GetNextPointPercentage(done);
                 var nextPointPercentage = Math.Min(nextPointPercentage1, nextPointPercentage2);
 
+                var oldDone = done;
                 done = nextPointPercentage;
+
+                var percentageDelta = done - oldDone;
+                var perimeterDelta = percentageDelta * (facet1.TotalPerimeter + facet2.TotalPerimeter);
+                if (perimeterDelta < 0.00001)
+                {
+                    //smooth out floating point errors
+                    continue;
+                }
+
+
                 var point1 = facet1.GetPoint(done);
                 var point2 = facet2.GetPoint(done);
                 var point = new Point4Dmm(point1.C1, point1.C2, point2.C1, point2.C2);
