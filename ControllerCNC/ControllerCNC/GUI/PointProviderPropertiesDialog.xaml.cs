@@ -72,7 +72,10 @@ namespace ControllerCNC.GUI
             writeNumber(ShapeWidth, shapeItem.MetricWidth);
             writeNumber(ShapeHeight, shapeItem.MetricHeight);
             if (shapeItem4D != null)
+            {
                 writeNumber(BlockThickness, shapeItem4D.MetricThickness);
+                UvXySwitched.IsChecked = shapeItem4D.IsUvXySwitched;
+            }
             ShapeRotation.Value = shapeItem.RotationAngle;
         }
 
@@ -141,6 +144,20 @@ namespace ControllerCNC.GUI
         {
             var shapeItem = _item as ShapeItem;
             shapeItem.RotationAngle = ShapeRotation.Value;
+        }
+
+        private void UvXySwitched_Checked(object sender, RoutedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+            shapeItem.IsUvXySwitched = UvXySwitched.IsChecked.Value;
+            refreshWindow();
+        }
+
+        private void UvXySwitched_Unchecked(object sender, RoutedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+            shapeItem.IsUvXySwitched = UvXySwitched.IsChecked.Value;
+            refreshWindow();
         }
 
         #endregion

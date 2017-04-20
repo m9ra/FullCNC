@@ -1,2 +1,7 @@
+pink XPS - 15.5V 1mm/s 0.4kerf
+pink XPS - 17.5V 1mm/s (no weight drag test)
+white polystyren - 16V 1mm/s (no weight drag test)
+
 gray XPS - 23V 2mm/s
 pink XPS - 23V 2mm/s 0.5kerf (overheated surface, no wire drag)
+

@@ -40,9 +40,19 @@
                             <TextBox Style="{StaticResource ValueInput}" Name="ShapeHeight">876</TextBox>
                         </StackPanel>
                         <Border Name="BlockProperties">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource ValueLabel}">Block thickness [mm]:</TextBlock>
-                                <TextBox Style="{StaticResource ValueInput}" Name="BlockThickness">876</TextBox>
+                            <StackPanel Orientation="Vertical">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource ValueLabel}" Text="Switch UV with XY"/>
+                                    <CheckBox Name="UvXySwitched"  IsChecked="False" Margin="55 0" Checked="UvXySwitched_Checked" Unchecked="UvXySwitched_Unchecked">
+                                        <CheckBox.LayoutTransform>
+                                            <ScaleTransform ScaleX="2" ScaleY="2" />
+                                        </CheckBox.LayoutTransform>
+                                    </CheckBox>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource ValueLabel}">Block thickness [mm]:</TextBlock>
+                                    <TextBox Style="{StaticResource ValueInput}" Name="BlockThickness">876</TextBox>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 

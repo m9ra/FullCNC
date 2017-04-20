@@ -182,13 +182,16 @@ namespace ControllerCNC.GUI
         double reCalculateKerf(double referentialKerf, double metricSpeed, WorkspacePanel workspace)
         {
             referentialKerf = reCalculateKerf(referentialKerf);
-            return referentialKerf;
             var referentialSpeed = workspace.CuttingSpeed;
             var metricReferentialSpeed = Constants.MilimetersPerStep * referentialSpeed.StepCount / (1.0 * referentialSpeed.Ticks / Constants.TimerFrequency);
 
-            var referenceFactor = metricSpeed / metricReferentialSpeed;
+            var referenceFactor = metricReferentialSpeed / metricSpeed;
 
-            return referentialKerf * referenceFactor;
+            var wireKerf = Math.Min(Constants.HotwireThickness / 2, Math.Abs(referentialKerf));
+            var radiationKerf = Math.Abs(referentialKerf) - wireKerf;
+            var adjustedKerf = radiationKerf * referenceFactor + wireKerf;
+
+            return Math.Sign(referentialKerf) * adjustedKerf;
         }
 
         private void getShapeSpeedVectors(WorkspacePanel workspace, Point4Dmm p1, Point4Dmm p2, out Vector speedVector12UV, out Vector speedVector12XY)

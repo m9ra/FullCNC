@@ -189,8 +189,8 @@ namespace ControllerCNC.Machine
             ulong result = 0;
             foreach (var instruction in new[] { InstructionX, InstructionY, InstructionU, InstructionV })
             {
-                if (InstructionX != null)
-                    result = Math.Max(result, InstructionX.GetInstructionDuration());
+                if (instruction != null)
+                    result = Math.Max(result, instruction.GetInstructionDuration());
             }
 
             return result;

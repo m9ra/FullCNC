@@ -26,6 +26,11 @@ namespace ControllerCNC.GUI
         protected readonly Point4Dmm[] _shapeDefinition;
 
         /// <summary>
+        /// Whether axes are switched with each other.
+        /// </summary>
+        private bool _isUvXySwitched;
+
+        /// <summary>
         /// First facet of the shape.
         /// </summary>
         protected PlaneShape ShapeUV { get; private set; }
@@ -97,6 +102,25 @@ namespace ControllerCNC.GUI
         /// <param name="workspace">Workspace defining the kerf.</param>
         /// <returns></returns>
         protected abstract Point4Dmm applyKerf(Point4Dmm p1, Point4Dmm p2, Point4Dmm p3, WorkspacePanel workspace);
+
+        /// <summary>
+        /// Whether axes are switched with each other.
+        /// </summary>
+        internal bool IsUvXySwitched
+        {
+            get
+            {
+                return _isUvXySwitched;
+            }
+
+            set
+            {
+                if (value == _isUvXySwitched)
+                    return;
+                _isUvXySwitched = value;
+                fireOnSettingsChanged();
+            }
+        }
 
         /// <summary>
         /// Rotation in degrees.
@@ -177,6 +201,8 @@ namespace ControllerCNC.GUI
             _shapeDefinition = (Point4Dmm[])info.GetValue("_shapeDefinition", typeof(Point4Dmm[]));
             _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));
             _rotationAngle = info.GetDouble("_rotationAngle");
+            _isUvXySwitched = info.GetBoolean("_isUvXySwitched");
+
             constructionInitialization();
         }
 
@@ -187,6 +213,7 @@ namespace ControllerCNC.GUI
             info.AddValue("_shapeDefinition", _shapeDefinition);
             info.AddValue("_shapeMetricSize", _shapeMetricSize);
             info.AddValue("_rotationAngle", _rotationAngle);
+            info.AddValue("_isUvXySwitched", _isUvXySwitched);
         }
 
         /// <summary>
@@ -246,6 +273,18 @@ namespace ControllerCNC.GUI
                 var v = (int)Math.Round((point.V - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
                 var x = (int)Math.Round((point.X - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
                 var y = (int)Math.Round((point.Y - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
+
+                if (_isUvXySwitched)
+                {
+                    //switch axes if neccessary
+                    var uTemp = u;
+                    var vTemp = v;
+                    u = x;
+                    v = y;
+                    x = uTemp;
+                    y = vTemp;
+                }
+
                 yield return new Point4Dstep(u + PositionC1, v + PositionC2, x + PositionC1, y + PositionC2);
             }
         }
