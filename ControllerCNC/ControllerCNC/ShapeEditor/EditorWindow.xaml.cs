@@ -48,22 +48,18 @@ namespace ControllerCNC.ShapeEditor
             if (_3dVisualModel != null)
                 View3D.Children.Remove(_3dVisualModel);
 
+            points = normalized(points, out var coordFactor);
             var facet1Points = points.ToUV();
             var facet2Points = points.ToXY();
-            var coordinates = facet1Points.Concat(facet2Points).SelectMany(p => new[] { p.C1, p.C2 }).ToArray();
-            var maxCoord = coordinates.Max();
-            var minCoord = coordinates.Min();
-            var coordOffset = minCoord + (maxCoord - minCoord) / 2;
-            var coordFactor = 1.0 / (maxCoord - coordOffset);
 
             var thickness = metricThickness;
             var facet1Z = -thickness / 2 * coordFactor;
             var facet2Z = thickness / 2 * coordFactor;
 
             var group = new Model3DGroup();
-            group.Children.Add(getFacetModel(facet1Points, facet1Z, coordOffset, coordFactor, true));
-            group.Children.Add(getShapeCoatingModel(facet1Points, facet1Z, facet2Points, facet2Z, coordOffset, coordFactor));
-            group.Children.Add(getFacetModel(facet2Points, facet2Z, coordOffset, coordFactor, false));
+            group.Children.Add(getFacetModel(facet1Points, facet1Z, true));
+            group.Children.Add(getShapeCoatingModel(facet1Points, facet1Z, facet2Points, facet2Z));
+            group.Children.Add(getFacetModel(facet2Points, facet2Z, false));
 
             _3dVisualModel = new ModelVisual3D();
             Trackball.Model = _3dVisualModel;
@@ -71,7 +67,44 @@ namespace ControllerCNC.ShapeEditor
             View3D.Children.Add(_3dVisualModel);
         }
 
-        private static GeometryModel3D getShapeCoatingModel(IEnumerable<Point2Dmm> facet1Points, double facet1Z, IEnumerable<Point2Dmm> facet2Points, double facet2Z, double coordOffset, double coordFactor)
+        private IEnumerable<Point4Dmm> normalized(IEnumerable<Point4Dmm> points, out double coordFactor)
+        {
+            var coords = points.Select(p => p.U);
+            var maxCoordU = coords.Max();
+            var minCoordU = coords.Min();
+            var rangeU = maxCoordU - minCoordU;
+            var offsU = minCoordU + rangeU / 2;
+
+            coords = points.Select(p => p.V);
+            var maxCoordV = coords.Max();
+            var minCoordV = coords.Min();
+            var rangeV = maxCoordV - minCoordV;
+            var offsV = minCoordV + rangeV / 2;
+
+            coords = points.Select(p => p.X);
+            var maxCoordX = coords.Max();
+            var minCoordX = coords.Min();
+            var rangeX = maxCoordX - minCoordX;
+            var offsX = minCoordX + rangeX / 2;
+
+            coords = points.Select(p => p.Y);
+            var maxCoordY = coords.Max();
+            var minCoordY = coords.Min();
+            var rangeY = maxCoordY - minCoordY;
+            var offsY = minCoordY + rangeY / 2;
+
+            var range = Math.Max(Math.Max(rangeU, rangeV), Math.Max(rangeX, rangeY));
+            coordFactor = 1.0 / range;
+
+            var normalizedCoords = points.Select(
+                p =>
+              new Point4Dmm((p.U - offsU) / range, (p.V - offsV) / range, (p.X - offsX) / range, (p.Y - offsY) / range)
+            ).ToArray();
+
+            return normalizedCoords;
+        }
+
+        private static GeometryModel3D getShapeCoatingModel(IEnumerable<Point2Dmm> facet1Points, double facet1Z, IEnumerable<Point2Dmm> facet2Points, double facet2Z)
         {
             var points = new Point3DCollection();
             var triangles = new Int32Collection();
@@ -103,10 +136,10 @@ namespace ControllerCNC.ShapeEditor
                  var bodyTriangle1 = getTriangleIndexes(true,p0, i_p0, p1, i_p1, p2, i_p2);
                  var bodyTriangle2 = getTriangleIndexes(true, p1, i_p1, p2, i_p2, p3, i_p3);*/
 
-                points.Add(new Point3D((f1p.C1 - coordOffset) * coordFactor, (f1p.C2 - coordOffset) * coordFactor, facet1Z));
-                points.Add(new Point3D((f1p.C1 - coordOffset) * coordFactor, (f1p.C2 - coordOffset) * coordFactor, facet1Z));
-                points.Add(new Point3D((f2p.C1 - coordOffset) * coordFactor, (f2p.C2 - coordOffset) * coordFactor, facet2Z));
-                points.Add(new Point3D((f2p.C1 - coordOffset) * coordFactor, (f2p.C2 - coordOffset) * coordFactor, facet2Z));
+                points.Add(new Point3D(f1p.C1, f1p.C2, facet1Z));
+                points.Add(new Point3D(f1p.C1, f1p.C2, facet1Z));
+                points.Add(new Point3D(f2p.C1, f2p.C2, facet2Z));
+                points.Add(new Point3D(f2p.C1, f2p.C2, facet2Z));
 
                 if (points.Count < 4)
                     continue;
@@ -142,7 +175,7 @@ namespace ControllerCNC.ShapeEditor
             return new int[] { p0, p1, p2, p2 + 1, p1 + 1, p0 + 1 };
         }
 
-        private static GeometryModel3D getFacetModel(IEnumerable<Point2Dmm> facetPoints, double z, double coordOffset, double coordFactor, bool isFrontFace)
+        private static GeometryModel3D getFacetModel(IEnumerable<Point2Dmm> facetPoints, double z, bool isFrontFace)
         {
             var filteredPoints = new List<Point2Dmm>();
             foreach (var point in facetPoints)
@@ -165,7 +198,7 @@ namespace ControllerCNC.ShapeEditor
             {
                 foreach (var point in triangle)
                 {
-                    points.Add(new Point3D((point.C1 - coordOffset) * coordFactor, (point.C2 - coordOffset) * coordFactor, z));
+                    points.Add(new Point3D(point.C1, point.C2, z));
                 }
 
                 var i = points.Count - 3;

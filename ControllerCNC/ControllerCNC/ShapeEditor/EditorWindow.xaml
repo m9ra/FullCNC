@@ -87,7 +87,7 @@
                     <e:TrackballDecorator x:Name="Trackball" Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
                         <Viewport3D Name="View3D">
                             <Viewport3D.Camera>
-                                <PerspectiveCamera x:Name="camMain" Position="0 0 -10" LookDirection="0 0 10">
+                                <PerspectiveCamera x:Name="camMain" Position="0 0 -2" LookDirection="0 0 10">
                                 </PerspectiveCamera>
                             </Viewport3D.Camera>
                             <ModelVisual3D>
