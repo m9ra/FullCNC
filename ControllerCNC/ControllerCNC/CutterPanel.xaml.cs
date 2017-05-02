@@ -79,7 +79,7 @@ namespace ControllerCNC
         private PointProviderItem _joinItemCandidate;
 
         public CutterPanel()
-        {
+        {          
             System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
             Thread.CurrentThread.CurrentCulture = customCulture;

@@ -234,15 +234,7 @@ namespace ControllerCNC.Demos
 
             return coordinates;
         }
-
-        /// <summary>
-        /// Interpolates coordinates from given image.
-        /// </summary>
-        public static IEnumerable<Point4Dstep> InterpolateImage(string filename, double scale)
-        {
-            var interpolator = new ImageInterpolator(filename);
-            return interpolator.InterpolateCoordinates(scale);
-        }
+        
 
         /// <summary>
         /// Interpolates coordinates from given image.

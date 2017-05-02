@@ -1,3 +1,4 @@
+white polystyren - 15.5 1.0kerf (too much kerf, slow edges overheated)
 pink XPS - 15.5V 1mm/s 0.4kerf
 pink XPS - 17.5V 1mm/s (no weight drag test)
 white polystyren - 16V 1mm/s (no weight drag test)
