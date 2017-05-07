@@ -16,8 +16,9 @@ namespace ControllerCNC.Planning
     /// </summary>
     public class ImageInterpolator
     {
-
         private BitmapMash _mash;
+
+        internal readonly double ShrinkThreshold = 0.85;
 
         public ImageInterpolator(string filename)
         {
@@ -183,7 +184,6 @@ namespace ControllerCNC.Planning
             var result = new List<Point2Dmm>();
             result.Add(points.First());
 
-            var threshold = 0.0;
             var lastPointIndex = 0;
             var pointsArray = points.ToArray();
             for (var i = 1; i < pointsArray.Length - 1; ++i)
@@ -216,7 +216,7 @@ namespace ControllerCNC.Planning
                     var diffY = (approxY - estimatedPoint.C2);
 
                     //if (Math.Sqrt(diffX * diffX + diffY * diffY) > threshold)
-                    if (Math.Abs(diffX) > threshold || Math.Abs(diffY) > threshold)
+                    if (Math.Abs(diffX) > ShrinkThreshold || Math.Abs(diffY) > ShrinkThreshold)
                     {
                         isLineGoodAproximation = false;
                         break;

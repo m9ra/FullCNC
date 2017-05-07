@@ -65,6 +65,11 @@ namespace ControllerCNC.Primitives
             return points.Select(p => new Point2Dstep(p.X, p.Y));
         }
 
+        public static Speed4Dstep With(this Point4Dstep point, Speed speed)
+        {
+            return new Speed4Dstep(point, speed);
+        }
+
         private static int mmToStep(double mm)
         {
             return (int)Math.Round(mm / Constants.MilimetersPerStep);

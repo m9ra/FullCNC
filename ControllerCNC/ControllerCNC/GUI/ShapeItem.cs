@@ -311,6 +311,40 @@ namespace ControllerCNC.GUI
                 MetricHeight = c2Diff;
         }
 
+
+        /// <inheritdoc/>
+        internal override void Build(WorkspacePanel workspace, List<Speed4Dstep> speedPoints, ItemJoin incommingJoin)
+        {
+            if (incommingJoin.Item2 != this)
+                throw new NotSupportedException("Incomming join point is not valid.");
+
+            var cuttingSpeed = workspace.CuttingSpeed;
+            var cutPoints = CutPoints.ToArray();
+
+            if (!cutPoints.First().Equals(cutPoints.Last()))
+                throw new NotSupportedException("Shape is not closed.");
+
+            //skip the repetitive point so we can join to whatever shape part.
+            cutPoints = cutPoints.Take(cutPoints.Length - 1).ToArray();
+
+            var outJoins = workspace.FindOutgoingJoins(this);
+            var startIndex = incommingJoin.JoinPointIndex2;
+
+            for (var i = startIndex + 1; i <= startIndex + cutPoints.Length; ++i)
+            {
+                var currentIndex = i % cutPoints.Length;
+                var currentPoint = cutPoints[currentIndex];
+
+                speedPoints.Add(currentPoint.With(cuttingSpeed));
+
+                var currentOutgoingJoins = workspace.GetOutgoingJoinsFrom(currentIndex, outJoins);
+                foreach (var currentOutgoingJoin in currentOutgoingJoins)
+                {
+                    currentOutgoingJoin.Build(workspace, speedPoints);
+                }
+            }
+        }
+
         protected virtual void constructionInitialization()
         {
             ShapeUV = new PlaneShape(_shapeDefinition.Select(p => p.ToUV()));

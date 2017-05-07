@@ -119,6 +119,7 @@
     <Compile Include="Primitives\Point4Dstep.cs" />
     <Compile Include="Primitives\ReadableIdentifier.cs" />
     <Compile Include="Primitives\ShapeDefinition4D.cs" />
+    <Compile Include="Primitives\Speed4Dstep.cs" />
     <Compile Include="Primitives\Trajectory4D.cs" />
     <Compile Include="Primitives\Speed.cs" />
     <Compile Include="ShapeEditor\EditorShapePart.cs" />

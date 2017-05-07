@@ -55,6 +55,18 @@ namespace ControllerCNC.GUI
         }
 
         /// <inheritdoc/>
+        internal override void Build(WorkspacePanel workspace, List<Speed4Dstep> speedPoints, ItemJoin incommingJoin)
+        {
+            if (incommingJoin != null)
+                throw new NotSupportedException("Incomming join point has to be empty for entry point.");
+
+            foreach (var join in workspace.FindOutgoingJoins(this))
+            {
+                join.Build(workspace, speedPoints);
+            }
+        }
+
+        /// <inheritdoc/>
         protected override object createContent()
         {
             var entryPoint = new Ellipse();

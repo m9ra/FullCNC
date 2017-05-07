@@ -54,7 +54,13 @@ namespace ControllerCNC.Primitives
         /// </summary>
         internal int ToDeltaT()
         {
-            return (int)Math.Round(1.0*Ticks / StepCount);
+            return (int)Math.Round(1.0 * Ticks / StepCount);
+        }
+
+        /// <inheritdoc/>
+        public override string ToString()
+        {
+            return ToDeltaT().ToString();
         }
     }
 }

@@ -12,7 +12,6 @@ namespace ControllerCNC.GUI
     [Serializable]
     class NativeControlItem : ShapeItem
     {
-
         /// <summary>
         /// Pen for item border.
         /// </summary>
@@ -54,6 +53,28 @@ namespace ControllerCNC.GUI
         internal override ShapeItem Clone(ReadableIdentifier cloneName)
         {
             return new NativeControlItem(cloneName, ShapeDefinition.ToUV(), SegmentSpeeds);
+        }
+
+        /// <inheritdoc/>
+        internal override void Build(WorkspacePanel workspace, List<Speed4Dstep> speedPoints, ItemJoin incommingJoin)
+        {
+            if (incommingJoin.Item1 != workspace.EntryPoint)
+                throw new NotSupportedException("Native controll item can be run only from entry point.");
+
+            var outJoins = workspace.FindOutgoingJoins(this);
+            if (outJoins.Any())
+                throw new NotSupportedException("Native controll item cannot have outgoing joins.");
+
+            var cutPoints = CutPoints.ToArray();
+            var speeds = SegmentSpeeds.ToArray();
+
+            if (cutPoints.Length != speeds.Length + 1)
+                throw new NotSupportedException("Invalid point/speed matching.");
+
+            for (var i = 1; i < cutPoints.Length; ++i)
+            {
+                speedPoints.Add(cutPoints[i].With(speeds[i - 1]));
+            }
         }
 
         /// <inheritdoc/>

@@ -4,6 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using ControllerCNC.Primitives;
+
 namespace ControllerCNC.GUI
 {
     [Serializable]
@@ -36,6 +38,26 @@ namespace ControllerCNC.GUI
 
             JoinPointIndex2 = joinPointIndex2;
             Item2 = item2;
+        }
+
+        /// <summary>
+        /// Builds path to <see cref="Item2"/> and the item recursively. Assumes it starts from <see cref="Item1"/> outgoing point.
+        /// Path ends at the same point it started.
+        /// </summary>
+        internal void Build(WorkspacePanel workspace, List<Speed4Dstep> speedPoints)
+        {
+            var outgoingPoint = Item1.CutPoints.Skip(JoinPointIndex1).First();
+            var incommingPoint = Item2.CutPoints.Skip(JoinPointIndex2).First();
+            var cuttingSpeed = workspace.CuttingSpeed;
+
+            speedPoints.Add(incommingPoint.With(cuttingSpeed));
+            Item2.Build(workspace, speedPoints, this);
+
+            if (Item2 is NativeControlItem)
+                // Native controls are handled in special way.
+                return;
+
+            speedPoints.Add(outgoingPoint.With(cuttingSpeed));
         }
     }
 }

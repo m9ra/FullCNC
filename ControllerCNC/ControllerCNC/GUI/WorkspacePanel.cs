@@ -74,7 +74,7 @@ namespace ControllerCNC.GUI
                 _cuttingSpeed = value;
 
                 fireSettingsChangedForAllChildren();
-               
+
             }
         }
 
@@ -309,23 +309,14 @@ namespace ControllerCNC.GUI
         /// </summary>
         internal void BuildPlan(PlanBuilder plan)
         {
-            var planPoints = new List<Point4Dstep>();
-            var segmentSpeeds = new List<Speed>();
+            var speedPoints = new List<Speed4Dstep>();
+            _entryPoint.Build(this, speedPoints, null);
 
-            //the plan starts from entry point (recursively)
-            fillPlanBy(planPoints, segmentSpeeds, _entryPoint, 0);
+            var planPoints = speedPoints.Select(p => p.Point).ToList();
+            var segmentSpeeds = speedPoints.Select(p => p.Speed).ToArray();
 
-            if (segmentSpeeds.Count > 0)
-            {
-                //TODO this needs to be refactored - ShapeItem should have this control on itself
-
-                //HACK - only NativeControl item will be here - we add speed for start
-                segmentSpeeds.Insert(0, CuttingSpeed);
-
-                planPoints.RemoveAt(planPoints.Count - 1); //remove entry point return1
-                planPoints.RemoveAt(planPoints.Count - 1); //remove entry point return2
-                planPoints.RemoveAt(planPoints.Count - 1); //remove shape point return
-            }
+            //scheduler needs referential point
+            planPoints.Insert(0, _entryPoint.CutPoints.First());
 
             var scheduler = new StraightLinePlanner4D(CuttingSpeed);
             var trajectoryPlan = scheduler.CreateConstantPlan(new Trajectory4D(planPoints), segmentSpeeds);
@@ -333,44 +324,7 @@ namespace ControllerCNC.GUI
             plan.Add(trajectoryPlan.Build());
         }
 
-        private void fillPlanBy(List<Point4Dstep> planPoints, List<Speed> segmentSpeeds, PointProviderItem item, int incommingPointIndex)
-        {
-            var points = item.CutPoints.ToArray();
-            var isClosedShape = points.First().Equals(points.Last());
-
-            if (item is NativeControlItem)
-            {
-                segmentSpeeds.AddRange(((NativeControlItem)item).SegmentSpeeds);
-            }
-            else
-            {
-                if (!isClosedShape)
-                    throw new NotImplementedException("Plan non-closed shape items.");
-            }
-
-            var outgoingJoins = findOutgoingJoins(item);
-            //we have to go one point further (to have the shape closed)
-            for (var i = incommingPointIndex; i <= incommingPointIndex + points.Length; ++i)
-            {
-                var currentIndex = i % points.Length;
-                var currentPoint = points[currentIndex];
-                planPoints.Add(currentPoint);
-                if (i == incommingPointIndex + points.Length)
-                    //the last point cannot be outgoing for anything
-                    break;
-
-                var currentOutgoingJoins = getOutgoingJoinsFrom(currentIndex, outgoingJoins);
-                foreach (var currentOutgoingJoin in currentOutgoingJoins)
-                {
-                    //insert connected shape
-                    fillPlanBy(planPoints, segmentSpeeds, currentOutgoingJoin.Item2, currentOutgoingJoin.JoinPointIndex2);
-                    //plan the returning point
-                    planPoints.Add(currentPoint);
-                }
-            }
-        }
-
-        private IEnumerable<ItemJoin> getOutgoingJoinsFrom(int currentIndex, IEnumerable<ItemJoin> outgoingJoins)
+        internal IEnumerable<ItemJoin> GetOutgoingJoinsFrom(int currentIndex, IEnumerable<ItemJoin> outgoingJoins)
         {
             var result = new List<ItemJoin>();
             foreach (var join in outgoingJoins)
@@ -382,7 +336,7 @@ namespace ControllerCNC.GUI
             return result;
         }
 
-        private IEnumerable<ItemJoin> findOutgoingJoins(PointProviderItem item)
+        internal IEnumerable<ItemJoin> FindOutgoingJoins(PointProviderItem item)
         {
             var result = new List<ItemJoin>();
             foreach (var join in _itemJoins)
