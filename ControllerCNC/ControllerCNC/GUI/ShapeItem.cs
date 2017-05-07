@@ -89,6 +89,21 @@ namespace ControllerCNC.GUI
         protected bool _isClockwise;
 
         /// <summary>
+        /// Determine whether explicit kerf will be used for cutting.
+        /// </summary>
+        private bool _useExplicitKerf;
+
+        /// <summary>
+        /// Sets kerf for UV facet.
+        /// </summary>
+        private double _kerfUV;
+
+        /// <summary>
+        /// Sets kerf for XY facet.
+        /// </summary>
+        private double _kerfXY;
+
+        /// <summary>
         /// Clones the shape item.
         /// </summary>
         internal abstract ShapeItem Clone(ReadableIdentifier cloneName);
@@ -118,6 +133,67 @@ namespace ControllerCNC.GUI
                 if (value == _isUvXySwitched)
                     return;
                 _isUvXySwitched = value;
+                fireOnSettingsChanged();
+            }
+        }
+
+
+        /// <summary>
+        /// Determine whether <see cref="KerfUV"/> and <see cref="KerfXY"/> will be used.
+        /// </summary>
+        internal bool UseExplicitKerf
+        {
+            get
+            {
+                return _useExplicitKerf;
+            }
+
+            set
+            {
+                if (value == _useExplicitKerf)
+                    return;
+
+                _useExplicitKerf = value;
+                fireOnSettingsChanged();
+            }
+        }
+
+        /// <summary>
+        /// Explicit kerf for UV.
+        /// </summary>
+        internal double KerfUV
+        {
+            get
+            {
+                return _kerfUV;
+            }
+
+            set
+            {
+                if (value == _kerfUV)
+                    return;
+
+                _kerfUV = value;
+                fireOnSettingsChanged();
+            }
+        }
+
+        /// <summary>
+        /// Explicit kerf for XY.
+        /// </summary>
+        internal double KerfXY
+        {
+            get
+            {
+                return _kerfXY;
+            }
+
+            set
+            {
+                if (value == _kerfXY)
+                    return;
+
+                _kerfXY = value;
                 fireOnSettingsChanged();
             }
         }
@@ -202,6 +278,9 @@ namespace ControllerCNC.GUI
             _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));
             _rotationAngle = info.GetDouble("_rotationAngle");
             _isUvXySwitched = info.GetBoolean("_isUvXySwitched");
+            _useExplicitKerf = info.GetBoolean("_useExplicitKerf");
+            _kerfUV = info.GetDouble("_kerfUV");
+            _kerfXY = info.GetDouble("_kerfXY");
 
             constructionInitialization();
         }
@@ -214,6 +293,9 @@ namespace ControllerCNC.GUI
             info.AddValue("_shapeMetricSize", _shapeMetricSize);
             info.AddValue("_rotationAngle", _rotationAngle);
             info.AddValue("_isUvXySwitched", _isUvXySwitched);
+            info.AddValue("_useExplicitKerf", _useExplicitKerf);
+            info.AddValue("_kerfUV", _kerfUV);
+            info.AddValue("_kerfXY", _kerfXY);
         }
 
         /// <summary>
@@ -397,24 +479,10 @@ namespace ControllerCNC.GUI
         protected IEnumerable<Point4Dmm> pointsWithKerf()
         {
             var workspace = Parent as WorkspacePanel;
-            if (workspace == null || workspace.CuttingKerf == 0.0)
+            if (workspace == null || (workspace.CuttingKerf == 0.0 && !this.UseExplicitKerf))
                 //there is no change
                 return _shapeDefinition;
 
-            var kerf = workspace.CuttingKerf;
-            if (MetricWidth > MetricHeight)
-            {
-                var ratio = (_shapeMaxC1 - _shapeMinC1) / MetricWidth;
-                kerf *= ratio;
-            }
-            else
-            {
-                var ratio = (_shapeMaxC2 - _shapeMinC2) / MetricHeight;
-                kerf *= ratio;
-            }
-
-            if (!_isClockwise)
-                kerf *= -1;
 
             var result = applyKerf(_shapeDefinition.Reverse(), workspace);
             return result;

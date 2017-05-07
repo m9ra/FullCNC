@@ -15,7 +15,7 @@ namespace ControllerCNC.Planning
     /// Finds coordinate interpolation of image against background. (specified by (0,0) point)
     /// </summary>
     public class ImageInterpolator
-    {   
+    {
 
         private BitmapMash _mash;
 
@@ -34,7 +34,7 @@ namespace ControllerCNC.Planning
             var height = bitmapData.Height;
             System.Runtime.InteropServices.Marshal.Copy(ptr, data, 0, dataSize);
             image.UnlockBits(bitmapData);
-            
+
             _mash = new BitmapMash(width, height, data, stride);
         }
 
@@ -183,6 +183,7 @@ namespace ControllerCNC.Planning
             var result = new List<Point2Dmm>();
             result.Add(points.First());
 
+            var threshold = 0.0;
             var lastPointIndex = 0;
             var pointsArray = points.ToArray();
             for (var i = 1; i < pointsArray.Length - 1; ++i)
@@ -193,23 +194,29 @@ namespace ControllerCNC.Planning
                 var totalDiffX = nextPoint.C1 - lastPoint.C1;
                 var totalDiffY = nextPoint.C2 - lastPoint.C2;
 
-                var isLineGoodAproximation = true;
+                var lineLength = Math.Sqrt(totalDiffX * totalDiffX + totalDiffY * totalDiffY);
 
-                var isXaproximation = Math.Abs(totalDiffX) < Math.Abs(totalDiffY);
-                var lineLength = i + 1 - lastPointIndex;
                 var ratioX = 1.0 * totalDiffX / lineLength;
                 var ratioY = 1.0 * totalDiffY / lineLength;
 
-                for (var j = lastPointIndex; j < i + 1; ++j)
+                var totalLinePoints = i + 1 - lastPointIndex;
+                var isLineGoodAproximation = true;
+                for (var j = lastPointIndex + 1; j < lastPointIndex + totalLinePoints; ++j)
                 {
-                    //check whether line is good aproximator
-                    var approximatedPoint = pointsArray[j];
-                    var currentLineLength = j - lastPointIndex;
-                    var approxX = lastPoint.C1 + ratioX * currentLineLength;
-                    var approxY = lastPoint.C2 + ratioY * currentLineLength;
+                    //check whether line is a good aproximator
+                    var estimatedPoint = pointsArray[j];
 
-                    var threshold = 0.85;
-                    if (Math.Abs(approxX - approximatedPoint.C1) > threshold || Math.Abs(approxY - approximatedPoint.C2) > threshold)
+                    var currentLinePoints = j - lastPointIndex;
+                    var estimationLength = lineLength * currentLinePoints / totalLinePoints;
+                    var approxX = lastPoint.C1 + ratioX * estimationLength;
+                    var approxY = lastPoint.C2 + ratioY * estimationLength;
+
+
+                    var diffX = (approxX - estimatedPoint.C1);
+                    var diffY = (approxY - estimatedPoint.C2);
+
+                    //if (Math.Sqrt(diffX * diffX + diffY * diffY) > threshold)
+                    if (Math.Abs(diffX) > threshold || Math.Abs(diffY) > threshold)
                     {
                         isLineGoodAproximation = false;
                         break;

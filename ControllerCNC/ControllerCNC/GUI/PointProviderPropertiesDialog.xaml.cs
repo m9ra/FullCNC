@@ -45,7 +45,8 @@ namespace ControllerCNC.GUI
             ShapeHeight.TextChanged += ShapeHeight_TextChanged;
             BlockThickness.TextChanged += BlockThickness_TextChanged;
             ShapeRotation.ValueChanged += ShapeRotation_ValueChanged;
-
+            KerfUV.TextChanged += KerfUV_TextChanged;
+            KerfXY.TextChanged += KerfXY_TextChanged;
 
             ShowDialog();
         }
@@ -75,6 +76,9 @@ namespace ControllerCNC.GUI
             {
                 writeNumber(BlockThickness, shapeItem4D.MetricThickness);
                 UvXySwitched.IsChecked = shapeItem4D.IsUvXySwitched;
+                UseExplicitKerf.IsChecked = shapeItem4D.UseExplicitKerf;
+                writeNumber(KerfUV, shapeItem4D.KerfUV);
+                writeNumber(KerfXY, shapeItem4D.KerfXY);
             }
             ShapeRotation.Value = shapeItem.RotationAngle;
         }
@@ -140,23 +144,55 @@ namespace ControllerCNC.GUI
             refreshWindow();
         }
 
+        private void KerfUV_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+
+            double value;
+            if (double.TryParse(KerfUV.Text, out value))
+                shapeItem.KerfUV = value;
+
+            refreshWindow();
+        }
+
+        private void KerfXY_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+
+            double value;
+            if (double.TryParse(KerfXY.Text, out value))
+                shapeItem.KerfXY = value;
+
+            refreshWindow();
+        }
+
         void ShapeRotation_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             var shapeItem = _item as ShapeItem;
             shapeItem.RotationAngle = ShapeRotation.Value;
         }
-
-        private void UvXySwitched_Checked(object sender, RoutedEventArgs e)
+        
+        private void UseExplicitKerf_Changed(object sender, RoutedEventArgs e)
         {
             var shapeItem = _item as ShapeItem4D;
-            shapeItem.IsUvXySwitched = UvXySwitched.IsChecked.Value;
+            shapeItem.UseExplicitKerf = UseExplicitKerf.IsChecked.Value;
             refreshWindow();
         }
 
-        private void UvXySwitched_Unchecked(object sender, RoutedEventArgs e)
+        private void UvXySwitched_Changed(object sender, RoutedEventArgs e)
         {
             var shapeItem = _item as ShapeItem4D;
-            shapeItem.IsUvXySwitched = UvXySwitched.IsChecked.Value;
+            var value = UvXySwitched.IsChecked.Value;
+
+            if (value != shapeItem.IsUvXySwitched)
+            {
+                // switch kerf for axes
+                var uvTmp = shapeItem.KerfUV;
+                shapeItem.KerfUV = shapeItem.KerfXY;
+                shapeItem.KerfXY = uvTmp;
+            }
+
+            shapeItem.IsUvXySwitched = value;
             refreshWindow();
         }
 

@@ -421,8 +421,7 @@ namespace ControllerCNC.Machine
                         }
 
                         //homing was finished successfuly
-                        if (OnHomingEnded != null)
-                            OnHomingEnded();
+                        OnHomingEnded?.Invoke();
 
                         break;
                     case 'Y':
@@ -464,8 +463,7 @@ namespace ControllerCNC.Machine
             }
 
 
-            if (OnDataReceived != null)
-                OnDataReceived(Encoding.ASCII.GetString(data.ToArray()));
+            OnDataReceived?.Invoke(Encoding.ASCII.GetString(data.ToArray()));
         }
 
         /// <summary>
@@ -547,8 +545,7 @@ namespace ControllerCNC.Machine
                     while (_port.BytesToRead > 0)
                     {
                         var data = readData(_port);
-                        if (OnDataReceived != null)
-                            OnDataReceived(Encoding.ASCII.GetString(data.ToArray()));
+                        OnDataReceived?.Invoke(Encoding.ASCII.GetString(data.ToArray()));
                     }
 
                     IsConnected = true;
@@ -673,8 +670,7 @@ namespace ControllerCNC.Machine
 
         private void fireOnConnectionStatusChange()
         {
-            if (OnConnectionStatusChange != null)
-                OnConnectionStatusChange();
+            OnConnectionStatusChange?.Invoke();
         }
 
         private void runCncSimulator()

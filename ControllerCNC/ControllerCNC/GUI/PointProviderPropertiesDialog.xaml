@@ -1,7 +1,7 @@
 ﻿<Window x:Class="ControllerCNC.GUI.PointProviderPropertiesDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="PointProviderPropertiesDialog" Height="230" Width="300" WindowStyle="ToolWindow">
+        Title="PointProviderPropertiesDialog" Height="290" Width="300" WindowStyle="ToolWindow">
     <Window.Resources>
         <Style x:Key="ValueLabel" TargetType="{x:Type TextBlock}">
             <Setter Property="FontSize" Value="20" />
@@ -17,7 +17,7 @@
     </Window.Resources>
 
     <Viewbox Stretch="Uniform">
-        <Grid Width="332" Height="230">
+        <Grid Width="332" Height="290">
             <StackPanel Background="LightGreen">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource ValueLabel}">Top pos. [mm]:</TextBlock>
@@ -43,7 +43,7 @@
                             <StackPanel Orientation="Vertical">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource ValueLabel}" Text="Switch UV with XY"/>
-                                    <CheckBox Name="UvXySwitched"  IsChecked="False" Margin="55 0" Checked="UvXySwitched_Checked" Unchecked="UvXySwitched_Unchecked">
+                                    <CheckBox Name="UvXySwitched"  IsChecked="False" Margin="55 0" Checked="UvXySwitched_Changed" Unchecked="UvXySwitched_Changed">
                                         <CheckBox.LayoutTransform>
                                             <ScaleTransform ScaleX="2" ScaleY="2" />
                                         </CheckBox.LayoutTransform>
@@ -53,6 +53,29 @@
                                     <TextBlock Style="{StaticResource ValueLabel}">Block thickness [mm]:</TextBlock>
                                     <TextBox Style="{StaticResource ValueInput}" Name="BlockThickness">876</TextBox>
                                 </StackPanel>
+
+                                <Border BorderBrush="Red" BorderThickness="1.0">
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource ValueLabel}" Text="Use explicit kerf"/>
+                                            <CheckBox Name="UseExplicitKerf"  IsChecked="False" Margin="55 0" Checked="UseExplicitKerf_Changed" Unchecked="UseExplicitKerf_Changed">
+                                                <CheckBox.LayoutTransform>
+                                                    <ScaleTransform ScaleX="2" ScaleY="2" />
+                                                </CheckBox.LayoutTransform>
+                                            </CheckBox>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource ValueLabel}">UV kerf [mm]:</TextBlock>
+                                            <TextBox Style="{StaticResource ValueInput}" Name="KerfUV">876</TextBox>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource ValueLabel}">XY kerf [mm]:</TextBlock>
+                                            <TextBox Style="{StaticResource ValueInput}" Name="KerfXY">876</TextBox>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 

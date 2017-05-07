@@ -85,7 +85,6 @@ namespace ControllerCNC.GUI
             }
         }
 
-
         internal ShapeItem4D(ReadableIdentifier name, IEnumerable<Point4Dmm> shapeDefinition)
             : base(name, shapeDefinition)
         {
@@ -163,16 +162,25 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override Point4Dmm applyKerf(Point4Dmm p1, Point4Dmm p2, Point4Dmm p3, WorkspacePanel workspace)
         {
-            getShapeSpeedVectors(workspace, p1, p2, out Vector speedVector12UV, out Vector speedVector12XY);
-            getShapeSpeedVectors(workspace, p2, p3, out Vector speedVector23UV, out Vector speedVector23XY);
+            double kerfUV, kerfXY;
 
-            var speedUV = (speedVector12UV.Length + speedVector23UV.Length) / 2;
-            var speedXY = (speedVector12XY.Length + speedVector23XY.Length) / 2;
+            if (UseExplicitKerf)
+            {
+                kerfUV = reCalculateKerf(KerfUV);
+                kerfXY = reCalculateKerf(KerfXY);
+            }
+            else
+            {
+                getShapeSpeedVectors(workspace, p1, p2, out Vector speedVector12UV, out Vector speedVector12XY);
+                getShapeSpeedVectors(workspace, p2, p3, out Vector speedVector23UV, out Vector speedVector23XY);
 
-            var referentialKerf = workspace.CuttingKerf;
-            var kerfUV = reCalculateKerf(referentialKerf, speedUV, workspace);
-            var kerfXY = reCalculateKerf(referentialKerf, speedXY, workspace);
+                var speedUV = (speedVector12UV.Length + speedVector23UV.Length) / 2;
+                var speedXY = (speedVector12XY.Length + speedVector23XY.Length) / 2;
 
+                var referentialKerf = workspace.CuttingKerf;
+                kerfUV = reCalculateKerf(referentialKerf, speedUV, workspace);
+                kerfXY = reCalculateKerf(referentialKerf, speedXY, workspace);
+            }
             var shiftUV = calculateKerfShift(p1.ToUV(), p2.ToUV(), p3.ToUV(), kerfUV);
             var shiftXY = calculateKerfShift(p1.ToXY(), p2.ToXY(), p3.ToXY(), kerfXY);
 

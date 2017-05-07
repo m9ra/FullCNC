@@ -150,8 +150,7 @@ namespace ControllerCNC.GUI
         /// </summary>
         protected void fireOnSettingsChanged()
         {
-            if (OnSettingsChanged != null)
-                OnSettingsChanged();
+            OnSettingsChanged?.Invoke();
 
             InvalidateVisual();
             var workspace = Parent as WorkspacePanel;

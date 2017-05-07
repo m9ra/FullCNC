@@ -72,7 +72,9 @@ namespace ControllerCNC.GUI
                     return;
 
                 _cuttingSpeed = value;
-                fireOnSettingsChanged();
+
+                fireSettingsChangedForAllChildren();
+               
             }
         }
 
@@ -119,12 +121,7 @@ namespace ControllerCNC.GUI
                     return;
 
                 _cuttingKerf = value;
-                fireOnSettingsChanged();
-                this.InvalidateVisual();
-                foreach (FrameworkElement child in Children)
-                {
-                    child.InvalidateVisual();
-                }
+                fireSettingsChangedForAllChildren();
             }
         }
 
@@ -575,20 +572,27 @@ namespace ControllerCNC.GUI
 
         private void fireOnWorkItemListChanged()
         {
-            if (OnWorkItemListChanged != null)
-                OnWorkItemListChanged();
+            OnWorkItemListChanged?.Invoke();
+        }
+
+        private void fireSettingsChangedForAllChildren()
+        {
+            fireOnSettingsChanged();
+            this.InvalidateVisual();
+            foreach (FrameworkElement child in Children)
+            {
+                child.InvalidateVisual();
+            }
         }
 
         private void fireOnSettingsChanged()
         {
-            if (OnSettingsChanged != null)
-                OnSettingsChanged();
+            OnSettingsChanged?.Invoke();
         }
 
         private void fireOnWorkitemClicked(WorkspaceItem item)
         {
-            if (OnWorkItemClicked != null)
-                OnWorkItemClicked(item);
+            OnWorkItemClicked?.Invoke(item);
         }
 
         /// <inheritdoc/>

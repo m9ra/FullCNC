@@ -27,7 +27,8 @@ namespace ControllerCNC.Planning
             get
             {
                 foreach (var point in _mesh)
-                    yield return point;
+                    if (point != null)
+                        yield return point;
             }
         }
 
@@ -118,26 +119,25 @@ namespace ControllerCNC.Planning
 
         private void clusterComponents()
         {
+            var processedPoints = new HashSet<MeshPoint>();
+            var workList = new Queue<MeshPoint>();
+
             foreach (var meshPoint in ActiveMeshPoints)
             {
-                foreach (var neighbour in meshPoint.Neighbours)
+                if (processedPoints.Add(meshPoint))
+                    workList.Enqueue(meshPoint);
+
+                var component = new MeshComponent();
+                while (workList.Count > 0)
                 {
-                    if (meshPoint.Component == null)
-                        meshPoint.InitializeComponent();
+                    var point = workList.Dequeue();
+                    component.Add(point);
 
-                    if (neighbour.Component == null)
-                        neighbour.InitializeComponent();
-
-                    var component = meshPoint.Component; //can change during iterations!!
-                    var neighbourComponent = neighbour.Component;
-                    if (neighbourComponent == component)
-                        //there is nothing to do
-                        continue;
-
-                    var targetComponent = component.Size >= neighbourComponent.Size ? component : neighbourComponent;
-                    var sourceComponent = targetComponent == component ? neighbourComponent : component;
-
-                    targetComponent.Accept(sourceComponent);
+                    foreach (var neighbour in point.Neighbours)
+                    {
+                        if (processedPoints.Add(neighbour))
+                            workList.Enqueue(neighbour);
+                    }
                 }
             }
         }
@@ -182,6 +182,24 @@ namespace ControllerCNC.Planning
             {
                 for (var y = 0; y < _height + 1; ++y)
                 {
+                    var a1 = isActive(x, y);
+                    var a2 = isActive(x - 1, y);
+                    var a3 = isActive(x + 1, y);
+                    var a4 = isActive(x, y - 1);
+                    var a5 = isActive(x, y + 1);
+
+                    if (a2 == a1 && a3 == a1 && a4 == a1 && a5 == a1)
+                    {
+                        var b2 = isActive(x - 1, y - 1);
+                        var b3 = isActive(x + 1, y + 1);
+                        var b4 = isActive(x - 1, y - 1);
+                        var b5 = isActive(x + 1, y + 1);
+
+                        if (b2 == a1 && b3 == a1 && b4 == a1 && b5 == a1)
+                            //no more testing needed - edges cannot be here
+                            continue;
+                    }
+
                     _mesh[x, y] = new MeshPoint(x, y);
                 }
             }
@@ -190,6 +208,10 @@ namespace ControllerCNC.Planning
             {
                 for (var y = 0; y < _height + 1; ++y)
                 {
+                    var point = _mesh[x, y];
+                    if (point == null)
+                        continue;
+
                     setEdges(_mesh[x, y]);
                 }
             }
@@ -275,12 +297,6 @@ namespace ControllerCNC.Planning
         {
             X = x;
             Y = y;
-        }
-
-        internal void InitializeComponent()
-        {
-            Component = new MeshComponent();
-            Component.Add(this);
         }
 
         internal void SetEdge(MeshPoint otherPoint)
