@@ -1,7 +1,7 @@
 ﻿<Window x:Class="ControllerCNC.GUI.PointProviderPropertiesDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="PointProviderPropertiesDialog" Height="290" Width="300" WindowStyle="ToolWindow">
+        Title="PointProviderPropertiesDialog" Width="300" Height="410" WindowStyle="ToolWindow" Background="LightGreen">
     <Window.Resources>
         <Style x:Key="ValueLabel" TargetType="{x:Type TextBlock}">
             <Setter Property="FontSize" Value="20" />
@@ -17,7 +17,7 @@
     </Window.Resources>
 
     <Viewbox Stretch="Uniform">
-        <Grid Width="332" Height="290">
+        <Grid Name="LayoutGrid" Width="315" Height="410">
             <StackPanel Background="LightGreen">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource ValueLabel}">Top pos. [mm]:</TextBlock>
@@ -39,6 +39,16 @@
                             <TextBlock Style="{StaticResource ValueLabel}">Height [mm]:</TextBlock>
                             <TextBox Style="{StaticResource ValueInput}" Name="ShapeHeight">876</TextBox>
                         </StackPanel>
+                        
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource ValueLabel}" Text="Use clockwise cut:"/>
+                            <CheckBox Name="ClockwiseCut"  IsChecked="False" Margin="55 0" Checked="ClockwiseCut_Changed" Unchecked="ClockwiseCut_Changed">
+                                <CheckBox.LayoutTransform>
+                                    <ScaleTransform ScaleX="2" ScaleY="2" />
+                                </CheckBox.LayoutTransform>
+                            </CheckBox>
+                        </StackPanel>
+                        
                         <Border Name="BlockProperties">
                             <StackPanel Orientation="Vertical">
                                 <StackPanel Orientation="Horizontal">
@@ -50,8 +60,8 @@
                                     </CheckBox>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource ValueLabel}">Block thickness [mm]:</TextBlock>
-                                    <TextBox Style="{StaticResource ValueInput}" Name="BlockThickness">876</TextBox>
+                                    <TextBlock Style="{StaticResource ValueLabel}" Width="190">Block thickness [mm]:</TextBlock>
+                                    <TextBox Style="{StaticResource ValueInput}" Name="BlockThickness" Margin="10 0 0 0">876</TextBox>
                                 </StackPanel>
 
                                 <Border BorderBrush="Red" BorderThickness="1.0">
@@ -73,6 +83,22 @@
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Style="{StaticResource ValueLabel}">XY kerf [mm]:</TextBlock>
                                             <TextBox Style="{StaticResource ValueInput}" Name="KerfXY">876</TextBox>
+                                        </StackPanel>
+
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource ValueLabel}" Text="Set facet speed:"/>
+                                            <TextBlock Style="{StaticResource ValueLabel}" Margin="-10 0 0 0" Width="35" Text="UV:"/>
+                                            <CheckBox Name="StickSpeedUV"  IsChecked="False" Checked="StickSpeedUV_Changed" Unchecked="StickSpeedUV_Changed">
+                                                <CheckBox.LayoutTransform>
+                                                    <ScaleTransform ScaleX="2" ScaleY="2" />
+                                                </CheckBox.LayoutTransform>
+                                            </CheckBox>
+                                            <TextBlock Style="{StaticResource ValueLabel}" Margin="5 0 0 0" Width="35" Text="XY:"/>
+                                            <CheckBox Name="StickSpeedXY"  IsChecked="False" Checked="StickSpeedXY_Changed" Unchecked="StickSpeedXY_Changed">
+                                                <CheckBox.LayoutTransform>
+                                                    <ScaleTransform ScaleX="2" ScaleY="2" />
+                                                </CheckBox.LayoutTransform>
+                                            </CheckBox>
                                         </StackPanel>
                                     </StackPanel>
                                 </Border>

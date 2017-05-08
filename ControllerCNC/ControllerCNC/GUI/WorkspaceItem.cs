@@ -102,6 +102,7 @@ namespace ControllerCNC.GUI
                 if (_positionY == value)
                     //nothing changed
                     return;
+
                 _positionY = value;
                 fireOnSettingsChanged();
             }

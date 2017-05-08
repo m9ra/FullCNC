@@ -63,6 +63,7 @@
     <Compile Include="Demos\MachineTesting.cs" />
     <Compile Include="Demos\ShapeDrawing.cs" />
     <Compile Include="GUI\NativeControlItem.cs" />
+    <Compile Include="GUI\PlanningException.cs" />
     <Compile Include="GUI\ShapeItem.cs" />
     <Compile Include="GUI\EntryPoint.cs" />
     <Compile Include="GUI\HeadCNC.cs" />

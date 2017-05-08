@@ -36,7 +36,7 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         internal override IEnumerable<Point4Dstep> CutPoints
         {
-            get { return transformPoints(pointsWithKerf()); }
+            get { return translateToWorkspace(TransformedShapeDefinitionWithKerf); }
         }
 
         internal ShapeItem2D(ReadableIdentifier name, IEnumerable<Point2Dmm> shapeDefinition)
@@ -88,7 +88,8 @@ namespace ControllerCNC.GUI
                 drawingContext.DrawGeometry(null, _cutPen, cutGeometry);
             }
 
-            var figure = CreatePathFigure(ItemPoints.ToUV());
+            var itemPoints = translateToWorkspace(TransformedShapeDefinition);
+            var figure = CreatePathFigure(itemPoints.ToUV());
             var geometry = new PathGeometry(new[] { figure }, FillRule.EvenOdd, Transform.Identity);
             drawingContext.DrawGeometry(_itemBrush, _itemPen, geometry);
         }

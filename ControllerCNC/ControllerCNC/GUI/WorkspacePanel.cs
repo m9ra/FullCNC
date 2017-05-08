@@ -248,39 +248,41 @@ namespace ControllerCNC.GUI
         internal void LoadFrom(string filename)
         {
             var formatter = new BinaryFormatter();
-            var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read);
-            var workspaceRepresentation = (Tuple<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
-            stream.Close();
 
-            Children.Clear();
-            _itemJoins.Clear();
-
-            foreach (var item in workspaceRepresentation.Item1)
+            using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                if (item is EntryPoint)
-                    _entryPoint = item as EntryPoint;
+                var workspaceRepresentation = (Tuple<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
 
-                Children.Add(item);
+                Children.Clear();
+                _itemJoins.Clear();
+
+                foreach (var item in workspaceRepresentation.Item1)
+                {
+                    if (item is EntryPoint)
+                        _entryPoint = item as EntryPoint;
+
+                    Children.Add(item);
+                }
+
+                foreach (var join in workspaceRepresentation.Item2)
+                {
+                    _itemJoins.Add(join);
+                }
+
+                var configuration = workspaceRepresentation.Item3;
+                _cuttingSpeed = (Speed)configuration["CuttingSpeed"];
+
+                if (configuration.ContainsKey("CuttingKerf"))
+                    _cuttingKerf = (double)configuration["CuttingKerf"];
+
+                if (configuration.ContainsKey("WireLength"))
+                    _wireLength = (double)configuration["WireLength"];
+                else
+                    _wireLength = Constants.FullWireLength;
+
+                fireOnWorkItemListChanged();
+                fireOnSettingsChanged();
             }
-
-            foreach (var join in workspaceRepresentation.Item2)
-            {
-                _itemJoins.Add(join);
-            }
-
-            var configuration = workspaceRepresentation.Item3;
-            _cuttingSpeed = (Speed)configuration["CuttingSpeed"];
-
-            if (configuration.ContainsKey("CuttingKerf"))
-                _cuttingKerf = (double)configuration["CuttingKerf"];
-
-            if (configuration.ContainsKey("WireLength"))
-                _wireLength = (double)configuration["WireLength"];
-            else
-                _wireLength = Constants.FullWireLength;
-
-            fireOnWorkItemListChanged();
-            fireOnSettingsChanged();
         }
 
         internal ReadableIdentifier UnusedVersion(ReadableIdentifier name)
@@ -313,7 +315,7 @@ namespace ControllerCNC.GUI
             _entryPoint.Build(this, speedPoints, null);
 
             var planPoints = speedPoints.Select(p => p.Point).ToList();
-            var segmentSpeeds = speedPoints.Select(p => p.Speed).ToArray();
+            var segmentSpeeds = speedPoints.Select(p => Tuple.Create(p.SpeedUV, p.SpeedXY)).ToArray();
 
             //scheduler needs referential point
             planPoints.Insert(0, _entryPoint.CutPoints.First());
@@ -387,8 +389,8 @@ namespace ControllerCNC.GUI
 
         internal void SetJoin(PointProviderItem shape1, PointProviderItem shape2)
         {
-            var points1 = shape1.ItemPoints.ToArray();
-            var points2 = shape2.ItemPoints.ToArray();
+            var points1 = shape1.CutPoints.ToArray();
+            var points2 = shape2.CutPoints.ToArray();
 
             var best1 = 0;
             var best2 = 0;

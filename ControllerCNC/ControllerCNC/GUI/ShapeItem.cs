@@ -23,7 +23,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Points defining the shape.
         /// </summary>
-        protected readonly Point4Dmm[] _shapeDefinition;
+        private readonly Point4Dmm[] _shapeDefinition;
 
         /// <summary>
         /// Whether axes are switched with each other.
@@ -49,9 +49,9 @@ namespace ControllerCNC.GUI
         protected double _shapeMinC2 { get { return Math.Min(ShapeUV.MinC2, ShapeXY.MinC2); } }
 
         /// <summary>
-        /// Definition of the shape.
+        /// Determine whether cut in a clockwise direction will be used.
         /// </summary>
-        internal IEnumerable<Point4Dmm> ShapeDefinition { get { return _shapeDefinition; } }
+        private bool _useClockwiseCut;
 
         /// <summary>
         /// Determine size of the shape in milimeters.
@@ -165,12 +165,12 @@ namespace ControllerCNC.GUI
         {
             get
             {
-                return _kerfUV;
+                return UseExplicitKerf ? _kerfUV : 0;
             }
 
             set
             {
-                if (value == _kerfUV)
+                if (value == _kerfUV || !UseExplicitKerf)
                     return;
 
                 _kerfUV = value;
@@ -185,12 +185,12 @@ namespace ControllerCNC.GUI
         {
             get
             {
-                return _kerfXY;
+                return UseExplicitKerf ? _kerfXY : 0;
             }
 
             set
             {
-                if (value == _kerfXY)
+                if (value == _kerfXY || !UseExplicitKerf)
                     return;
 
                 _kerfXY = value;
@@ -252,12 +252,44 @@ namespace ControllerCNC.GUI
             }
         }
 
-        /// </inheritdoc>
-        internal override IEnumerable<Point4Dstep> ItemPoints
+        internal bool UseClockwiseCut
         {
             get
             {
-                return transformPoints(_shapeDefinition);
+                return _useClockwiseCut;
+            }
+
+            set
+            {
+                if (value == _useClockwiseCut)
+                    return;
+
+                _useClockwiseCut = value;
+                fireOnSettingsChanged();
+            }
+        }
+
+        internal IEnumerable<Point4Dmm> ShapeDefinition
+        {
+            get
+            {
+                return _shapeDefinition;
+            }
+        }
+
+        internal IEnumerable<Point4Dmm> TransformedShapeDefinition
+        {
+            get
+            {
+                return definitionTransformation(ShapeDefinition);
+            }
+        }
+
+        internal IEnumerable<Point4Dmm> TransformedShapeDefinitionWithKerf
+        {
+            get
+            {
+                return addKerf(TransformedShapeDefinition);
             }
         }
 
@@ -268,6 +300,8 @@ namespace ControllerCNC.GUI
                 throw new ArgumentNullException("shapeDefinition");
 
             _shapeDefinition = shapeDefinition.ToArray();
+            _useClockwiseCut = true;
+
             constructionInitialization();
         }
 
@@ -281,6 +315,7 @@ namespace ControllerCNC.GUI
             _useExplicitKerf = info.GetBoolean("_useExplicitKerf");
             _kerfUV = info.GetDouble("_kerfUV");
             _kerfXY = info.GetDouble("_kerfXY");
+            _useClockwiseCut = info.GetBoolean("_useClockwiseCut");
 
             constructionInitialization();
         }
@@ -296,6 +331,7 @@ namespace ControllerCNC.GUI
             info.AddValue("_useExplicitKerf", _useExplicitKerf);
             info.AddValue("_kerfUV", _kerfUV);
             info.AddValue("_kerfXY", _kerfXY);
+            info.AddValue("_useClockwiseCut", _useClockwiseCut);
         }
 
         /// <summary>
@@ -347,8 +383,8 @@ namespace ControllerCNC.GUI
 
         protected virtual void constructionInitialization()
         {
-            ShapeUV = new PlaneShape(_shapeDefinition.Select(p => p.ToUV()));
-            ShapeXY = new PlaneShape(_shapeDefinition.Select(p => p.ToXY()));
+            ShapeUV = new PlaneShape(ShapeDefinition.Select(p => p.ToUV()));
+            ShapeXY = new PlaneShape(ShapeDefinition.Select(p => p.ToXY()));
 
             BorderThickness = new Thickness(0);
             Padding = new Thickness(0);
@@ -368,10 +404,19 @@ namespace ControllerCNC.GUI
 
                 wSum += (x2.U - x1.U) * (x2.V + x1.V);
             }
-            _isClockwise = wSum > 0;
+            _isClockwise = wSum < 0;
         }
 
-        protected IEnumerable<Point4Dstep> transformPoints(IEnumerable<Point4Dmm> points)
+        protected IEnumerable<Point4Dstep> translateToWorkspace(IEnumerable<Point4Dmm> points)
+        {
+            foreach (var point in points)
+            {
+                var p = point.As4Dstep();
+                yield return new Point4Dstep(p.U + PositionC1, p.V + PositionC2, p.X + PositionC1, p.Y + PositionC2);
+            }
+        }
+
+        protected IEnumerable<Point4Dmm> definitionTransformation(IEnumerable<Point4Dmm> points)
         {
             var ratioC1 = 1.0 * _shapeMaxC1 - _shapeMinC1;
             if (ratioC1 == 0)
@@ -381,14 +426,17 @@ namespace ControllerCNC.GUI
             if (ratioC2 == 0)
                 ratioC2 = 1;
 
+            if (_useClockwiseCut != _isClockwise)
+                points = points.Reverse();
+
             foreach (var definitionPoint in points)
             {
                 var point = rotate(definitionPoint);
 
-                var u = (int)Math.Round((point.U - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
-                var v = (int)Math.Round((point.V - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
-                var x = (int)Math.Round((point.X - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width / Constants.MilimetersPerStep);
-                var y = (int)Math.Round((point.Y - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height / Constants.MilimetersPerStep);
+                var u = (point.U - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width;
+                var v = (point.V - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height;
+                var x = (point.X - _shapeMinC1) / ratioC1 * _shapeMetricSize.Width;
+                var y = (point.Y - _shapeMinC2) / ratioC2 * _shapeMetricSize.Height;
 
                 if (_isUvXySwitched)
                 {
@@ -401,7 +449,7 @@ namespace ControllerCNC.GUI
                     y = vTemp;
                 }
 
-                yield return new Point4Dstep(u + PositionC1, v + PositionC2, x + PositionC1, y + PositionC2);
+                yield return new Point4Dmm(u, v, x, y);
             }
         }
 
@@ -510,15 +558,15 @@ namespace ControllerCNC.GUI
             return new Vector(diff12_C1, diff12_C2);
         }
 
-        protected IEnumerable<Point4Dmm> pointsWithKerf()
+        protected IEnumerable<Point4Dmm> addKerf(IEnumerable<Point4Dmm> points)
         {
             var workspace = Parent as WorkspacePanel;
             if (workspace == null || (workspace.CuttingKerf == 0.0 && !this.UseExplicitKerf))
                 //there is no change
-                return _shapeDefinition;
+                return points;
 
 
-            var result = applyKerf(_shapeDefinition.Reverse(), workspace);
+            var result = applyKerf(points, workspace);
             return result;
         }
 
@@ -577,7 +625,7 @@ namespace ControllerCNC.GUI
                 kerf *= ratio;
             }
 
-            if (!_isClockwise)
+            if (_isClockwise != _useClockwiseCut)
                 kerf *= -1;
 
             return kerf;

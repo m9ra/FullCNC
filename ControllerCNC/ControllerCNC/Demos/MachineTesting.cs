@@ -19,9 +19,9 @@ namespace ControllerCNC.Demos
             var metricShapeThickness = 300;
             var points = ShapeDrawing.CircleToSquare();
             var projector = new PlaneProjector(metricShapeThickness, Constants.FullWireLength);
-            var projectedPoints = projector.Project(points.As4Dstep());
+            var projectedPoints = projector.Project(points);
             var planner = new StraightLinePlanner4D(Speed.FromDeltaT(3000));
-            return planner.CreateConstantPlan(new Trajectory4D(projectedPoints));
+            return planner.CreateConstantPlan(new Trajectory4D(projectedPoints.As4Dstep()));
         }
 
         /// <summary>

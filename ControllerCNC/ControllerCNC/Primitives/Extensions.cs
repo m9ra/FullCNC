@@ -67,7 +67,12 @@ namespace ControllerCNC.Primitives
 
         public static Speed4Dstep With(this Point4Dstep point, Speed speed)
         {
-            return new Speed4Dstep(point, speed);
+            return new Speed4Dstep(point, speed, speed);
+        }
+
+        public static Speed4Dstep With(this Point4Dstep point, Speed speedUV, Speed speedXY)
+        {
+            return new Speed4Dstep(point, speedUV, speedXY);
         }
 
         private static int mmToStep(double mm)

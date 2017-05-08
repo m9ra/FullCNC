@@ -10,18 +10,21 @@ namespace ControllerCNC.Primitives
     {
         public readonly Point4Dstep Point;
 
-        public readonly Speed Speed;
+        public readonly Speed SpeedUV;
 
-        public Speed4Dstep(Point4Dstep point, Speed speed)
+        public readonly Speed SpeedXY;
+
+        public Speed4Dstep(Point4Dstep point, Speed speedUV, Speed speedXY)
         {
             Point = point;
-            Speed = speed;
+            SpeedUV = speedUV;
+            SpeedXY = speedXY;
         }
 
         /// <inheritdoc/>
         public override string ToString()
         {
-            return string.Format("{0}[{1}]", Point, Speed);
+            return string.Format("{0} [{1},{2}]", Point, SpeedUV, SpeedXY);
         }
     }
 }

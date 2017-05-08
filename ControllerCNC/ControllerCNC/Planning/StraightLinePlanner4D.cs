@@ -24,7 +24,6 @@ namespace ControllerCNC.Planning
         /// </summary>
         private readonly Speed _transitionSpeed;
 
-
         public StraightLinePlanner4D(Speed transitionSpeed)
         {
             _transitionSpeed = transitionSpeed;
@@ -35,21 +34,26 @@ namespace ControllerCNC.Planning
         /// </summary>
         /// <param name="trajectory">Trajectory which plan will be created.</param>
         /// <returns>The created plan.</returns>
-        public PlanBuilder CreateConstantPlan(Trajectory4D trajectory, IEnumerable<Speed> segmentSpeeds = null)
+        public PlanBuilder CreateConstantPlan(Trajectory4D trajectory, IEnumerable<Tuple<Speed, Speed>> segmentSpeeds = null)
         {
             if (segmentSpeeds == null)
-                segmentSpeeds = new Speed[0];
+                segmentSpeeds = new Tuple<Speed, Speed>[0];
 
-            var speeds = new Queue<Speed>(segmentSpeeds);
+            var speeds = new Queue<Tuple<Speed, Speed>>(segmentSpeeds);
 
             var planBuilder = new PlanBuilder();
             iterateDistances(trajectory, (p, u, v, x, y) =>
             {
-                var speed = _transitionSpeed;
+                var speedUV = _transitionSpeed;
+                var speedXY = _transitionSpeed;
                 if (speeds.Any())
-                    speed = speeds.Dequeue();
+                {
+                    var speed = speeds.Dequeue();
+                    speedUV = speed.Item1;
+                    speedXY = speed.Item2;
+                }
 
-                planBuilder.AddConstantSpeedTransitionUVXY(u, v, speed, x, y, speed);
+                planBuilder.AddConstantSpeedTransitionUVXY(u, v, speedUV, x, y, speedXY);
             });
             return planBuilder;
         }

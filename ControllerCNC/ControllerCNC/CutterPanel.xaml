@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:g="clr-namespace:ControllerCNC.GUI"
-        Title="CutterPane" Height="1000" Width="1500" WindowState="Maximized" WindowStyle="None">
+        Title="CutterPane" Height="1000" Width="1500" WindowState="Maximized" ResizeMode="NoResize" WindowStyle="None">
     <Window.Resources>
         <Style x:Key="MovementArrow" TargetType="{x:Type ToggleButton}">
             <Setter Property="FontSize" Value="30" />
@@ -127,13 +127,13 @@
                             </StackPanel>
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <Label Style="{StaticResource CoordinateName}">U:</Label>
+                                    <Label Style="{StaticResource CoordinateName}" Foreground="Blue">U:</Label>
                                     <TextBlock Name="PositionU" Style="{StaticResource Coordinate}">
                                     0.000
                                     </TextBlock>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <Label Style="{StaticResource CoordinateName}">V:</Label>
+                                    <Label Style="{StaticResource CoordinateName}" Foreground="Blue">V:</Label>
                                     <TextBlock Name="PositionV" Style="{StaticResource Coordinate}">
                                     0.000
                                     </TextBlock>
@@ -141,13 +141,13 @@
                             </StackPanel>
                             <StackPanel Margin="0 0">
                                 <StackPanel Orientation="Horizontal">
-                                    <Label Style="{StaticResource CoordinateName}">X:</Label>
+                                    <Label Style="{StaticResource CoordinateName}" Foreground="Red">X:</Label>
                                     <TextBlock Name="PositionX" Style="{StaticResource Coordinate}">
                                     0.000
                                     </TextBlock>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
-                                    <Label Style="{StaticResource CoordinateName}">Y:</Label>
+                                    <Label Style="{StaticResource CoordinateName}" Foreground="Red">Y:</Label>
                                     <TextBlock Name="PositionY" Style="{StaticResource Coordinate}">
                                     0.000
                                     </TextBlock>

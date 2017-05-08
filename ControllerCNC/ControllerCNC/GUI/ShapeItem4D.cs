@@ -17,6 +17,8 @@ using System.Runtime.Serialization;
 
 namespace ControllerCNC.GUI
 {
+    enum SpeedAlgorithm { TowerBased, StickToFacetUV, StickToFacetXY };
+
     [Serializable]
     class ShapeItem4D : ShapeItem
     {
@@ -56,6 +58,27 @@ namespace ControllerCNC.GUI
         private Pen _cutPenXY;
 
         /// <summary>
+        /// Algorithm for cutting speed computation.
+        /// </summary>
+        private SpeedAlgorithm _speedAlgorithm;
+
+        internal SpeedAlgorithm SpeedAlgorithm
+        {
+            get
+            {
+                return _speedAlgorithm;
+            }
+            set
+            {
+                if (value == _speedAlgorithm)
+                    return;
+
+                _speedAlgorithm = value;
+                fireOnSettingsChanged();
+            }
+        }
+
+        /// <summary>
         /// Thickness (distance between shape facets) in mm.
         /// </summary>
         internal double MetricThickness
@@ -69,6 +92,7 @@ namespace ControllerCNC.GUI
             {
                 if (value == _shapeMetricThickness)
                     return;
+
                 _shapeMetricThickness = value;
                 fireOnSettingsChanged();
             }
@@ -79,9 +103,10 @@ namespace ControllerCNC.GUI
         {
             get
             {
-                var kerfPoints = transformPoints(pointsWithKerf()).ToArray();
-                //kerfPoints = ItemPoints.ToArray();
-                return new PlaneProjector(_shapeMetricThickness, _wireLength).Project(kerfPoints);
+                var kerfPoints = TransformedShapeDefinitionWithKerf.ToArray();
+                var projectedPoints = new PlaneProjector(_shapeMetricThickness, _wireLength).Project(kerfPoints);
+
+                return translateToWorkspace(projectedPoints);
             }
         }
 
@@ -94,6 +119,7 @@ namespace ControllerCNC.GUI
             : base(info, context)
         {
             _shapeMetricThickness = (double)info.GetValue("_shapeMetricThickness", typeof(double));
+            _speedAlgorithm = (SpeedAlgorithm)info.GetValue("_speedAlgorithm", typeof(SpeedAlgorithm));
         }
 
         /// <inheritdoc/>
@@ -101,6 +127,7 @@ namespace ControllerCNC.GUI
         {
             base.GetObjectData(info, context);
             info.AddValue("_shapeMetricThickness", _shapeMetricThickness);
+            info.AddValue("_speedAlgorithm", _speedAlgorithm);
         }
 
         /// <inheritdoc/>
@@ -114,6 +141,102 @@ namespace ControllerCNC.GUI
             return shapeItem;
         }
 
+        /// <inheritdoc/>
+        internal override void Build(WorkspacePanel workspace, List<Speed4Dstep> speedPoints, ItemJoin incommingJoin)
+        {
+            if (_speedAlgorithm == SpeedAlgorithm.TowerBased)
+            {
+                base.Build(workspace, speedPoints, incommingJoin);
+                return;
+            }
+
+            if (incommingJoin.Item2 != this)
+                throw new NotSupportedException("Incomming join point is not valid.");
+
+            var cuttingSpeed = workspace.CuttingSpeed;
+            var cutPoints = CutPoints.ToArray();
+
+            if (!cutPoints.First().Equals(cutPoints.Last()))
+                throw new NotSupportedException("Shape is not closed.");
+
+            if (cutPoints.Count() != ShapeDefinition.Count())
+                throw new NotSupportedException("Invalid cut points count.");
+
+            //skip the repetitive point so we can join to whatever shape part.
+            cutPoints = cutPoints.Take(cutPoints.Length - 1).ToArray();
+            var definitionPoints = ShapeDefinition.Take(cutPoints.Length - 1).ToArray();
+
+            var projector = new PlaneProjector(_shapeMetricThickness, _wireLength);
+
+            var outJoins = workspace.FindOutgoingJoins(this);
+            var startIndex = incommingJoin.JoinPointIndex2;
+
+            for (var i = startIndex + 1; i <= startIndex + cutPoints.Length; ++i)
+            {
+                var currentIndex = i % cutPoints.Length;
+                var currentPoint = cutPoints[currentIndex];
+
+                var speeds = getSpeeds(definitionPoints, currentIndex, cuttingSpeed, projector);
+                if (speeds.Item1.ToDeltaT() < Constants.StartDeltaT || speeds.Item2.ToDeltaT() < Constants.StartDeltaT)
+                    throw new PlanningException("Speed limit exceeded");
+
+                speedPoints.Add(currentPoint.With(speeds.Item1, speeds.Item2));
+
+                var currentOutgoingJoins = workspace.GetOutgoingJoinsFrom(currentIndex, outJoins);
+                foreach (var currentOutgoingJoin in currentOutgoingJoins)
+                {
+                    currentOutgoingJoin.Build(workspace, speedPoints);
+                }
+            }
+        }
+
+        private Tuple<Speed, Speed> getSpeeds(Point4Dmm[] points, int currentIndex, Speed facetSpeed, PlaneProjector projector)
+        {
+            var currentPoint = points[currentIndex % points.Length];
+            var nextPoint = points[(currentIndex + 1) % points.Length];
+
+            getFacetVectors(currentPoint, nextPoint, out var facetUV, out var facetXY);
+
+            var facetSpeedConverted = 1.0 * facetSpeed.StepCount / facetSpeed.Ticks;
+
+            double ratio;
+            switch (SpeedAlgorithm)
+            {
+                case SpeedAlgorithm.StickToFacetUV:
+                    ratio = facetSpeedConverted / facetUV.Length;
+                    break;
+                case SpeedAlgorithm.StickToFacetXY:
+                    ratio = facetSpeedConverted / facetXY.Length;
+                    break;
+                default:
+                    throw new NotImplementedException("SpeedAlgorithm");
+            }
+
+            facetUV = facetUV * ratio;
+            facetXY = facetXY * ratio;
+
+            var speedPoint = new Point4Dmm(currentPoint.U + facetUV.X, currentPoint.V + facetUV.Y, currentPoint.X + facetXY.X, currentPoint.Y + facetXY.Y);
+
+            var currentProjected = projector.Project(currentPoint);
+            var speedProjected = projector.Project(speedPoint);
+
+            getFacetVectors(currentProjected, speedProjected, out var speedUV, out var speedXY);
+
+            var speedFactor = Constants.TimerFrequency;
+
+            return Tuple.Create(
+                new Speed((long)(speedUV.Length * speedFactor), speedFactor),
+                new Speed((long)(speedXY.Length * speedFactor), speedFactor)
+                );
+        }
+
+        private void getFacetVectors(Point4Dmm p1, Point4Dmm p2, out Vector v1, out Vector v2)
+        {
+            v1 = new Vector(p2.U - p1.U, p2.V - p1.V);
+            v2 = new Vector(p2.X - p1.X, p2.Y - p1.Y);
+        }
+
+        /// <inheritdoc/>
         internal override void RecalculateToWorkspace(WorkspacePanel workspace, Size size)
         {
             base.RecalculateToWorkspace(workspace, size);
@@ -140,7 +263,7 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
-            var points = ItemPoints;
+            var points = translateToWorkspace(TransformedShapeDefinition);
             var figureUV = CreatePathFigure(points.ToUV());
             var figureXY = CreatePathFigure(points.ToXY());
 
@@ -187,7 +310,7 @@ namespace ControllerCNC.GUI
             return new Point4Dmm(p2.U + shiftUV.X, p2.V + shiftUV.Y, p2.X + shiftXY.X, p2.Y + shiftXY.Y);
         }
 
-        double reCalculateKerf(double referentialKerf, double metricSpeed, WorkspacePanel workspace)
+        private double reCalculateKerf(double referentialKerf, double metricSpeed, WorkspacePanel workspace)
         {
             referentialKerf = reCalculateKerf(referentialKerf);
             var referentialSpeed = workspace.CuttingSpeed;

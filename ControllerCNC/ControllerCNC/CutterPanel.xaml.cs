@@ -79,7 +79,7 @@ namespace ControllerCNC
         private PointProviderItem _joinItemCandidate;
 
         public CutterPanel()
-        {          
+        {
             System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
             Thread.CurrentThread.CurrentCulture = customCulture;
@@ -203,8 +203,37 @@ namespace ControllerCNC
 
         private void reloadWorkspace()
         {
-            if (File.Exists(_workspaceFile))
+            if (!File.Exists(_workspaceFile))
+                return;
+
+            try
+            {
                 _workspace.LoadFrom(_workspaceFile);
+            }
+            catch (Exception ex) when (
+                    ex is System.Reflection.TargetInvocationException ||
+                    ex is System.Runtime.Serialization.SerializationException
+                )
+            {
+                ShowError("Saved workspace cannot be load (it's an old version).");
+                if (_workspaceFile != _autosaveFile)
+                {
+                    _workspaceFile = _autosaveFile;
+                    reloadWorkspace();
+                }
+                else
+                {
+                    var i = 0;
+                    var backupFile = _workspaceFile + ".bak";
+                    while (File.Exists(backupFile))
+                    {
+                        i += 1;
+                        backupFile = _workspaceFile + "." + i + ".bak";
+                    }
+                    //keep old autosave
+                    File.Move(_autosaveFile, backupFile);
+                }
+            }
         }
 
         private void onItemClicked(WorkspaceItem item)
@@ -473,7 +502,16 @@ namespace ControllerCNC
 
 
             builder.AddRampedLineUVXY(initU, initV, initX, initY, Constants.MaxPlaneAcceleration, getTransitionSpeed());
-            _workspace.BuildPlan(builder);
+            try
+            {
+                _workspace.BuildPlan(builder);
+            }
+            catch (PlanningException ex)
+            {
+                planCompleted();
+                ShowError(ex.Message);
+                return;
+            }
             //builder.AddRampedLineUVXY(-initU, -initV, -initX, -initY, Constants.MaxPlaneAcceleration, getTransitionSpeed());
 
             var plan = builder.Build();

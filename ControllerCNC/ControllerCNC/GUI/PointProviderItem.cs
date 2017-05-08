@@ -14,11 +14,6 @@ namespace ControllerCNC.GUI
     abstract class PointProviderItem : WorkspaceItem
     {
         /// <summary>
-        /// Points defining the item.
-        /// </summary>
-        internal abstract IEnumerable<Point4Dstep> ItemPoints { get; }
-
-        /// <summary>
         /// Points for cutting of the item.
         /// </summary>
         internal abstract IEnumerable<Point4Dstep> CutPoints { get; }

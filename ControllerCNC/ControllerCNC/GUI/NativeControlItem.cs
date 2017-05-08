@@ -26,7 +26,7 @@ namespace ControllerCNC.GUI
         {
             get
             {
-                return ItemPoints;
+                return translateToWorkspace(TransformedShapeDefinitionWithKerf);
             }
         }
 
@@ -87,7 +87,8 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
-            var figure = CreatePathFigure(ItemPoints.ToUV());
+            var itemPoints = translateToWorkspace(TransformedShapeDefinition);
+            var figure = CreatePathFigure(itemPoints.ToUV());
             var geometry = new PathGeometry(new[] { figure }, FillRule.EvenOdd, Transform.Identity);
             drawingContext.DrawGeometry(null, _itemPen, geometry);
         }

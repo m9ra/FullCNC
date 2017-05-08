@@ -31,23 +31,19 @@ namespace ControllerCNC.Planning
             _wireLength = wireLength;
         }
 
-        internal IEnumerable<Primitives.Point4Dstep> Project(IEnumerable<Primitives.Point4Dstep> shape)
+        internal Point4Dmm Project(Point4Dmm point)
         {
-            var result = new List<Primitives.Point4Dstep>();
-            var shapeToTowerDistance = (_shapeMetricThickness - _wireLength) / 2;
+            return PlaneProjector.Project(point, _shapeMetricThickness, _wireLength);
+        }
 
+        internal IEnumerable<Primitives.Point4Dmm> Project(IEnumerable<Primitives.Point4Dmm> shape)
+        {
+            var result = new List<Primitives.Point4Dmm>();
+            var shapeToTowerDistance = (_shapeMetricThickness - _wireLength) / 2;
 
             foreach (var point in shape)
             {
-                var uvPoint = new Vector3D(point.U, point.V, -_shapeMetricThickness / 2);
-                var xyPoint = new Vector3D(point.X, point.Y, +_shapeMetricThickness / 2);
-
-                var projectionVector = uvPoint - xyPoint;
-                var projectionVectorScale = shapeToTowerDistance / projectionVector.Z;
-                var uvPointProjected = uvPoint + projectionVector * projectionVectorScale;
-                var xyPointProjected = xyPoint - projectionVector * projectionVectorScale;
-
-                var projectedPoint = point4D(uvPointProjected.X, uvPointProjected.Y, xyPointProjected.X, xyPointProjected.Y);
+                var projectedPoint = Project(point);
                 result.Add(projectedPoint);
             }
 
@@ -66,11 +62,6 @@ namespace ControllerCNC.Planning
             var uvPointProjected = uvPoint + projectionVector * projectionVectorScale;
             var xyPointProjected = xyPoint - projectionVector * projectionVectorScale;
             return new Point4Dmm(uvPointProjected.X, uvPointProjected.Y, xyPointProjected.X, xyPointProjected.Y);
-        }
-
-        private Primitives.Point4Dstep point4D(double u, double v, double x, double y)
-        {
-            return new Primitives.Point4Dstep((int)Math.Round(u), (int)Math.Round(v), (int)Math.Round(x), (int)Math.Round(y));
         }
     }
 }

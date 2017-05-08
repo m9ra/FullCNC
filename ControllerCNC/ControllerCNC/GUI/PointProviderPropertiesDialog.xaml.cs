@@ -26,6 +26,11 @@ namespace ControllerCNC.GUI
         /// </summary>
         private readonly PointProviderItem _item;
 
+        /// <summary>
+        /// whether changes on StickSpeed will be reflected
+        /// </summary>
+        private bool _blockChanges_StickSpeed = false;
+
         internal PointProviderPropertiesDialog(PointProviderItem item)
         {
             _item = item;
@@ -60,27 +65,65 @@ namespace ControllerCNC.GUI
             var shapeItem = _item as ShapeItem;
             if (shapeItem == null)
             {
-                ShapeProperties.Visibility = Visibility.Hidden;
+                ShapeProperties.Visibility = Visibility.Collapsed;
+                setLayout(300, 450, 100);
                 return;
             }
 
             var shapeItem4D = shapeItem as ShapeItem4D;
             if (shapeItem4D == null)
             {
-                BlockProperties.Visibility = Visibility.Hidden;
+                BlockProperties.Visibility = Visibility.Collapsed;
+                setLayout(300, 345, 250);
             }
 
             writeNumber(ShapeWidth, shapeItem.MetricWidth);
             writeNumber(ShapeHeight, shapeItem.MetricHeight);
+            ClockwiseCut.IsChecked = shapeItem.UseClockwiseCut;
+
             if (shapeItem4D != null)
             {
                 writeNumber(BlockThickness, shapeItem4D.MetricThickness);
                 UvXySwitched.IsChecked = shapeItem4D.IsUvXySwitched;
                 UseExplicitKerf.IsChecked = shapeItem4D.UseExplicitKerf;
+
+                var kerfEnabled = shapeItem4D.UseExplicitKerf;
+                KerfUV.IsEnabled = kerfEnabled;
+                KerfXY.IsEnabled = kerfEnabled;
+                StickSpeedUV.IsEnabled = kerfEnabled;
+                StickSpeedXY.IsEnabled = kerfEnabled;
+
                 writeNumber(KerfUV, shapeItem4D.KerfUV);
                 writeNumber(KerfXY, shapeItem4D.KerfXY);
+
+                switch (shapeItem4D.SpeedAlgorithm)
+                {
+                    case SpeedAlgorithm.TowerBased:
+                        StickSpeedUV.IsChecked = false;
+                        StickSpeedXY.IsChecked = false;
+                        break;
+
+                    case SpeedAlgorithm.StickToFacetUV:
+                        StickSpeedUV.IsChecked = true && kerfEnabled;
+                        StickSpeedXY.IsChecked = false;
+                        break;
+
+                    case SpeedAlgorithm.StickToFacetXY:
+                        StickSpeedUV.IsChecked = false;
+                        StickSpeedXY.IsChecked = true && kerfEnabled;
+                        break;
+                }
             }
             ShapeRotation.Value = shapeItem.RotationAngle;
+        }
+
+        private void setLayout(double width, double layoutWidth, double height)
+        {
+            this.Height = height;
+            this.Width = width;
+
+            this.LayoutGrid.Height = height;
+            this.LayoutGrid.Width = layoutWidth;
         }
 
         private void writeNumber(TextBox box, double number)
@@ -166,12 +209,12 @@ namespace ControllerCNC.GUI
             refreshWindow();
         }
 
-        void ShapeRotation_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        private void ShapeRotation_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             var shapeItem = _item as ShapeItem;
             shapeItem.RotationAngle = ShapeRotation.Value;
         }
-        
+
         private void UseExplicitKerf_Changed(object sender, RoutedEventArgs e)
         {
             var shapeItem = _item as ShapeItem4D;
@@ -194,6 +237,47 @@ namespace ControllerCNC.GUI
 
             shapeItem.IsUvXySwitched = value;
             refreshWindow();
+        }
+
+        private void ClockwiseCut_Changed(object sender, RoutedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem;
+            var value = ClockwiseCut.IsChecked.Value;
+
+            shapeItem.UseClockwiseCut = value;
+            refreshWindow();
+        }
+
+        private void StickSpeedUV_Changed(object sender, RoutedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+            if (_blockChanges_StickSpeed || !shapeItem.UseExplicitKerf)
+                return;
+
+            if (StickSpeedUV.IsChecked.Value)
+                shapeItem.SpeedAlgorithm = SpeedAlgorithm.StickToFacetUV;
+            else
+                shapeItem.SpeedAlgorithm = SpeedAlgorithm.TowerBased;
+
+            _blockChanges_StickSpeed = true;
+            refreshWindow();
+            _blockChanges_StickSpeed = false;
+        }
+
+        private void StickSpeedXY_Changed(object sender, RoutedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+            if (_blockChanges_StickSpeed || !shapeItem.UseExplicitKerf)
+                return;
+
+            if (StickSpeedXY.IsChecked.Value)
+                shapeItem.SpeedAlgorithm = SpeedAlgorithm.StickToFacetXY;
+            else
+                shapeItem.SpeedAlgorithm = SpeedAlgorithm.TowerBased;
+
+            _blockChanges_StickSpeed = true;
+            refreshWindow();
+            _blockChanges_StickSpeed = false;
         }
 
         #endregion
