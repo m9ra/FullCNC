@@ -165,6 +165,8 @@ namespace ControllerCNC.GUI
         /// </summary>
         private EntryPoint _entryPoint;
 
+        private MousePositionInfo _positionInfo;
+
         private bool _invalidateArrange = true;
 
         private bool _isArrangeInitialized = false;
@@ -193,13 +195,21 @@ namespace ControllerCNC.GUI
 
             Background = Brushes.White;
 
+            _entryPoint = new EntryPoint();
+            Children.Add(_entryPoint);
+
+            _positionInfo = new MousePositionInfo();
+            Children.Add(_positionInfo);
+
             PreviewMouseUp += _mouseUp;
             PreviewMouseMove += _mouseMove;
+            MouseLeave += (s, o) => _positionInfo.Hide();
+            MouseEnter += (s, o) => _positionInfo.Show();
+
             CuttingSpeed = Speed.FromDeltaT(6000);
             WireLength = Constants.FullWireLength;
 
-            _entryPoint = new EntryPoint();
-            Children.Add(_entryPoint);
+
         }
 
         /// <summary>
@@ -254,6 +264,8 @@ namespace ControllerCNC.GUI
                 var workspaceRepresentation = (Tuple<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
 
                 Children.Clear();
+                Children.Add(_positionInfo);
+
                 _itemJoins.Clear();
 
                 foreach (var item in workspaceRepresentation.Item1)
@@ -454,6 +466,10 @@ namespace ControllerCNC.GUI
                 _draggedItem.PositionC1 += (int)(mouseDelta.X / ActualWidth * StepCountX);
                 _draggedItem.PositionC2 += (int)(mouseDelta.Y / ActualHeight * StepCountY);
             }
+
+            _positionInfo.PositionC1 = (int)(position.X / ActualWidth * StepCountX);
+            _positionInfo.PositionC2 = (int)(position.Y / ActualHeight * StepCountY);
+            _positionInfo.UpdateInfo();
         }
 
         /// <summary>

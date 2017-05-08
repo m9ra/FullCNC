@@ -62,6 +62,7 @@
     </Compile>
     <Compile Include="Demos\MachineTesting.cs" />
     <Compile Include="Demos\ShapeDrawing.cs" />
+    <Compile Include="GUI\MousePositionInfo.cs" />
     <Compile Include="GUI\NativeControlItem.cs" />
     <Compile Include="GUI\PlanningException.cs" />
     <Compile Include="GUI\ShapeItem.cs" />
