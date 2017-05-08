@@ -126,6 +126,11 @@ namespace ControllerCNC.GUI
         }
 
         /// <summary>
+        /// Determine whether scaffold mode is enabled.
+        /// </summary>
+        internal bool ScaffoldModeEnabled { get; set; }
+
+        /// <summary>
         /// Speed that will be used for cutting.
         /// </summary>
         private Speed _cuttingSpeed;
@@ -139,6 +144,11 @@ namespace ControllerCNC.GUI
         /// Length of wire for cutting.
         /// </summary>
         private double _wireLength;
+
+        /// <summary>
+        /// Lastly modified scaffold.
+        /// </summary>
+        private ScaffoldItem _lastScaffold;
 
         /// <summary>
         /// Item that is moved by using drag and drop
@@ -202,7 +212,9 @@ namespace ControllerCNC.GUI
             Children.Add(_positionInfo);
 
             PreviewMouseUp += _mouseUp;
+            PreviewMouseDown += _mouseDown;
             PreviewMouseMove += _mouseMove;
+
             MouseLeave += (s, o) => _positionInfo.Hide();
             MouseEnter += (s, o) => _positionInfo.Show();
 
@@ -371,6 +383,10 @@ namespace ControllerCNC.GUI
 
         internal void SetJoin(PointProviderItem shape1, int joinPointIndex1, PointProviderItem shape2, int joinPointIndex2)
         {
+            if (shape1 is ScaffoldItem || shape2 is ScaffoldItem)
+                //scaffold cannot be joined
+                return;
+
             if (shape1 is NativeControlItem || (shape2 is NativeControlItem && !(shape1 is EntryPoint)))
                 //native items cant be joined with other items
                 return;
@@ -478,6 +494,39 @@ namespace ControllerCNC.GUI
         private void _mouseUp(object sender, MouseButtonEventArgs e)
         {
             _draggedItem = null;
+        }
+
+        /// <summary>
+        /// Handler for scaffold mode.
+        /// </summary>
+        private void _mouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (!ScaffoldModeEnabled)
+                return;
+
+            if (e.RightButton == MouseButtonState.Pressed)
+            {
+                _lastScaffold = null;
+                return;
+            }
+
+            if (_lastScaffold == null || !Children.Contains(_lastScaffold))
+                _lastScaffold = null;
+
+
+            if (_lastScaffold == null)
+                _lastScaffold = new ScaffoldItem(UnusedVersion(new ReadableIdentifier("scaffold")), new Point2Dstep[0]);
+            else
+            {
+                Children.Remove(_lastScaffold);
+            }
+
+            var position = e.GetPosition(this);
+            var stepsX = (int)(position.X / ActualWidth * StepCountX);
+            var stepsY = (int)(position.Y / ActualHeight * StepCountY);
+            _lastScaffold = _lastScaffold.ExtendBy(new Point2Dstep(stepsX, stepsY));
+
+            Children.Add(_lastScaffold);
         }
 
         #endregion

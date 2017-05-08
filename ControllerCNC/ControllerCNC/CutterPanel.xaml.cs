@@ -31,11 +31,20 @@ using ControllerCNC.Loading;
 
 namespace ControllerCNC
 {
+    enum WorkspaceMode { Idle = 0, JoinMode, ScaffoldMode, LastMode = ScaffoldMode };
+
     /// <summary>
     /// Interaction logic for CutterPane.xaml
     /// </summary>
     public partial class CutterPanel : Window
     {
+        internal static readonly string[] Modes =
+        {
+            "Join mode",
+            "Scaffolding"
+        };
+
+
         private static string _autosaveFile = "workspace_autosave.cwspc";
 
         private string _workspaceFile;
@@ -69,6 +78,8 @@ namespace ControllerCNC
         private int _positionOffsetX = 0;
 
         private int _positionOffsetY = 0;
+
+        private WorkspaceMode _currentMode = WorkspaceMode.Idle;
 
         private bool _addJoinsEnabled = false;
 
@@ -115,6 +126,7 @@ namespace ControllerCNC
             KeyDown += keyDown;
 
             resetWorkspace(true);
+
             initializeTransitionHandlers();
 
             _factory = new ShapeFactory(this);
@@ -319,8 +331,6 @@ namespace ControllerCNC
 
             item.ContextMenu = menu;
 
-
-
             return item;
         }
 
@@ -360,7 +370,13 @@ namespace ControllerCNC
         {
             if (e.Key == Key.LeftAlt || e.Key == Key.RightAlt || e.Key == Key.System)
             {
-                JoinMode.IsChecked = true;
+                setMode(WorkspaceMode.JoinMode);
+                e.Handled = true;
+            }
+
+            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
+            {
+                setMode(WorkspaceMode.ScaffoldMode);
             }
         }
 
@@ -388,10 +404,14 @@ namespace ControllerCNC
 
             if (e.Key == Key.LeftAlt || e.Key == Key.RightAlt || e.Key == Key.System)
             {
-                JoinMode.IsChecked = false;
+                setMode(WorkspaceMode.Idle);
+            }
+
+            if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
+            {
+                setMode(WorkspaceMode.Idle);
             }
         }
-
 
         void _autosaveTime_Tick(object sender, EventArgs e)
         {
@@ -709,18 +729,80 @@ namespace ControllerCNC
             _workspace.RefreshJoins();
         }
 
-        private void JoinMode_Checked(object sender, RoutedEventArgs e)
+        private void setMode(WorkspaceMode mode)
         {
-            _addJoinsEnabled = true;
-            _joinItemCandidate = null;
+            if (_currentMode == mode)
+                //nothing to change
+                return;
+
+            if (mode == WorkspaceMode.Idle)
+            {
+                _currentMode = WorkspaceMode.LastMode;
+                ModeSwitch.IsChecked = false;
+                return;
+            }
+
+            if (!ModeSwitch.IsChecked.Value)
+            {
+                _currentMode = mode;
+                ModeSwitch.IsChecked = true;
+                return;
+            }
+
+            _currentMode = mode - 1;
+            ModeSwitch.IsChecked = false;
         }
 
-        private void JoinMode_Unchecked(object sender, RoutedEventArgs e)
+        private void ModeSwitch_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_currentMode == WorkspaceMode.Idle)
+                //idle mode is neve checked 
+                _currentMode = WorkspaceMode.JoinMode;
+
+            switch (_currentMode)
+            {
+                case WorkspaceMode.JoinMode:
+                    _addJoinsEnabled = true;
+                    _joinItemCandidate = null;
+
+                    _workspace.ScaffoldModeEnabled = false;
+                    break;
+                case WorkspaceMode.ScaffoldMode:
+                    _workspace.ScaffoldModeEnabled = true;
+
+                    _addJoinsEnabled = false;
+                    _joinItemCandidate = null;
+                    break;
+
+                default:
+                    throw new NotImplementedException("Workspace mode");
+            }
+
+            ModeSwitch.Content = Modes[(int)_currentMode - 1];
+        }
+
+        private void ModeSwitch_Unchecked(object sender, RoutedEventArgs e)
         {
             _addJoinsEnabled = false;
             if (_joinItemCandidate != null)
                 _joinItemCandidate.IsHighlighted = false;
             _joinItemCandidate = null;
+            _workspace.ScaffoldModeEnabled = false;
+
+            var nextMode = (int)(_currentMode + 1);
+            if (nextMode >= (int)WorkspaceMode.LastMode)
+                nextMode = 0;
+
+            _currentMode = (WorkspaceMode)nextMode;
+            if (_currentMode == WorkspaceMode.Idle)
+            {
+                ModeSwitch.Content = Modes[0];
+            }
+            else
+            {
+                //recheck the switch
+                ModeSwitch.IsChecked = true;
+            }
         }
 
         private void CuttingDeltaT_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

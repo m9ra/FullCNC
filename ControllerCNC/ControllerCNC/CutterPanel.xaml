@@ -160,7 +160,7 @@
                         <StackPanel DockPanel.Dock="Right" Width="400" Orientation="Horizontal">
                             <StackPanel Width="200">
                                 <Button Name="AddShape" Style="{StaticResource CommandButton}" Click="AddShape_Click">Add shape</Button>
-                                <ToggleButton Name="JoinMode" Style="{StaticResource CommandToggleButton}" Checked="JoinMode_Checked" Unchecked="JoinMode_Unchecked" >Join mode</ToggleButton>
+                                <ToggleButton Name="ModeSwitch" Style="{StaticResource CommandToggleButton}" Checked="ModeSwitch_Checked" Unchecked="ModeSwitch_Unchecked" >Join mode</ToggleButton>
                                 <Button Name="RefreshJoins" Style="{StaticResource CommandButton}" Click="RefreshJoins_Click" >Refresh joins</Button>
                                 <Button Name="OpenEditor" Style="{StaticResource CommandButton}" Click="OpenEditor_Click">Open editor</Button>
                             </StackPanel>

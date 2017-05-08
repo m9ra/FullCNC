@@ -57,17 +57,7 @@ namespace ControllerCNC.GUI
         /// Determine size of the shape in milimeters.
         /// </summary>
         private Size _shapeMetricSize;
-
-        /// <summary>
-        /// Factor which gives ratio between single step and visual size.
-        /// </summary>
-        private double _stepToVisualFactorC1;
-
-        /// <summary>
-        /// Factor which gives ratio between single step and visual size.
-        /// </summary>
-        private double _stepToVisualFactorC2;
-
+             
         /// <summary>
         /// Angle of rotation [0..360)degree
         /// </summary>
@@ -407,15 +397,6 @@ namespace ControllerCNC.GUI
             _isClockwise = wSum < 0;
         }
 
-        protected IEnumerable<Point4Dstep> translateToWorkspace(IEnumerable<Point4Dmm> points)
-        {
-            foreach (var point in points)
-            {
-                var p = point.As4Dstep();
-                yield return new Point4Dstep(p.U + PositionC1, p.V + PositionC2, p.X + PositionC1, p.Y + PositionC2);
-            }
-        }
-
         protected IEnumerable<Point4Dmm> definitionTransformation(IEnumerable<Point4Dmm> points)
         {
             var ratioC1 = 1.0 * _shapeMaxC1 - _shapeMinC1;
@@ -461,14 +442,6 @@ namespace ControllerCNC.GUI
         }
 
         /// <inheritdoc/>
-        internal override void RecalculateToWorkspace(WorkspacePanel workspace, Size size)
-        {
-            _stepToVisualFactorC1 = size.Width / workspace.StepCountX;
-            _stepToVisualFactorC2 = size.Height / workspace.StepCountY;
-        }
-
-
-        /// <inheritdoc/>
         protected override Size ArrangeOverride(Size arrangeBounds)
         {
             return arrangeBounds;
@@ -478,30 +451,6 @@ namespace ControllerCNC.GUI
         protected override void OnRender(DrawingContext drawingContext)
         {
             throw new NotImplementedException("Method has be overriden");
-        }
-
-        /// <summary>
-        /// Creates figure by joining the given points.
-        /// </summary>
-        protected PathFigure CreatePathFigure(IEnumerable<Point2Dstep> geometryPoints)
-        {
-            var pathSegments = new PathSegmentCollection();
-            var isFirst = true;
-            var firstPoint = new Point(0, 0);
-            foreach (var point in geometryPoints)
-            {
-                var planePoint = new Point(point.C1 - PositionC1, point.C2 - PositionC2);
-                planePoint.X = planePoint.X * _stepToVisualFactorC1;
-                planePoint.Y = planePoint.Y * _stepToVisualFactorC2;
-
-                pathSegments.Add(new LineSegment(planePoint, !isFirst));
-                if (isFirst)
-                    firstPoint = planePoint;
-                isFirst = false;
-            }
-
-            var figure = new PathFigure(firstPoint, pathSegments, false);
-            return figure;
         }
 
         /// <summary>

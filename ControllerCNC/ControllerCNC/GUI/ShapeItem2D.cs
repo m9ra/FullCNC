@@ -64,6 +64,7 @@ namespace ControllerCNC.GUI
             return shapeItem;
         }
 
+        /// <inheritdoc/>
         protected override void constructionInitialization()
         {
             base.constructionInitialization();

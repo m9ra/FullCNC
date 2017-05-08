@@ -65,6 +65,7 @@
     <Compile Include="GUI\MousePositionInfo.cs" />
     <Compile Include="GUI\NativeControlItem.cs" />
     <Compile Include="GUI\PlanningException.cs" />
+    <Compile Include="GUI\ScaffoldItem.cs" />
     <Compile Include="GUI\ShapeItem.cs" />
     <Compile Include="GUI\EntryPoint.cs" />
     <Compile Include="GUI\HeadCNC.cs" />
