@@ -233,9 +233,21 @@ namespace ControllerCNC.GUI
                 var uvTmp = shapeItem.KerfUV;
                 shapeItem.KerfUV = shapeItem.KerfXY;
                 shapeItem.KerfXY = uvTmp;
+
+                //switch speed algorithm
+                switch (shapeItem.SpeedAlgorithm)
+                {
+                    case SpeedAlgorithm.StickToFacetUV:
+                        shapeItem.SpeedAlgorithm = SpeedAlgorithm.StickToFacetXY;
+                        break;
+                    case SpeedAlgorithm.StickToFacetXY:
+                        shapeItem.SpeedAlgorithm = SpeedAlgorithm.StickToFacetUV;
+                        break;
+                }
+
+                shapeItem.IsUvXySwitched = value;
             }
 
-            shapeItem.IsUvXySwitched = value;
             refreshWindow();
         }
 

@@ -454,6 +454,11 @@ namespace ControllerCNC
             PositionX.Text = positionX.ToString("0.000");
             PositionY.Text = positionY.ToString("0.000");
 
+            positionU = Constants.MilimetersPerStep * currentU;
+            positionV = Constants.MilimetersPerStep * currentV;
+            positionX = Constants.MilimetersPerStep * currentX;
+            positionY = Constants.MilimetersPerStep * currentY;
+
             var uv = new Point2Dmm(positionU, positionV);
             var xy = new Point2Dmm(positionX, positionY);
 

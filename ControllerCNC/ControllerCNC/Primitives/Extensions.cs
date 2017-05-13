@@ -50,6 +50,11 @@ namespace ControllerCNC.Primitives
             return points.Select(p => new Point2Dmm(p.U, p.V));
         }
 
+        public static IEnumerable<Point4Dmm> SwitchPlanes(this IEnumerable<Point4Dmm> points)
+        {
+            return points.Select(p => new Point4Dmm(p.X, p.Y, p.U, p.V));
+        }
+
         public static IEnumerable<Point2Dstep> ToUV(this IEnumerable<Point4Dstep> points)
         {
             return points.Select(p => new Point2Dstep(p.U, p.V));

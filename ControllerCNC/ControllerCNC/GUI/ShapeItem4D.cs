@@ -138,6 +138,13 @@ namespace ControllerCNC.GUI
             shapeItem.RotationAngle = RotationAngle;
             shapeItem.MetricHeight = MetricHeight;
             shapeItem.MetricThickness = MetricThickness;
+            shapeItem.UseClockwiseCut = UseClockwiseCut;
+            shapeItem.UseExplicitKerf = UseExplicitKerf;
+            shapeItem.KerfUV = KerfUV;
+            shapeItem.KerfXY = KerfXY;
+            shapeItem.IsUvXySwitched = IsUvXySwitched;
+            shapeItem.SpeedAlgorithm = SpeedAlgorithm;
+
             return shapeItem;
         }
 
@@ -165,6 +172,8 @@ namespace ControllerCNC.GUI
             //skip the repetitive point so we can join to whatever shape part.
             cutPoints = cutPoints.Take(cutPoints.Length - 1).ToArray();
             var definitionPoints = ShapeDefinition.Take(cutPoints.Length - 1).ToArray();
+            if (IsUvXySwitched)
+                definitionPoints = definitionPoints.SwitchPlanes().ToArray();
 
             var projector = new PlaneProjector(_shapeMetricThickness, _wireLength);
 
