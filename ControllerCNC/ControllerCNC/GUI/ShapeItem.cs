@@ -57,7 +57,7 @@ namespace ControllerCNC.GUI
         /// Determine size of the shape in milimeters.
         /// </summary>
         private Size _shapeMetricSize;
-             
+
         /// <summary>
         /// Angle of rotation [0..360)degree
         /// </summary>

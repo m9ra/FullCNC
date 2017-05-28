@@ -48,8 +48,10 @@ namespace ControllerCNC.GUI
             ShapeLeft.TextChanged += ShapeLeft_TextChanged;
             ShapeWidth.TextChanged += ShapeWidth_TextChanged;
             ShapeHeight.TextChanged += ShapeHeight_TextChanged;
+            FinishCutTop.TextChanged += FinishCutTop_TextChanged;
             BlockThickness.TextChanged += BlockThickness_TextChanged;
             ShapeRotation.ValueChanged += ShapeRotation_ValueChanged;
+
             KerfUV.TextChanged += KerfUV_TextChanged;
             KerfXY.TextChanged += KerfXY_TextChanged;
 
@@ -95,6 +97,7 @@ namespace ControllerCNC.GUI
 
                 writeNumber(KerfUV, shapeItem4D.KerfUV);
                 writeNumber(KerfXY, shapeItem4D.KerfXY);
+                writeNumber(FinishCutTop, shapeItem4D.FinishCutMetricMarginC2);
 
                 switch (shapeItem4D.SpeedAlgorithm)
                 {
@@ -172,6 +175,17 @@ namespace ControllerCNC.GUI
             double value;
             if (double.TryParse(ShapeHeight.Text, out value))
                 shapeItem.MetricHeight = value;
+
+            refreshWindow();
+        }
+
+        private void FinishCutTop_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+
+            double value;
+            if (double.TryParse(FinishCutTop.Text, out value))
+                shapeItem.FinishCutMetricMarginC2 = value;
 
             refreshWindow();
         }

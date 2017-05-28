@@ -12,6 +12,11 @@ namespace ControllerCNC.GUI
     class ItemJoin
     {
         /// <summary>
+        /// Index of point where the join will be connected on Item2 if flexible entrance is allowed.
+        /// </summary>
+        private readonly int _joinPointIndex2;
+
+        /// <summary>
         /// Index of point where the join will be connected on Item1.
         /// </summary>
         internal readonly int JoinPointIndex1;
@@ -24,7 +29,13 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Index of point where the join will be connected on Item2.
         /// </summary>
-        internal readonly int JoinPointIndex2;
+        internal int JoinPointIndex2
+        {
+            get
+            {
+                return Item2.AllowFlexibleEntrance ? _joinPointIndex2 : 0;
+            }
+        }
 
         /// <summary>
         /// Shape2 of the connection.
@@ -36,7 +47,7 @@ namespace ControllerCNC.GUI
             JoinPointIndex1 = joinPointIndex1;
             Item1 = item1;
 
-            JoinPointIndex2 = joinPointIndex2;
+            _joinPointIndex2 = joinPointIndex2;
             Item2 = item2;
         }
 

@@ -62,6 +62,33 @@ namespace ControllerCNC.GUI
         /// </summary>
         private SpeedAlgorithm _speedAlgorithm;
 
+        /// <summary>
+        /// Determine whether templated cut will be used.
+        /// </summary>
+        private bool _useTemplatedCut = false;
+
+        /// <summary>
+        /// If positive - margin around top of the
+        /// </summary>
+        private double _finishCutMetricMarginC2 = 0.0;
+
+        internal double FinishCutMetricMarginC2
+        {
+            get
+            {
+                return _finishCutMetricMarginC2;
+            }
+
+            set
+            {
+                if (value == _finishCutMetricMarginC2)
+                    return;
+
+                _finishCutMetricMarginC2 = value;
+                fireOnSettingsChanged();
+            }
+        }
+
         internal SpeedAlgorithm SpeedAlgorithm
         {
             get
@@ -103,10 +130,33 @@ namespace ControllerCNC.GUI
         {
             get
             {
-                var kerfPoints = TransformedShapeDefinitionWithKerf.ToArray();
-                var projectedPoints = new PlaneProjector(_shapeMetricThickness, _wireLength).Project(kerfPoints);
-
+                var projectedPoints = new PlaneProjector(_shapeMetricThickness, _wireLength).Project(CutDefinition);
                 return translateToWorkspace(projectedPoints);
+            }
+        }
+
+        internal IEnumerable<Point4Dmm> CutDefinition
+        {
+            get
+            {
+                IEnumerable<Point4Dmm> shapePoints;
+                if (_useTemplatedCut)
+                    shapePoints = templatedCutPoints().ToArray();
+                else if (_finishCutMetricMarginC2 > 0)
+                    shapePoints = cutPointsWithWidthFinish().ToArray();
+                else
+                    shapePoints = TransformedShapeDefinitionWithKerf.ToArray();
+
+                return shapePoints.ToArray();
+            }
+        }
+
+        /// <inheritdoc/>
+        internal override bool AllowFlexibleEntrance
+        {
+            get
+            {
+                return !_useTemplatedCut && !(_finishCutMetricMarginC2 > 0);
             }
         }
 
@@ -120,6 +170,7 @@ namespace ControllerCNC.GUI
         {
             _shapeMetricThickness = (double)info.GetValue("_shapeMetricThickness", typeof(double));
             _speedAlgorithm = (SpeedAlgorithm)info.GetValue("_speedAlgorithm", typeof(SpeedAlgorithm));
+            _finishCutMetricMarginC2 = (double)info.GetValue("_finishCutMetricMarginC2", typeof(double));
         }
 
         /// <inheritdoc/>
@@ -128,6 +179,7 @@ namespace ControllerCNC.GUI
             base.GetObjectData(info, context);
             info.AddValue("_shapeMetricThickness", _shapeMetricThickness);
             info.AddValue("_speedAlgorithm", _speedAlgorithm);
+            info.AddValue("_finishCutMetricMarginC2", _finishCutMetricMarginC2);
         }
 
         /// <inheritdoc/>
@@ -144,6 +196,7 @@ namespace ControllerCNC.GUI
             shapeItem.KerfXY = KerfXY;
             shapeItem.IsUvXySwitched = IsUvXySwitched;
             shapeItem.SpeedAlgorithm = SpeedAlgorithm;
+            shapeItem.FinishCutMetricMarginC2 = FinishCutMetricMarginC2;
 
             return shapeItem;
         }
@@ -151,7 +204,7 @@ namespace ControllerCNC.GUI
         /// <inheritdoc/>
         internal override void Build(WorkspacePanel workspace, List<Speed4Dstep> speedPoints, ItemJoin incommingJoin)
         {
-            if (_speedAlgorithm == SpeedAlgorithm.TowerBased)
+            if (_speedAlgorithm == SpeedAlgorithm.TowerBased || !UseExplicitKerf)
             {
                 base.Build(workspace, speedPoints, incommingJoin);
                 return;
@@ -166,14 +219,13 @@ namespace ControllerCNC.GUI
             if (!cutPoints.First().Equals(cutPoints.Last()))
                 throw new NotSupportedException("Shape is not closed.");
 
-            if (cutPoints.Count() != ShapeDefinition.Count())
+            var definitionPoints = CutDefinition.ToArray();
+            if (cutPoints.Count() != definitionPoints.Count())
                 throw new NotSupportedException("Invalid cut points count.");
 
             //skip the repetitive point so we can join to whatever shape part.
             cutPoints = cutPoints.Take(cutPoints.Length - 1).ToArray();
-            var definitionPoints = ShapeDefinition.Take(cutPoints.Length - 1).ToArray();
-            if (IsUvXySwitched)
-                definitionPoints = definitionPoints.SwitchPlanes().ToArray();
+            definitionPoints.Take(definitionPoints.Length - 1).ToArray();
 
             var projector = new PlaneProjector(_shapeMetricThickness, _wireLength);
 
@@ -199,6 +251,182 @@ namespace ControllerCNC.GUI
             }
         }
 
+        private IEnumerable<Point4Dmm> addHorizontalKerf(IEnumerable<Point4Dmm> points)
+        {
+            var originalPoints = points.ToArray();
+            var kerfPoints = addKerf(originalPoints).ToArray();
+
+            var result = new List<Point4Dmm>();
+            for (var i = 0; i < kerfPoints.Length; ++i)
+            {
+                var kerfPoint = kerfPoints[i];
+                var originalPoint = originalPoints[i];
+                result.Add(new Point4Dmm(kerfPoint.U, originalPoint.V, kerfPoint.X, originalPoint.Y));
+            }
+
+            return result;
+        }
+
+        private IEnumerable<Point4Dmm> cutPointsWithWidthFinish()
+        {
+            //find top/bottom templates
+            var definitionPoints = TransformedShapeDefinitionWithKerf.ToArray();
+
+            double minHorizontalCoord, maxHorizontalCoord, minVerticalCoord;
+            int minHorizontalIndex, maxHorizontalIndex, minVerticalIndex;
+            findBoxPoints(definitionPoints, out minHorizontalCoord, out maxHorizontalCoord, out minVerticalCoord, out minHorizontalIndex, out maxHorizontalIndex, out minVerticalIndex);
+
+            var result = new List<Point4Dmm>();
+
+            for (var i = minHorizontalIndex; i < minHorizontalIndex + definitionPoints.Length; ++i)
+            {
+                //unwind shape in the desired form
+                result.Add(definitionPoints[i % definitionPoints.Length]);
+            }
+
+            var belowCutMargin = 5;
+            var syncMarginC1 = -5;
+            var marginC2 = -_finishCutMetricMarginC2;
+
+            var entryPoint = result.First();
+            var aboveEntryPoint = new Point4Dmm(entryPoint.U, entryPoint.V + marginC2, entryPoint.X, entryPoint.Y + marginC2);
+            var belowEntryPoint = new Point4Dmm(entryPoint.U, entryPoint.V + belowCutMargin, entryPoint.X, entryPoint.Y + belowCutMargin);
+            var syncEntryPoint = new Point4Dmm(entryPoint.U + syncMarginC1, entryPoint.V, entryPoint.X + syncMarginC1, entryPoint.Y);
+            var aboveSyncEntryPoint = new Point4Dmm(syncEntryPoint.U, syncEntryPoint.V + marginC2, syncEntryPoint.X, syncEntryPoint.Y + marginC2);
+
+            result.Insert(0, syncEntryPoint);
+            result.Add(syncEntryPoint);
+            result.Add(aboveSyncEntryPoint);
+            result.Add(aboveEntryPoint);
+            result.Add(belowEntryPoint);
+            result.Add(syncEntryPoint);
+
+            return result;
+        }
+
+        private IEnumerable<Point4Dmm> templatedCutPoints()
+        {
+            //find top/bottom templates
+            var definitionPoints = TransformedShapeDefinition.ToArray();
+            definitionPoints = addHorizontalKerf(definitionPoints).ToArray();
+
+            double minHorizontalCoord, maxHorizontalCoord, minVerticalCoord;
+            int minHorizontalIndex, maxHorizontalIndex, minVerticalIndex;
+            findBoxPoints(definitionPoints, out minHorizontalCoord, out maxHorizontalCoord, out minVerticalCoord, out minHorizontalIndex, out maxHorizontalIndex, out minVerticalIndex);
+
+            var templateMinMax = new List<Point4Dmm>();
+            var templateMaxMin = new List<Point4Dmm>();
+            var isMinMax = true;
+
+            for (var i = minHorizontalIndex; i < minHorizontalIndex + definitionPoints.Length; ++i)
+            {
+                var pointIndex = i % definitionPoints.Length;
+                var point = definitionPoints[pointIndex];
+
+                if (isMinMax)
+                    //first template points
+                    templateMinMax.Add(point);
+
+                if (pointIndex == maxHorizontalIndex)
+                    isMinMax = false;
+
+                if (!isMinMax)
+                    //second template points
+                    templateMaxMin.Add(point);
+            }
+
+            //distinguish which template is top, and which bottom
+            var isMinMaxTop = minHorizontalIndex > minVerticalIndex && minVerticalIndex < maxHorizontalIndex;
+            if (minHorizontalIndex == minVerticalIndex || maxHorizontalIndex == minVerticalIndex)
+                throw new NotImplementedException("Degenerated shape, probably not good for templated cut");
+
+
+            templateMaxMin.Reverse();// the template was drawn in the opposite direction
+
+            var topTemplate = isMinMaxTop ? templateMinMax : templateMaxMin;
+            var bottomTemplate = isMinMaxTop ? templateMaxMin : templateMinMax;
+
+            //define template scaffold points
+            var startPoint = topTemplate.First();
+            var endPoint = topTemplate.Last();
+
+            var margin = 30;
+            var marginTop = 55;
+            var syncMargin = 5;
+            var topLineC2 = minVerticalCoord - marginTop; //TODO load from shape settings
+            var entryC1 = minHorizontalCoord - margin; //TODO load from shape settings
+            var finishC1 = maxHorizontalCoord + margin; //TODO load from shape settings
+
+            var entryScaffoldPoint = new Point4Dmm(entryC1, startPoint.V, entryC1, startPoint.Y);
+            var syncEntryScaffoldPoint = new Point4Dmm(startPoint.U - syncMargin, startPoint.V, startPoint.X - syncMargin, startPoint.Y);
+            var aboveEntryScaffoldPoint = new Point4Dmm(entryC1, topLineC2, entryC1, topLineC2);
+
+            var finishScaffoldPoint = new Point4Dmm(finishC1, endPoint.V, finishC1, endPoint.Y);
+            var syncFinishScaffoldPoint = new Point4Dmm(endPoint.U + syncMargin, endPoint.V, endPoint.X + syncMargin, endPoint.Y);
+            var aboveFinishScaffoldPoint = new Point4Dmm(finishC1, topLineC2, finishC1, topLineC2);
+
+            //construct the cut
+            var points = new List<Point4Dmm>();
+
+            //bottom template first
+            points.Add(entryScaffoldPoint);
+            points.Add(syncEntryScaffoldPoint);
+            points.AddRange(bottomTemplate);
+            points.Add(syncFinishScaffoldPoint);
+            points.Add(finishScaffoldPoint);
+            points.Add(aboveFinishScaffoldPoint);
+            points.Add(aboveEntryScaffoldPoint);
+            points.Add(entryScaffoldPoint);
+            points.Add(syncEntryScaffoldPoint);
+
+            //top template cut
+            points.AddRange(topTemplate);
+            points.Add(syncFinishScaffoldPoint);
+            points.Add(finishScaffoldPoint);
+            points.Add(aboveFinishScaffoldPoint);
+            points.Add(aboveEntryScaffoldPoint);
+            points.Add(entryScaffoldPoint);
+
+            //entry point at the end is implicit (shape is closed)
+            return points;
+        }
+
+        private static void findBoxPoints(Point4Dmm[] definitionPoints, out double minHorizontalCoord, out double maxHorizontalCoord, out double minVerticalCoord, out int minHorizontalIndex, out int maxHorizontalIndex, out int minVerticalIndex)
+        {
+            minHorizontalCoord = double.PositiveInfinity;
+            maxHorizontalCoord = double.NegativeInfinity;
+            minVerticalCoord = double.PositiveInfinity;
+            minHorizontalIndex = -1;
+            maxHorizontalIndex = -1;
+            minVerticalIndex = -1;
+            for (var i = 0; i < definitionPoints.Length; ++i)
+            {
+                var point = definitionPoints[i];
+
+                var currMaxHorizontal = Math.Max(point.U, point.X);
+                var currMinHorizontal = Math.Min(point.U, point.X);
+                var currMinVertical = Math.Min(point.V, point.Y);
+
+                if (currMaxHorizontal > maxHorizontalCoord)
+                {
+                    maxHorizontalIndex = i;
+                    maxHorizontalCoord = currMaxHorizontal;
+                }
+
+                if (currMinHorizontal < minHorizontalCoord)
+                {
+                    minHorizontalIndex = i;
+                    minHorizontalCoord = currMinHorizontal;
+                }
+
+                if (currMinVertical < minVerticalCoord)
+                {
+                    minVerticalIndex = i;
+                    minVerticalCoord = currMinVertical;
+                }
+            }
+        }
+
         private Tuple<Speed, Speed> getSpeeds(Point4Dmm[] points, int currentIndex, Speed facetSpeed, PlaneProjector projector)
         {
             var currentPoint = points[currentIndex % points.Length];
@@ -207,6 +435,9 @@ namespace ControllerCNC.GUI
             getFacetVectors(currentPoint, nextPoint, out var facetUV, out var facetXY);
 
             var facetSpeedConverted = 1.0 * facetSpeed.StepCount / facetSpeed.Ticks;
+
+            if (facetUV.Length == 0 && facetXY.Length == 0)
+                return Tuple.Create(facetSpeed, facetSpeed);
 
             double ratio;
             switch (SpeedAlgorithm)

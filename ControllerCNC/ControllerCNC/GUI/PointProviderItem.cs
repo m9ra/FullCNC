@@ -31,6 +31,11 @@ namespace ControllerCNC.GUI
         internal abstract IEnumerable<Point4Dstep> CutPoints { get; }
 
         /// <summary>
+        /// Determine whether flexible etrance is allowed.
+        /// </summary>
+        internal virtual bool AllowFlexibleEntrance => true;
+
+        /// <summary>
         /// Builds cutting plan for the item and all joined items recursively.
         /// Build assumes we are at item join point. Closed shapes has to return back to that point.
         /// </summary>
