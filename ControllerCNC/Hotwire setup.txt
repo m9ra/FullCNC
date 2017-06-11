@@ -1,4 +1,7 @@
-pink XPS - 14V 0.417mms 1:2 XY clip - kerf 0.7mm vs 0.55mm
+Supergee - střed 14V 0.417mm/s kerf 0.5mm and 0.55mm
+Supergee - ucho 14V 0.508mm/s  kerf 0.8mm and 0.5mm
+
+pink XPS - 14V 0.417mm/s 1:2 XY clip - kerf 0.7mm vs 0.55mm
 white polystyren - 15.5 1.0kerf (too much kerf, slow edges overheated)
 pink XPS - 15.5V 1mm/s 0.4kerf
 pink XPS - 17.5V 1mm/s (no weight drag test)

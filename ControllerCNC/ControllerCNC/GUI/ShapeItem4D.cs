@@ -238,6 +238,7 @@ namespace ControllerCNC.GUI
                 var currentPoint = cutPoints[currentIndex];
 
                 var speeds = getSpeeds(definitionPoints, currentIndex, cuttingSpeed, projector);
+                //System.Diagnostics.Debug.Print(speeds.ToString());
                 if (speeds.Item1.ToDeltaT() < Constants.StartDeltaT || speeds.Item2.ToDeltaT() < Constants.StartDeltaT)
                     throw new PlanningException("Speed limit exceeded");
 
@@ -436,7 +437,8 @@ namespace ControllerCNC.GUI
 
             var facetSpeedConverted = 1.0 * facetSpeed.StepCount / facetSpeed.Ticks;
 
-            if (facetUV.Length == 0 && facetXY.Length == 0)
+            if (facetUV.Length <= Constants.MilimetersPerStep && facetXY.Length <= Constants.MilimetersPerStep)
+                //TODO  this accounts for numerical instability
                 return Tuple.Create(facetSpeed, facetSpeed);
 
             double ratio;

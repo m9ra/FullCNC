@@ -78,6 +78,9 @@
     </Compile>
     <Compile Include="GUI\ShapeItem2D.cs" />
     <Compile Include="GUI\ShapeItem4D.cs" />
+    <Compile Include="GUI\CenterCutPanelDialog.xaml.cs">
+      <DependentUpon>CenterCutPanelDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="GUI\WorkspaceItem.cs" />
     <Compile Include="GUI\WorkspacePanel.cs" />
     <Compile Include="Loading\Loaders\Cor4dLoader.cs" />
@@ -138,6 +141,10 @@
     <Compile Include="Simulation\CncSimulator.cs" />
     <Compile Include="SpeedController.cs" />
     <Page Include="GUI\PointProviderPropertiesDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="GUI\CenterCutPanelDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>

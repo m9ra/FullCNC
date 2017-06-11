@@ -1,0 +1,23 @@
+﻿<Window x:Class="ControllerCNC.GUI.CenterCutPanelDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Center cut panel dialog" Width="250" Height="300" WindowStyle="ToolWindow" Background="LightBlue">
+
+
+    <Viewbox Stretch="Uniform">
+        <Grid Name="LayoutGrid" Width="250" Height="300">
+            <StackPanel Background="LightBlue">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock FontSize="20" Margin="10">Elevation [mm]:</TextBlock>
+                    <TextBox Name="Elevation" FontSize="20" Width="60" Margin="10">50</TextBox>
+                </StackPanel>
+
+                <Button Margin="10" FontSize="20" Name="SetPositive">Go to positive elev.</Button>
+                <Button Margin="10" FontSize="20" Name="SetZero">Go to zero elev.</Button>
+                <Button Margin="10" FontSize="20" Name="SetNegative">Go to negative elev.</Button>
+                <Button Margin="10" FontSize="20" Name="Up">UP</Button>
+                <Button Margin="10" FontSize="20" Name="Down">DOWN</Button>
+            </StackPanel>
+        </Grid>
+    </Viewbox>
+</Window>

@@ -37,7 +37,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Distance betwee UV XY towers in mm when fully expanded.
         /// </summary>
-        public static readonly double FullWireLength = 600;
+        public static readonly double FullWireLength = 605;
 
         /// <summary>
         /// Maximal safe acceleration in steps/s^2.

@@ -44,16 +44,17 @@ namespace ControllerCNC
             "Scaffolding"
         };
 
+        internal readonly Coord2DController CoordController;
+
+        internal WorkspacePanel Workspace;
+
+        internal readonly DriverCNC Cnc;
 
         private static string _autosaveFile = "workspace_autosave.cwspc";
 
         private string _workspaceFile;
 
         private readonly ShapeFactory _factory;
-
-        private readonly DriverCNC _cnc;
-
-        private readonly Coord2DController _coordController;
 
         private readonly HashSet<Control> _motionCommands = new HashSet<Control>();
 
@@ -66,8 +67,6 @@ namespace ControllerCNC
         private readonly DispatcherTimer _autosaveTime = new DispatcherTimer();
 
         private readonly int _messageShowDelay = 3000;
-
-        private WorkspacePanel _workspace;
 
         private int _lastRemainingSeconds = 0;
 
@@ -104,13 +103,13 @@ namespace ControllerCNC
             _motionCommands.Add(StartPlan);
             _motionCommands.Add(CuttingDeltaT);
 
-            _cnc = new DriverCNC();
-            _cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
-            _cnc.OnHomingEnded += () => Dispatcher.Invoke(enableMotionCommands);
+            Cnc = new DriverCNC();
+            Cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
+            Cnc.OnHomingEnded += () => Dispatcher.Invoke(enableMotionCommands);
 
-            _cnc.Initialize();
+            Cnc.Initialize();
 
-            _coordController = new Coord2DController(_cnc);
+            CoordController = new Coord2DController(Cnc);
 
             _messageTimer.Interval = TimeSpan.FromMilliseconds(_messageShowDelay);
             _messageTimer.IsEnabled = false;
@@ -124,6 +123,7 @@ namespace ControllerCNC
 
             KeyUp += keyUp;
             KeyDown += keyDown;
+            ContextMenu = createWorkspaceMenu();
 
             resetWorkspace(true);
 
@@ -141,7 +141,7 @@ namespace ControllerCNC
 
         internal ReadableIdentifier UnusedVersion(ReadableIdentifier identifier)
         {
-            return _workspace.UnusedVersion(identifier);
+            return Workspace.UnusedVersion(identifier);
         }
 
         #endregion
@@ -190,24 +190,24 @@ namespace ControllerCNC
         private void resetWorkspace(bool withReload)
         {
             _workspaceFile = _autosaveFile;
-            if (_workspace != null)
+            if (Workspace != null)
             {
                 _autosaveTime.IsEnabled = false;
             }
 
-            _workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
-            WorkspaceSlot.Child = _workspace;
+            Workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
+            WorkspaceSlot.Child = Workspace;
             if (withReload)
             {
                 reloadWorkspace();
             }
 
-            _workspace.OnWorkItemListChanged += refreshItemList;
-            _workspace.OnSettingsChanged += onSettingsChanged;
-            _workspace.OnWorkItemClicked += onItemClicked;
-            CuttingDeltaT.Value = _workspace.CuttingSpeed.ToDeltaT();
-            WireLength.Text = _workspace.WireLength.ToString();
-            CuttingKerf.Text = _workspace.CuttingKerf.ToString();
+            Workspace.OnWorkItemListChanged += refreshItemList;
+            Workspace.OnSettingsChanged += onSettingsChanged;
+            Workspace.OnWorkItemClicked += onItemClicked;
+            CuttingDeltaT.Value = Workspace.CuttingSpeed.ToDeltaT();
+            WireLength.Text = Workspace.WireLength.ToString();
+            CuttingKerf.Text = Workspace.CuttingKerf.ToString();
 
             refreshItemList();
             onSettingsChanged();
@@ -220,7 +220,7 @@ namespace ControllerCNC
 
             try
             {
-                _workspace.LoadFrom(_workspaceFile);
+                Workspace.LoadFrom(_workspaceFile);
             }
             catch (Exception ex) when (
                     ex is System.Reflection.TargetInvocationException ||
@@ -273,7 +273,7 @@ namespace ControllerCNC
                 return;
             }
 
-            _workspace.SetJoin(_joinItemCandidate, pointProvider);
+            Workspace.SetJoin(_joinItemCandidate, pointProvider);
             _joinItemCandidate = pointProvider;
         }
 
@@ -288,20 +288,37 @@ namespace ControllerCNC
         {
             WorkItemList.Items.Clear();
 
-            foreach (var child in _workspace.Children)
+            foreach (var child in Workspace.Children)
             {
                 var workItem = child as WorkspaceItem;
                 if (workItem == null)
                     continue;
 
                 var item = createListItem(workItem);
-                foreach (var join in _workspace.GetIncomingJoins(workItem))
+                foreach (var join in Workspace.GetIncomingJoins(workItem))
                 {
                     var joinItem = createListItem(join);
                     WorkItemList.Items.Add(joinItem);
                 }
                 WorkItemList.Items.Add(item);
             }
+        }
+
+        private ContextMenu createWorkspaceMenu()
+        {
+            var menu = new ContextMenu();
+
+            var centerCutPanel = new MenuItem();
+            centerCutPanel.Header = "Center cut panel";
+            centerCutPanel.Click += (e, s) =>
+            {
+                var dialog = new CenterCutPanelDialog(this);
+                dialog.ShowDialog();
+            };
+
+            menu.Items.Add(centerCutPanel);
+
+            return menu;
         }
 
         private ListBoxItem createListItem(ItemJoin join)
@@ -317,7 +334,7 @@ namespace ControllerCNC
             refreshItem.Header = "Refresh";
             refreshItem.Click += (e, s) =>
             {
-                _workspace.SetJoin(join.Item1, join.Item2);
+                Workspace.SetJoin(join.Item1, join.Item2);
             };
             menu.Items.Add(refreshItem);
 
@@ -325,7 +342,7 @@ namespace ControllerCNC
             deleteItem.Header = "Delete";
             deleteItem.Click += (e, s) =>
             {
-                _workspace.RemoveJoin(join);
+                Workspace.RemoveJoin(join);
             };
             menu.Items.Add(deleteItem);
 
@@ -349,7 +366,7 @@ namespace ControllerCNC
                 copyItem.Header = "Copy";
                 copyItem.Click += (e, s) =>
                 {
-                    _workspace.Children.Add(shapeItem.Clone(_workspace.UnusedVersion(shapeItem.Name)));
+                    Workspace.Children.Add(shapeItem.Clone(Workspace.UnusedVersion(shapeItem.Name)));
                 };
                 menu.Items.Add(copyItem);
 
@@ -357,7 +374,7 @@ namespace ControllerCNC
                 deleteItem.Header = "Delete";
                 deleteItem.Click += (e, s) =>
                 {
-                    _workspace.Children.Remove(shapeItem);
+                    Workspace.Children.Remove(shapeItem);
                 };
                 menu.Items.Add(deleteItem);
 
@@ -391,14 +408,14 @@ namespace ControllerCNC
                     var join = item.Tag as ItemJoin;
                     if (join != null)
                     {
-                        _workspace.RemoveJoin(join);
+                        Workspace.RemoveJoin(join);
                     }
 
                     var workItem = item.Tag as WorkspaceItem;
                     if (workItem == null || workItem is EntryPoint)
                         continue;
 
-                    _workspace.Children.Remove(workItem);
+                    Workspace.Children.Remove(workItem);
                 }
             }
 
@@ -416,7 +433,7 @@ namespace ControllerCNC
         void _autosaveTime_Tick(object sender, EventArgs e)
         {
             _autosaveTime.IsEnabled = false;
-            _workspace.SaveTo(_workspaceFile);
+            Workspace.SaveTo(_workspaceFile);
         }
 
         #endregion
@@ -425,7 +442,7 @@ namespace ControllerCNC
 
         private void refreshConnectionStatus()
         {
-            if (_cnc.IsConnected)
+            if (Cnc.IsConnected)
             {
                 ConnectionStatus.Text = "Online";
                 ConnectionStatus.Background = Brushes.Green;
@@ -440,10 +457,10 @@ namespace ControllerCNC
 
         void _statusTimer_Tick(object sender, EventArgs e)
         {
-            var currentU = _cnc.EstimationU;
-            var currentV = _cnc.EstimationV;
-            var currentX = _cnc.EstimationX;
-            var currentY = _cnc.EstimationY;
+            var currentU = Cnc.EstimationU;
+            var currentV = Cnc.EstimationV;
+            var currentX = Cnc.EstimationX;
+            var currentY = Cnc.EstimationY;
             var positionU = Constants.MilimetersPerStep * (currentU - _positionOffsetU);
             var positionV = Constants.MilimetersPerStep * (currentV - _positionOffsetV);
             var positionX = Constants.MilimetersPerStep * (currentX - _positionOffsetX);
@@ -462,12 +479,12 @@ namespace ControllerCNC
             var uv = new Point2Dmm(positionU, positionV);
             var xy = new Point2Dmm(positionX, positionY);
 
-            _workspace.HeadUV.Position = uv;
-            _workspace.HeadXY.Position = xy;
+            Workspace.HeadUV.Position = uv;
+            Workspace.HeadXY.Position = xy;
 
             if (_isPlanRunning)
             {
-                var remainingTicks = _cnc.PlannedState.TickCount - _cnc.EstimationTicks;
+                var remainingTicks = Cnc.PlannedState.TickCount - Cnc.EstimationTicks;
                 var remainingSeconds = (int)(remainingTicks / Constants.TimerFrequency);
                 if (_lastRemainingSeconds > remainingSeconds || Math.Abs(_lastRemainingSeconds - remainingSeconds) > 2)
                 {
@@ -482,7 +499,7 @@ namespace ControllerCNC
                 }
             }
 
-            if (_cnc.CompletedState.IsHomeCalibrated)
+            if (Cnc.CompletedState.IsHomeCalibrated)
             {
                 Calibration.Foreground = Brushes.Black;
             }
@@ -507,19 +524,19 @@ namespace ControllerCNC
 
         private void executePlan()
         {
-            if (!_cnc.IsHomeCalibrated)
+            if (!Cnc.IsHomeCalibrated)
             {
                 ShowError("Calibration is required!");
                 return;
             }
 
             disableMotionCommands();
-            _workspace.DisableChanges();
+            Workspace.DisableChanges();
 
             var builder = new PlanBuilder();
-            var point = _workspace.EntryPoint;
+            var point = Workspace.EntryPoint;
 
-            var state = _cnc.PlannedState;
+            var state = Cnc.PlannedState;
             var initU = point.PositionC1 - state.U;
             var initV = point.PositionC2 - state.V;
             var initX = point.PositionC1 - state.X;
@@ -529,7 +546,7 @@ namespace ControllerCNC
             builder.AddRampedLineUVXY(initU, initV, initX, initY, Constants.MaxPlaneAcceleration, getTransitionSpeed());
             try
             {
-                _workspace.BuildPlan(builder);
+                Workspace.BuildPlan(builder);
             }
             catch (PlanningException ex)
             {
@@ -541,14 +558,14 @@ namespace ControllerCNC
 
             var plan = builder.Build();
 
-            if (!_cnc.SEND(plan))
+            if (!Cnc.SEND(plan))
             {
                 planCompleted();
                 ShowError("Plan overflows the workspace!");
                 return;
             }
 
-            _cnc.OnInstructionQueueIsComplete += planCompleted;
+            Cnc.OnInstructionQueueIsComplete += planCompleted;
             _planStart = DateTime.Now;
             _isPlanRunning = true;
 
@@ -560,8 +577,8 @@ namespace ControllerCNC
         {
             _isPlanRunning = false;
             _lastRemainingSeconds = 0;
-            _cnc.OnInstructionQueueIsComplete -= planCompleted;
-            _workspace.EnableChanges();
+            Cnc.OnInstructionQueueIsComplete -= planCompleted;
+            Workspace.EnableChanges();
             enableMotionCommands();
         }
 
@@ -604,7 +621,7 @@ namespace ControllerCNC
             initializeTransitionHandlers(BottomRightB, 1, 1);
 
             HoldMovement.Unchecked += (s, e) => setTransition(null, 0, 0);
-            CuttingDeltaT.Value = _workspace.CuttingSpeed.ToDeltaT();
+            CuttingDeltaT.Value = Workspace.CuttingSpeed.ToDeltaT();
             MoveByCuttingSpeed.Checked += (s, e) => refreshTransitionSpeed();
             MoveByCuttingSpeed.Unchecked += (s, e) => refreshTransitionSpeed();
             refreshTransitionSpeed();
@@ -642,23 +659,24 @@ namespace ControllerCNC
                 buttonToDisable.IsChecked = false;
             }
 
-            _coordController.SetPlanes(MoveUV.IsChecked.Value, MoveXY.IsChecked.Value);
-            _coordController.SetMovement(dirX, dirY);
+            refreshTransitionSpeed();
+            CoordController.SetPlanes(MoveUV.IsChecked.Value, MoveXY.IsChecked.Value);
+            CoordController.SetMovement(dirX, dirY);
         }
 
         private void refreshTransitionSpeed()
         {
-            if (_coordController == null)
+            if (CoordController == null)
                 return;
 
-            _coordController.SetSpeed(getTransitionSpeed().ToDeltaT());
+            CoordController.SetSpeed(getTransitionSpeed().ToDeltaT());
         }
 
         private Speed getTransitionSpeed()
         {
             if (MoveByCuttingSpeed.IsChecked.Value)
             {
-                return _workspace.CuttingSpeed;
+                return Workspace.CuttingSpeed;
             }
             else
             {
@@ -673,24 +691,24 @@ namespace ControllerCNC
 
         private void AlignHeads_Click(object sender, RoutedEventArgs e)
         {
-            var state = _cnc.PlannedState;
+            var state = Cnc.PlannedState;
             var xSteps = state.X - state.U;
             var ySteps = state.Y - state.V;
 
             var builder = new PlanBuilder();
             builder.AddRampedLineXY(-xSteps, -ySteps, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
-            _cnc.SEND(builder.Build());
+            Cnc.SEND(builder.Build());
         }
 
         private void CalibrationButton_Click(object sender, RoutedEventArgs e)
         {
             disableMotionCommands();
-            _cnc.SEND(new HomingInstruction());
+            Cnc.SEND(new HomingInstruction());
         }
 
         private void ResetCoordinates_Click(object sender, RoutedEventArgs e)
         {
-            var state = _cnc.CompletedState;
+            var state = Cnc.CompletedState;
             _positionOffsetU = state.U;
             _positionOffsetV = state.V;
             _positionOffsetX = state.X;
@@ -699,7 +717,7 @@ namespace ControllerCNC
 
         private void GoToZeros_Click(object sender, RoutedEventArgs e)
         {
-            var state = _cnc.PlannedState;
+            var state = Cnc.PlannedState;
             var stepsU = _positionOffsetU - state.U;
             var stepsV = _positionOffsetV - state.V;
             var stepsX = _positionOffsetX - state.X;
@@ -707,7 +725,7 @@ namespace ControllerCNC
 
             var planner = new PlanBuilder();
             planner.AddRampedLineUVXY(stepsU, stepsV, stepsX, stepsY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
-            _cnc.SEND(planner.Build());
+            Cnc.SEND(planner.Build());
         }
 
         private void StartPlan_Click(object sender, RoutedEventArgs e)
@@ -725,13 +743,13 @@ namespace ControllerCNC
                 var filename = dlg.FileName;
                 var shape = _factory.Load(filename);
                 if (shape != null)
-                    _workspace.Children.Add(shape);
+                    Workspace.Children.Add(shape);
             }
         }
 
         private void RefreshJoins_Click(object sender, RoutedEventArgs e)
         {
-            _workspace.RefreshJoins();
+            Workspace.RefreshJoins();
         }
 
         private void setMode(WorkspaceMode mode)
@@ -770,10 +788,10 @@ namespace ControllerCNC
                     _addJoinsEnabled = true;
                     _joinItemCandidate = null;
 
-                    _workspace.ScaffoldModeEnabled = false;
+                    Workspace.ScaffoldModeEnabled = false;
                     break;
                 case WorkspaceMode.ScaffoldMode:
-                    _workspace.ScaffoldModeEnabled = true;
+                    Workspace.ScaffoldModeEnabled = true;
 
                     _addJoinsEnabled = false;
                     _joinItemCandidate = null;
@@ -792,7 +810,7 @@ namespace ControllerCNC
             if (_joinItemCandidate != null)
                 _joinItemCandidate.IsHighlighted = false;
             _joinItemCandidate = null;
-            _workspace.ScaffoldModeEnabled = false;
+            Workspace.ScaffoldModeEnabled = false;
 
             var nextMode = (int)(_currentMode + 1);
             if (nextMode >= (int)WorkspaceMode.LastMode)
@@ -815,8 +833,8 @@ namespace ControllerCNC
             var deltaT = (int)Math.Round(CuttingDeltaT.Value);
             refreshTransitionSpeed();
 
-            if (_workspace != null)
-                _workspace.CuttingSpeed = Speed.FromDeltaT(deltaT);
+            if (Workspace != null)
+                Workspace.CuttingSpeed = Speed.FromDeltaT(deltaT);
 
             var speed = Constants.MilimetersPerStep * Constants.TimerFrequency / deltaT;
             CuttingSpeed.Text = string.Format("{0:0.000}mm/s", speed);
@@ -826,8 +844,8 @@ namespace ControllerCNC
         {
             double kerf;
             double.TryParse(CuttingKerf.Text, out kerf);
-            if (_workspace != null)
-                _workspace.CuttingKerf = kerf;
+            if (Workspace != null)
+                Workspace.CuttingKerf = kerf;
         }
 
         private void WireLength_TextChanged(object sender, TextChangedEventArgs e)
@@ -835,8 +853,8 @@ namespace ControllerCNC
             double length;
             double.TryParse(WireLength.Text, out length);
 
-            if (_workspace != null)
-                _workspace.WireLength = length;
+            if (Workspace != null)
+                Workspace.WireLength = length;
         }
 
         private void LoadPlan_Click(object sender, RoutedEventArgs e)
@@ -857,7 +875,7 @@ namespace ControllerCNC
             if (dlg.ShowDialog() == true)
             {
                 _workspaceFile = dlg.FileName;
-                _workspace.SaveTo(_workspaceFile);
+                Workspace.SaveTo(_workspaceFile);
             }
         }
 
