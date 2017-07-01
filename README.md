@@ -13,10 +13,10 @@ A workspace overview. 4D wing aerofoils + a wing tip can be seen here.
 ![Screenshot](/ControllerCNC/Screenshots/cnc_wing_workspace.png?raw=true "A workspace overview. 4D wing aerofoils + wing tip can be seen here.")
 
 4D shapes can be designed directly through the GUI and viewed in 3D with free rotation and zooming.
-![Screenshot](/ControllerCNC/Screenshots/complex_4d_shapes.png?raw=true "4D shapes can be designed directly through the GUI and viewed in 3D with free rotation and zooming.")
+![Screenshot](/ControllerCNC/Screenshots/cnc_3d_editor.png?raw=true "4D shapes can be designed directly through the GUI and viewed in 3D with free rotation and zooming.")
 
 The workspace is synchronized with the machine, showing actuall head positions and remaining cutting time.
-![Screenshot](/ControllerCNC/Screenshots/cnc_wing_workspace.png?raw=true "The workspace is synchronized with the machine, showing actuall head positions and remaining cutting time.")
+![Screenshot](/ControllerCNC/Screenshots/complex_4d_shapes.png?raw=true "The workspace is synchronized with the machine, showing actuall head positions and remaining cutting time.")
 
 The GUI provides cutting coordinates interpolation from images, which makes producing of complex shapes very simple (no CAD editors required).
 ![Screenshot](/ControllerCNC/Screenshots/image_interpolation.png?raw=true "The GUI provides cutting coordinates interpolation from images, which makes producing of complex shapes very simple (no CAD editors required).")
