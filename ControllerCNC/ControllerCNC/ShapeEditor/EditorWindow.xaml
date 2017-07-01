@@ -24,7 +24,7 @@
                         </Button>
 
                         <Button Height="50" FontSize="30" Name="Binding" Click="Binding_Click">
-                            Bind Proport.
+                            Show 3D plot
                         </Button>
 
                         <TextBlock FontSize="30" FontWeight="Bold">Thickness</TextBlock>

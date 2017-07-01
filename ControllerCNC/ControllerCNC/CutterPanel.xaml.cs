@@ -246,6 +246,10 @@ namespace ControllerCNC
                     File.Move(_autosaveFile, backupFile);
                 }
             }
+
+            CuttingDeltaT.Value = Workspace.CuttingSpeed.ToDeltaT();
+            WireLength.Text = Workspace.WireLength.ToString();
+            CuttingKerf.Text = Workspace.CuttingKerf.ToString();
         }
 
         private void onItemClicked(WorkspaceItem item)

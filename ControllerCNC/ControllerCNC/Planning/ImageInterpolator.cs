@@ -18,7 +18,7 @@ namespace ControllerCNC.Planning
     {
         private BitmapMash _mash;
 
-        internal readonly double ShrinkThreshold = 0.55;
+        internal readonly double ShrinkThreshold = 0.85;
 
         public ImageInterpolator(string filename)
         {

@@ -365,16 +365,16 @@ namespace ControllerCNC.ShapeEditor
         {
             if (Facet1Pane != null)
             {
-                Facet1Width.Text = Facet1Pane.MetricWidth.ToString();
-                Facet1Height.Text = Facet1Pane.MetricHeight.ToString();
-                Facet1Left.Text = Facet1Pane.MetricShiftX.ToString();
-                Facet1Top.Text = Facet1Pane.MetricShiftY.ToString();
+                Facet1Width.Text = Facet1Pane.MetricWidth.ToString("0.000");
+                Facet1Height.Text = Facet1Pane.MetricHeight.ToString("0.000");
+                Facet1Left.Text = Facet1Pane.MetricShiftX.ToString("0.000");
+                Facet1Top.Text = Facet1Pane.MetricShiftY.ToString("0.000");
             }
 
             if (Facet2Pane != null)
             {
-                Facet2Width.Text = Facet2Pane.MetricWidth.ToString();
-                Facet2Height.Text = Facet2Pane.MetricHeight.ToString();
+                Facet2Width.Text = Facet2Pane.MetricWidth.ToString("0.000");
+                Facet2Height.Text = Facet2Pane.MetricHeight.ToString("0.000");
             }
 
             if (Facet1Pane != null && Facet2Pane != null)
@@ -383,7 +383,7 @@ namespace ControllerCNC.ShapeEditor
             if (ShapeThickness != null)
                 ShapeThickness.Text = _shapeThickness.ToString();
         }
-
+        
         #endregion
 
         private void Facet1Top_TextChanged(object sender, TextChangedEventArgs e)

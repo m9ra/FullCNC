@@ -628,7 +628,8 @@ namespace ControllerCNC.Machine
                 //TODO the device might be something different we expect
                 return ports[0];
 
-            throw new NotImplementedException("Disambiguate ports");
+            return "COM10";
+            //TODO throw new NotImplementedException("Disambiguate ports");
         }
 
         private IEnumerable<byte> readData(SerialPort port)
