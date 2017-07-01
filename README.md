@@ -9,7 +9,7 @@ An old version of the machine in action can be seen on [Youtube](https://www.you
 ## Screenshots
 In this section some of the interesting GUI features are presented.
 
-A workspace overview. 4D wing aerofoils + wing tip can be seen here.
+A workspace overview. 4D wing aerofoils + a wing tip can be seen here.
 ![Screenshot](/ControllerCNC/Screenshots/cnc_wing_workspace.png?raw=true "A workspace overview. 4D wing aerofoils + wing tip can be seen here.")
 
 4D shapes can be designed directly through the GUI and viewed in 3D with free rotation and zooming.
@@ -18,8 +18,8 @@ A workspace overview. 4D wing aerofoils + wing tip can be seen here.
 The workspace is synchronized with the machine, showing actuall head positions and remaining cutting time.
 ![Screenshot](/ControllerCNC/Screenshots/cnc_wing_workspace.png?raw=true "The workspace is synchronized with the machine, showing actuall head positions and remaining cutting time.")
 
-The GUI provides cutting coordinates interpolation from images, making simple to produce complex shapes without CAD editors.
-![Screenshot](/ControllerCNC/Screenshots/image_interpolation.png?raw=true "The GUI provides cutting coordinates interpolation from images, making simple to produce complex shapes without CAD editors.")
+The GUI provides cutting coordinates interpolation from images, which makes producing of complex shapes very simple (no CAD editors required).
+![Screenshot](/ControllerCNC/Screenshots/image_interpolation.png?raw=true "The GUI provides cutting coordinates interpolation from images, which makes producing of complex shapes very simple (no CAD editors required).")
 
-Drag&drop makes it easy to layout multiple shapes witihn a single cutting plan. The scaffold drawing is a useful feature for targeting the shapes' positions into small blocks of foam.
-![Screenshot](/ControllerCNC/Screenshots/complex_workspace_layout.png?raw=true "Drag&drop makes it easy to layout multiple shapes witihn a single cutting plan. The scaffold drawing is a useful feature for targeting the shapes' positions into small blocks of foam.")
+Drag&drop makes it easy to layout multiple shapes within a single cutting plan. The scaffold drawing is a useful feature for targeting the shapes' positions into small blocks of foam.
+![Screenshot](/ControllerCNC/Screenshots/complex_workspace_layout.png?raw=true "Drag&drop makes it easy to layout multiple shapes within a single cutting plan. The scaffold drawing is a useful feature for targeting the shapes' positions into small blocks of foam.")
