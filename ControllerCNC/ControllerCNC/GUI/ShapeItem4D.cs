@@ -239,7 +239,10 @@ namespace ControllerCNC.GUI
 
                 var speeds = getSpeeds(definitionPoints, currentIndex, cuttingSpeed, projector);
                 //System.Diagnostics.Debug.Print(speeds.ToString());
-                if (speeds.Item1.ToDeltaT() < Constants.StartDeltaT || speeds.Item2.ToDeltaT() < Constants.StartDeltaT)
+                var speed1Limit = speeds.Item1.ToDeltaT() >= Constants.StartDeltaT || speeds.Item1.ToDeltaT() < 0;
+                var speed2Limit = speeds.Item2.ToDeltaT() >= Constants.StartDeltaT || speeds.Item2.ToDeltaT() < 0;
+
+                if (!speed1Limit || !speed2Limit)
                     throw new PlanningException("Speed limit exceeded");
 
                 speedPoints.Add(currentPoint.With(speeds.Item1, speeds.Item2));
@@ -466,9 +469,12 @@ namespace ControllerCNC.GUI
 
             var speedFactor = Constants.TimerFrequency;
 
+            var uvSpeed = speedUV.Length * speedFactor;
+            var xySpeed = speedXY.Length * speedFactor;
+
             return Tuple.Create(
-                new Speed((long)(speedUV.Length * speedFactor), speedFactor),
-                new Speed((long)(speedXY.Length * speedFactor), speedFactor)
+                new Speed((long)(uvSpeed), speedFactor),
+                new Speed((long)(xySpeed), speedFactor)
                 );
         }
 

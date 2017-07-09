@@ -386,15 +386,23 @@ namespace ControllerCNC.GUI
             RotationAngle = desiredAngle;
             initialize();
 
+            _isClockwise = arePointsClockwise(_shapeDefinition);
+        }
+
+        private bool arePointsClockwise(IEnumerable<Point4Dmm> definition)
+        {
+            var points = definition.ToArray();
+
             var wSum = 0.0;
-            for (var i = 1; i < _shapeDefinition.Length; ++i)
+            for (var i = 1; i < points.Length; ++i)
             {
-                var x1 = _shapeDefinition[i - 1];
-                var x2 = _shapeDefinition[i];
+                var x1 = points[i - 1];
+                var x2 = points[i];
 
                 wSum += (x2.U - x1.U) * (x2.V + x1.V);
             }
-            _isClockwise = wSum < 0;
+            var isClockwise = wSum < 0;
+            return isClockwise;
         }
 
         protected IEnumerable<Point4Dmm> definitionTransformation(IEnumerable<Point4Dmm> points)
@@ -563,18 +571,7 @@ namespace ControllerCNC.GUI
 
         protected double reCalculateKerf(double kerf)
         {
-            if (MetricWidth > MetricHeight)
-            {
-                var ratio = (_shapeMaxC1 - _shapeMinC1) / MetricWidth;
-                kerf *= ratio;
-            }
-            else
-            {
-                var ratio = (_shapeMaxC2 - _shapeMinC2) / MetricHeight;
-                kerf *= ratio;
-            }
-
-            if (_isClockwise != _useClockwiseCut)
+            if (!_useClockwiseCut)
                 kerf *= -1;
 
             return kerf;

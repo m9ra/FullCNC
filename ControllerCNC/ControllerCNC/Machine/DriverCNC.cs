@@ -28,7 +28,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Determine whether simulator should use real speeds.
         /// </summary>
-        private readonly bool SIMULATE_REAL_DELAY = true;
+        private readonly bool SIMULATE_REAL_DELAY = false;
 
         /// <summary>
         /// Port where we will communicate with the machine.
