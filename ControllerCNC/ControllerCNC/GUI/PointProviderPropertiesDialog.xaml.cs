@@ -88,6 +88,7 @@ namespace ControllerCNC.GUI
                 writeNumber(BlockThickness, shapeItem4D.MetricThickness);
                 UvXySwitched.IsChecked = shapeItem4D.IsUvXySwitched;
                 UseExplicitKerf.IsChecked = shapeItem4D.UseExplicitKerf;
+                UseTemplatedCut.IsChecked = shapeItem4D.UseTemplatedCut;
 
                 var kerfEnabled = shapeItem4D.UseExplicitKerf;
                 KerfUV.IsEnabled = kerfEnabled;
@@ -233,6 +234,13 @@ namespace ControllerCNC.GUI
         {
             var shapeItem = _item as ShapeItem4D;
             shapeItem.UseExplicitKerf = UseExplicitKerf.IsChecked.Value;
+            refreshWindow();
+        }
+
+        private void UseTemplatedCut_Changed(object sender, RoutedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem4D;
+            shapeItem.UseTemplatedCut = UseTemplatedCut.IsChecked.Value;
             refreshWindow();
         }
 

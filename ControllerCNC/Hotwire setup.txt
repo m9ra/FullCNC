@@ -1,3 +1,7 @@
+Supergee - výškovka 12.8V 0.350mm/s kerf 0.9mm and 1.2mm (trailing edge is slightly thicker, visible leading edge malformation appears)
+Supergee - výškovka 12.8V 0.350mm/s kerf 0.9mm and 1.3mm (tip is too thick)
+Supergee - výškovka 14.3V 1.049mm/s kerf 0.5mm and 1.3mm (tip is too thick)
+Supergee - výškovka 14.3V 1.049mm/s kerf 0.7mm and 0.8mm (tip is too thin)
 Supergee - střed 14V 0.417mm/s kerf 0.5mm and 0.55mm
 Supergee - ucho 14V 0.508mm/s  kerf 0.8mm and 0.5mm
 

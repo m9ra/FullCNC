@@ -35,6 +35,8 @@ namespace ControllerCNC.ShapeEditor
 
         private double _shapeThickness = 0;
 
+        private bool _userInputsDisabled = false;
+
         public EditorWindow()
         {
             InitializeComponent();
@@ -363,6 +365,7 @@ namespace ControllerCNC.ShapeEditor
 
         private void refreshEditorInputs()
         {
+            _userInputsDisabled = true;
             if (Facet1Pane != null)
             {
                 Facet1Width.Text = Facet1Pane.MetricWidth.ToString("0.000");
@@ -382,12 +385,17 @@ namespace ControllerCNC.ShapeEditor
 
             if (ShapeThickness != null)
                 ShapeThickness.Text = _shapeThickness.ToString();
+
+            _userInputsDisabled = false;
         }
         
         #endregion
 
         private void Facet1Top_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_userInputsDisabled)
+                return;
+
             double.TryParse(Facet1Top.Text, out double result);
             if (Facet1Pane != null)
                 Facet1Pane.MetricShiftY = result;
@@ -397,6 +405,9 @@ namespace ControllerCNC.ShapeEditor
 
         private void Facet1Left_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_userInputsDisabled)
+                return;
+
             double.TryParse(Facet1Left.Text, out double result);
             if (Facet1Pane != null)
                 Facet1Pane.MetricShiftX = result;
@@ -406,6 +417,9 @@ namespace ControllerCNC.ShapeEditor
 
         private void Facet1Width_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_userInputsDisabled)
+                return;
+
             double.TryParse(Facet1Width.Text, out double result);
             if (Facet1Pane != null)
                 Facet1Pane.MetricWidth = result;
@@ -415,6 +429,9 @@ namespace ControllerCNC.ShapeEditor
 
         private void Facet1Height_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_userInputsDisabled)
+                return;
+
             double.TryParse(Facet1Height.Text, out double result);
             if (Facet1Pane != null)
                 Facet1Pane.MetricHeight = result;
@@ -424,6 +441,9 @@ namespace ControllerCNC.ShapeEditor
 
         private void Facet2Width_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_userInputsDisabled)
+                return;
+
             double.TryParse(Facet2Width.Text, out double result);
             if (Facet2Pane != null)
                 Facet2Pane.MetricWidth = result;
@@ -433,6 +453,9 @@ namespace ControllerCNC.ShapeEditor
 
         private void Facet2Height_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_userInputsDisabled)
+                return;
+
             double.TryParse(Facet2Height.Text, out double result);
             if (Facet2Pane != null)
                 Facet2Pane.MetricHeight = result;
@@ -442,6 +465,9 @@ namespace ControllerCNC.ShapeEditor
 
         private void ShapeThickness_TextChanged(object sender, TextChangedEventArgs e)
         {
+            if (_userInputsDisabled)
+                return;
+
             double.TryParse(ShapeThickness.Text, out _shapeThickness);
             refreshEditorInputs();
         }

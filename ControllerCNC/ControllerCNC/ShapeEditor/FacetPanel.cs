@@ -19,7 +19,10 @@ namespace ControllerCNC.ShapeEditor
 {
     class FacetPanel : Panel
     {
-        private List<EditorShapePart> _parts = new List<EditorShapePart>();
+        /// <summary>
+        /// For now, only one part for facet is supported.
+        /// </summary>
+        private EditorShapePart _part;
 
         private Brush _itemBrush;
 
@@ -29,35 +32,22 @@ namespace ControllerCNC.ShapeEditor
 
         private double _visualScale = 10.0;
 
-        /// <summary>
-        /// Determine size of the shape in milimeters.
-        /// </summary>
-        private Size _shapeMetricSize;
-
-        private double _metricShiftX;
-
-        private double _metricShiftY;
-
-        protected double _shapeMaxC1 { get { return safeMax(_parts.SelectMany(part => part.Points.Select(point => point.C1))); } }
-
-        protected double _shapeMaxC2 { get { return safeMax(_parts.SelectMany(part => part.Points.Select(point => point.C2))); } }
-
-        protected double _shapeMinC1 { get { return safeMin(_parts.SelectMany(part => part.Points.Select(point => point.C1))); } }
-
-        protected double _shapeMinC2 { get { return safeMin(_parts.SelectMany(part => part.Points.Select(point => point.C2))); } }
-
         internal double MetricWidth
         {
             get
             {
-                return _shapeMetricSize.Width;
+                if (_part == null)
+                    return 0;
+
+                return _part.MetricWidth;
             }
 
             set
             {
-                if (value == _shapeMetricSize.Width)
+                if (_part == null || value == _part.MetricWidth)
                     return;
-                _shapeMetricSize = new Size(value, value * (_shapeMaxC2 - _shapeMinC2) / (_shapeMaxC1 - _shapeMinC1));
+
+                _part.MetricWidth = value;
                 InvalidateVisual();
             }
         }
@@ -66,14 +56,18 @@ namespace ControllerCNC.ShapeEditor
         {
             get
             {
-                return _shapeMetricSize.Height;
+                if (_part == null)
+                    return 0;
+
+                return _part.MetricHeight;
             }
 
             set
             {
-                if (value == _shapeMetricSize.Width)
+                if (_part == null || value == _part.MetricHeight)
                     return;
-                _shapeMetricSize = new Size(value * (_shapeMaxC1 - _shapeMinC1) / (_shapeMaxC2 - _shapeMinC2), value);
+
+                _part.MetricHeight = value;
                 InvalidateVisual();
             }
         }
@@ -82,15 +76,18 @@ namespace ControllerCNC.ShapeEditor
         {
             get
             {
-                return _metricShiftX;
+                if (_part == null)
+                    return 0;
+
+                return _part.MetricOffset.C1;
             }
 
             set
             {
-                if (value == _metricShiftX)
+                if (_part == null || value == _part.MetricOffset.C1)
                     return;
 
-                _metricShiftX = value;
+                _part.MetricOffset = new Point2Dmm(value, _part.MetricOffset.C2);
                 InvalidateVisual();
             }
         }
@@ -99,15 +96,18 @@ namespace ControllerCNC.ShapeEditor
         {
             get
             {
-                return _metricShiftY;
+                if (_part == null)
+                    return 0;
+
+                return _part.MetricOffset.C2;
             }
 
             set
             {
-                if (value == _metricShiftY)
+                if (_part == null || value == _part.MetricOffset.C2)
                     return;
 
-                _metricShiftY = value;
+                _part.MetricOffset = new Point2Dmm(_part.MetricOffset.C1, value);
                 InvalidateVisual();
             }
         }
@@ -138,76 +138,37 @@ namespace ControllerCNC.ShapeEditor
 
         public void AddPart(EditorShapePart part)
         {
-            if (_parts.Count == 0)
-            {
-                //initialize dimensions
-                var c1s = part.Points.Select(p => p.C1);
-                var c2s = part.Points.Select(p => p.C2);
-                var minC1 = c1s.Min();
-                var maxC1 = c1s.Max();
-
-                var minC2 = c2s.Min();
-                var maxC2 = c2s.Max();
-
-                var width = maxC1 - minC1;
-                var height = maxC2 - minC2;
-
-                _shapeMetricSize = new Size(width, height);
-            }
-            else
-            {
+            if (_part != null)
                 throw new NotImplementedException("Concat part dimensions");
-            }
 
-            _parts.Add(part);
-
+            _part = part;
 
             InvalidateVisual();
         }
 
         public void ClearParts()
         {
-            _parts.Clear();
+            _part = null;
             InvalidateVisual();
         }
 
         public FacetShape CreateFacetShape()
         {
-            if (_parts.Count != 1)
-                throw new NotImplementedException();
-
-            var metricScale = getMetricScale();
-            return new FacetShape(_parts[0].Points.Select(p => new Point2Dmm(p.C1 * metricScale + MetricShiftX, p.C2 * metricScale + MetricShiftY)));
+            return new FacetShape(_part.Points);
         }
 
         protected override void OnRender(DrawingContext dc)
         {
             base.OnRender(dc);
 
-            foreach (var part in _parts)
+            if (_part != null)
             {
-                var figure = createFigure(part.Points);
+                var figure = createFigure(_part.Points);
                 var geometry = new PathGeometry(new[] { figure }, FillRule.EvenOdd, Transform.Identity);
                 dc.DrawGeometry(_itemBrush, _itemPen, geometry);
             }
 
             dc.DrawRectangle(null, _borderPen, new Rect(0, 0, ActualWidth, ActualHeight));
-        }
-
-        private double safeMin(IEnumerable<double> values)
-        {
-            if (values.Any())
-                return values.Min();
-
-            return double.PositiveInfinity;
-        }
-
-        private double safeMax(IEnumerable<double> values)
-        {
-            if (values.Any())
-                return values.Max();
-
-            return double.NegativeInfinity;
         }
 
         private PathFigure createFigure(IEnumerable<Point2Dmm> geometryPoints)
@@ -216,16 +177,14 @@ namespace ControllerCNC.ShapeEditor
             var isFirst = true;
             var firstPoint = new Point(0, 0);
 
-            var xOffsetVisual = ActualWidth / 2 + VisualOffsetX;
+            var xOffsetVisual = VisualOffsetX;
             var yOffsetVisual = ActualHeight / 2 + VisualOffsetY;
-
-            var metricScale = getMetricScale();
 
             foreach (var point in geometryPoints)
             {
                 var planePoint = new Point(point.C1, point.C2);
-                planePoint.X = (planePoint.X * metricScale + MetricShiftX) * _visualScale + xOffsetVisual;
-                planePoint.Y = (planePoint.Y * metricScale + MetricShiftY) * _visualScale + yOffsetVisual;
+                planePoint.X = planePoint.X * _visualScale + xOffsetVisual;
+                planePoint.Y = planePoint.Y * _visualScale + yOffsetVisual;
 
                 pathSegments.Add(new LineSegment(planePoint, !isFirst));
                 if (isFirst)
@@ -237,18 +196,13 @@ namespace ControllerCNC.ShapeEditor
             return figure;
         }
 
-        private double getMetricScale()
-        {
-            var xDiff = _shapeMaxC1 - _shapeMinC1;
-            var yDiff = _shapeMaxC2 - _shapeMinC2;
-            var metricScale = Math.Max(MetricWidth, MetricHeight) / Math.Max(xDiff, yDiff);
-            return metricScale;
-        }
-
         internal void FitSize(FacetPanel bindedPanel)
         {
-            var maxWidth = Math.Max(MetricWidth, bindedPanel.MetricWidth);
-            var maxHeight = Math.Max(MetricHeight, bindedPanel.MetricHeight);
+            var maxOffsetX = Math.Max(Math.Abs(MetricShiftX), Math.Abs(bindedPanel.MetricShiftX));
+            var maxOffsetY = Math.Max(Math.Abs(MetricShiftY), Math.Abs(bindedPanel.MetricShiftY));
+
+            var maxWidth = Math.Max(MetricWidth + maxOffsetX, bindedPanel.MetricWidth + maxOffsetX);
+            var maxHeight = Math.Max(MetricHeight + maxOffsetY, bindedPanel.MetricHeight + maxOffsetY);
 
             var availableWidth = ActualWidth - 20;
             var availableHeight = ActualHeight - 20;
@@ -256,7 +210,8 @@ namespace ControllerCNC.ShapeEditor
 
             VisualScale = sizeFactor;
 
-            VisualOffsetX = -Math.Min(_shapeMinC1, bindedPanel._shapeMinC1) * getMetricScale() * VisualScale - availableWidth / 2;
+            VisualOffsetX = 10 + Math.Max(0, -Math.Min(MetricShiftX, bindedPanel.MetricShiftX)) * VisualScale;
+            //VisualOffsetX = -Math.Min(_shapeMinC1, bindedPanel._shapeMinC1) * getMetricScale() * VisualScale - availableWidth / 2;
             //VisualOffsetY = -Math.Min(_shapeMinC2, bindedPanel._shapeMinC2) * getMetricScale() * VisualScale - availableHeight / 2;
             bindedPanel.VisualOffsetX = VisualOffsetX;
             bindedPanel.VisualOffsetY = VisualOffsetY;

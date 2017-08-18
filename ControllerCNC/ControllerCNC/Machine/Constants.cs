@@ -40,6 +40,11 @@ namespace ControllerCNC.Machine
         public static readonly double FullWireLength = 605;
 
         /// <summary>
+        /// How many steps at maximum is allowed for instruction planning.
+        /// </summary>
+        public static readonly int MaxStepInstructionLimit = 31500;
+
+        /// <summary>
         /// Maximal safe acceleration in steps/s^2.
         /// </summary>
         public static readonly int MaxAcceleration = 200 * StepsPerRevolution;
@@ -83,6 +88,11 @@ namespace ControllerCNC.Machine
         /// Maximal speed for head moving in a plane (X,Y or U,V).
         /// </summary>
         public static readonly Speed MaxPlaneSpeed = Speed.FromDeltaT(FastestDeltaT);
+
+        /// <summary>
+        /// Maximum speed that is supported for cutting plans.
+        /// </summary>
+        public static readonly Speed MaxCuttingSpeed = ReverseSafeSpeed;
 
         /// <summary>
         /// Maximal speed for head moving in a plane (X,Y or U,V).

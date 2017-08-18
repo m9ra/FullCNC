@@ -229,7 +229,7 @@
                                 <StackPanel>
                                     <TextBlock FontSize="30" FontWeight="Bold">Cutting speed</TextBlock>
                                     <TextBlock Name="CuttingSpeed" FontSize="30" TextAlignment="Center">0mm/s</TextBlock>
-                                    <Slider IsDirectionReversed="True" Name="CuttingDeltaT" Minimum="2000" Maximum="15000" ValueChanged="CuttingDeltaT_ValueChanged"/>
+                                    <Slider IsDirectionReversed="True" Name="CuttingDeltaT" Minimum="2000" Maximum="25000" ValueChanged="CuttingDeltaT_ValueChanged"/>
 
                                     <TextBlock FontSize="30" FontWeight="Bold">Cutting kerf</TextBlock>
                                     <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">

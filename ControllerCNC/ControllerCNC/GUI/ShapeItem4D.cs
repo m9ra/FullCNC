@@ -105,6 +105,22 @@ namespace ControllerCNC.GUI
             }
         }
 
+        internal bool UseTemplatedCut
+        {
+            get
+            {
+                return _useTemplatedCut;
+            }
+            set
+            {
+                if (value == _useTemplatedCut)
+                    return;
+
+                _useTemplatedCut = value;
+                fireOnSettingsChanged();
+            }
+        }
+
         /// <summary>
         /// Thickness (distance between shape facets) in mm.
         /// </summary>
@@ -473,9 +489,9 @@ namespace ControllerCNC.GUI
             var xySpeed = speedXY.Length * speedFactor;
 
             return Tuple.Create(
-                new Speed((long)(uvSpeed), speedFactor),
-                new Speed((long)(xySpeed), speedFactor)
-                );
+           new Speed((long)(uvSpeed), speedFactor),
+           new Speed((long)(xySpeed), speedFactor)
+           );
         }
 
         private void getFacetVectors(Point4Dmm p1, Point4Dmm p2, out Vector v1, out Vector v2)

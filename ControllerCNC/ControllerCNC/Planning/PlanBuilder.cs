@@ -8,6 +8,7 @@ using System.Windows;
 
 using ControllerCNC.Machine;
 using ControllerCNC.Primitives;
+using System.Diagnostics;
 
 namespace ControllerCNC.Planning
 {
@@ -203,8 +204,8 @@ namespace ControllerCNC.Planning
             {
                 var sqrtUV = Math.Sqrt(1.0 * distanceU * distanceU + 1.0 * distanceV * distanceV);
                 var sqrtXY = Math.Sqrt(1.0 * distanceX * distanceX + 1.0 * distanceY * distanceY);
-                var transitionTimeUV = sqrtUV == 0 || transitionSpeedUV.StepCount == 0 ? 0 : (long)(sqrtUV * transitionSpeedUV.Ticks / transitionSpeedUV.StepCount);
-                var transitionTimeXY = sqrtXY == 0 || transitionSpeedXY.StepCount==0 ? 0 : (long)(sqrtXY * transitionSpeedXY.Ticks / transitionSpeedXY.StepCount);
+                var transitionTimeUV = sqrtUV == 0 ? 0 : (long)(sqrtUV * transitionSpeedUV.Ticks / transitionSpeedUV.StepCount);
+                var transitionTimeXY = sqrtXY == 0 ? 0 : (long)(sqrtXY * transitionSpeedXY.Ticks / transitionSpeedXY.StepCount);
                 var transitionTime = Math.Max(transitionTimeUV, transitionTimeXY);
 
                 var remainingStepsU = distanceU;
@@ -212,12 +213,10 @@ namespace ControllerCNC.Planning
                 var remainingStepsX = distanceX;
                 var remainingStepsY = distanceY;
 
-                var chunkLengthLimit = 31500;
+                var chunkLengthLimit = Constants.MaxStepInstructionLimit;
                 var maxUV = Math.Max(Math.Abs(distanceU), Math.Abs(distanceV));
                 var maxXY = Math.Max(Math.Abs(distanceX), Math.Abs(distanceY));
-                var chunkCount = 1.0 * Math.Max(maxUV, maxXY) / chunkLengthLimit;
-                chunkCount = Math.Max(1, chunkCount);
-
+                var chunkCount = (int)Math.Ceiling(1.0 * Math.Max(maxUV, maxXY) / chunkLengthLimit);
 
                 var doneDistanceU = 0L;
                 var doneDistanceV = 0L;
@@ -225,14 +224,13 @@ namespace ControllerCNC.Planning
                 var doneDistanceY = 0L;
                 var doneTime = 0.0;
 
-                var i = Math.Min(1.0, chunkCount);
-                while (Math.Abs(remainingStepsU) > 0 || Math.Abs(remainingStepsV) > 0 || Math.Abs(remainingStepsX) > 0 || Math.Abs(remainingStepsY) > 0)
+                for (var doneChunks = 1; doneChunks <= chunkCount; ++doneChunks)
                 {
-                    var chunkDistanceU = distanceU * i / chunkCount;
-                    var chunkDistanceV = distanceV * i / chunkCount;
-                    var chunkDistanceX = distanceX * i / chunkCount;
-                    var chunkDistanceY = distanceY * i / chunkCount;
-                    var chunkTime = transitionTime * i / chunkCount;
+                    var chunkDistanceU = 1.0 * distanceU * doneChunks / chunkCount;
+                    var chunkDistanceV = 1.0 * distanceV * doneChunks / chunkCount;
+                    var chunkDistanceX = 1.0 * distanceX * doneChunks / chunkCount;
+                    var chunkDistanceY = 1.0 * distanceY * doneChunks / chunkCount;
+                    var chunkTime = 1.0 * transitionTime * doneChunks / chunkCount;
 
                     var stepCountUD = chunkDistanceU - doneDistanceU;
                     var stepCountVD = chunkDistanceV - doneDistanceV;
@@ -250,7 +248,7 @@ namespace ControllerCNC.Planning
                     doneDistanceX += stepCountX;
                     doneDistanceY += stepCountY;
 
-                    //we DON'T want to round here - this way we can distribute time precisely
+                    //we DON'T want to round here - this way we can distribute time precisely via time remainders
                     var stepTimeU = stepCountU == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountU));
                     var stepTimeV = stepCountV == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountV));
                     var stepTimeX = stepCountX == 0 ? 0 : (int)(stepsTime / Math.Abs(stepCountX));
@@ -275,8 +273,15 @@ namespace ControllerCNC.Planning
                     var xPart = createConstant(stepCountX, stepTimeX, timeRemainderX);
                     var yPart = createConstant(stepCountY, stepTimeY, timeRemainderY);
                     AddUVXY(uPart, vPart, xPart, yPart);
-                    i = i + 1 > chunkCount ? chunkCount : i + 1;
                 }
+
+                if (
+                    distanceU != doneDistanceU ||
+                    distanceV != doneDistanceV ||
+                    distanceX != doneDistanceX ||
+                    distanceY != doneDistanceY
+                    )
+                    throw new NotImplementedException("Distance was not calculated precisely. Needs to be fixed.");
             }
         }
 

@@ -17,7 +17,7 @@
     </Window.Resources>
 
     <Viewbox Stretch="Uniform">
-        <Grid Name="LayoutGrid" Width="315" Height="440">
+        <Grid Name="LayoutGrid" Width="315" Height="470">
             <StackPanel Background="LightGreen">
                 <StackPanel Orientation="Horizontal">
                     <TextBlock Style="{StaticResource ValueLabel}">Top pos. [mm]:</TextBlock>
@@ -72,6 +72,15 @@
 
                                 <Border BorderBrush="Red" BorderThickness="1.0">
                                     <StackPanel>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Style="{StaticResource ValueLabel}" Text="Use templated cut"/>
+                                            <CheckBox Name="UseTemplatedCut"  IsChecked="False" Margin="55 0" Checked="UseTemplatedCut_Changed" Unchecked="UseTemplatedCut_Changed">
+                                                <CheckBox.LayoutTransform>
+                                                    <ScaleTransform ScaleX="2" ScaleY="2" />
+                                                </CheckBox.LayoutTransform>
+                                            </CheckBox>
+                                        </StackPanel>
+                                        
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Style="{StaticResource ValueLabel}" Text="Use explicit kerf"/>
                                             <CheckBox Name="UseExplicitKerf"  IsChecked="False" Margin="55 0" Checked="UseExplicitKerf_Changed" Unchecked="UseExplicitKerf_Changed">

@@ -119,6 +119,7 @@
     <Compile Include="Machine\Constants.cs" />
     <Compile Include="Machine\InstructionCNC.cs" />
     <Compile Include="Primitives\Extensions.cs" />
+    <Compile Include="Primitives\TowerSpeed.cs" />
     <Compile Include="Primitives\Point2Dmm.cs" />
     <Compile Include="Primitives\Point4Dmm.cs" />
     <Compile Include="Primitives\Point2Dstep.cs" />
