@@ -6,37 +6,37 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Machine
 {
-    struct StateInfo
+    public struct StateInfo
     {
         /// <summary>
         /// How many ticks was done.
         /// </summary>
-        internal ulong TickCount { get; private set; }
+        public ulong TickCount { get; private set; }
 
         /// <summary>
         /// Position along U (in steps).
         /// </summary>
-        internal int U { get; private set; }
+        public int U { get; private set; }
 
         /// <summary>
         /// Position along V (in steps).
         /// </summary>
-        internal int V { get; private set; }
+        public int V { get; private set; }
 
         /// <summary>
         /// Position along X (in steps).
         /// </summary>
-        internal int X { get; private set; }
+        public int X { get; private set; }
 
         /// <summary>
         /// Position along Y (in steps).
         /// </summary>
-        internal int Y { get; private set; }
+        public int Y { get; private set; }
 
         /// <summary>
         /// Determine whether home is calibrated.
         /// </summary>
-        internal bool IsHomeCalibrated { get; private set; }
+        public bool IsHomeCalibrated { get; private set; }
 
         internal void SetState(byte[] dataBuffer)
         {

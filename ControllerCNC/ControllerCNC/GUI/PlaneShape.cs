@@ -8,34 +8,34 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC.GUI
 {
-    class PlaneShape
+    public class PlaneShape
     {
         /// <summary>
         /// Points belonging into the plane.
         /// </summary>
-        internal IEnumerable<Point2Dmm> Shape { get; private set; }
+        public IEnumerable<Point2Dmm> Shape { get; private set; }
 
         /// <summary>
         /// MInimum of the plane points for first dimension.
         /// </summary>
-        internal readonly double MinC1;
+        public readonly double MinC1;
 
         /// <summary>
         /// Minimum of the plane points for second dimension.
         /// </summary>
-        internal readonly double MinC2;
+        public readonly double MinC2;
 
         /// <summary>
         /// Maximum of the plane points for first dimension.
         /// </summary>
-        internal readonly double MaxC1;
+        public readonly double MaxC1;
 
         /// <summary>
         /// Maximum of the plane points for second dimension.
         /// </summary>
-        internal readonly double MaxC2;
+        public readonly double MaxC2;
 
-        internal PlaneShape(IEnumerable<Point2Dmm> planePoints)
+        public PlaneShape(IEnumerable<Point2Dmm> planePoints)
         {
             Shape = planePoints.ToArray();
 

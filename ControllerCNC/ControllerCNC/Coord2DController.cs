@@ -12,7 +12,7 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC
 {
-    class Coord2DController
+    public class Coord2DController
     {
         private readonly DriverCNC _cnc;
 
@@ -34,7 +34,7 @@ namespace ControllerCNC
 
         private volatile bool _moveUV = true;
 
-        internal Coord2DController(DriverCNC cnc)
+        public Coord2DController(DriverCNC cnc)
         {
             _cnc = cnc;
 
@@ -175,20 +175,20 @@ namespace ControllerCNC
             _deltaTY = _desiredDirectionY * _desiredSpeed;
         }
 
-        internal void SetMovement(int dirX, int dirY)
+        public void SetMovement(int dirX, int dirY)
         {
             _desiredDirectionX = dirX;
             _desiredDirectionY = dirY;
             _stop = false;
         }
 
-        internal void SetPlanes(bool uv, bool xy)
+        public void SetPlanes(bool uv, bool xy)
         {
             _moveUV = uv;
             _moveXY = xy;
         }
 
-        internal void SetSpeed(int speed)
+        public void SetSpeed(int speed)
         {
             _desiredSpeed = (UInt16)speed;
         }

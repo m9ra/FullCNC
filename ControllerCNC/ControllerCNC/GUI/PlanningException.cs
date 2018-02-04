@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.GUI
 {
-    class PlanningException : Exception
+    public class PlanningException : Exception
     {
-        internal PlanningException(string errorMessage) :
+        public PlanningException(string errorMessage) :
             base(errorMessage)
         {
 

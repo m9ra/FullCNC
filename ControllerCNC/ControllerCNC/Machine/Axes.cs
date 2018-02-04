@@ -132,7 +132,8 @@ namespace ControllerCNC.Machine
             groupBytes[0] = getInstructionIdentifier();
 
             var instructionIndex = 0;
-            foreach (var instruction in new[] { InstructionX, InstructionY, InstructionU, InstructionV })
+            var instructionOrdering = new[] { InstructionX, InstructionY, InstructionU, InstructionV };
+            foreach (var instruction in instructionOrdering)
             {
                 var instructionOffset = 1 + instructionIndex * payloadLength;
                 ++instructionIndex;

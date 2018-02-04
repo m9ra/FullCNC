@@ -19,7 +19,7 @@ namespace ControllerCNC.Primitives
         /// </summary>
         public readonly double C2;
 
-        internal Point2Dmm(double c1, double c2)
+        public Point2Dmm(double c1, double c2)
         {
             C1 = c1;
             C2 = c2;

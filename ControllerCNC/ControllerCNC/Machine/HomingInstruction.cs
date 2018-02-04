@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Machine
 {
-    class HomingInstruction : InstructionCNC
+    public class HomingInstruction : InstructionCNC
     {
         internal override byte[] GetInstructionBytes()
         {

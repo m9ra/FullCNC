@@ -13,7 +13,7 @@ using System.Windows;
 namespace ControllerCNC.GUI
 {
     [Serializable]
-    abstract class PointProviderItem : WorkspaceItem
+    internal abstract class PointProviderItem : WorkspaceItem
     {
         /// <summary>
         /// Factor which gives ratio between single step and visual size.

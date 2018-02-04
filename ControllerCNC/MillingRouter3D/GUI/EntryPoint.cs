@@ -1,38 +1,29 @@
-﻿using System;
+﻿using ControllerCNC.Planning;
+using ControllerCNC.Primitives;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-
-using System.Windows;
 using System.Windows.Media;
 using System.Windows.Shapes;
 
-using System.Runtime.Serialization;
-
-using ControllerCNC.Primitives;
-
-namespace ControllerCNC.GUI
+namespace MillingRouter3D.GUI
 {
     [Serializable]
-    internal class EntryPoint : PointProviderItem
+    class EntryPoint : MillingItem
     {
         /// <summary>
         /// Size of displayed entry point.
         /// </summary>
         internal readonly static double EntryPointVisualDiameter = 20;
 
-        /// <inheritdoc/>
-        internal override IEnumerable<Point4Dstep> CutPoints
-        {
-            get { return new[] { new Point4Dstep(PositionC1, PositionC2, PositionC1, PositionC2) };  }
-        }
-
         internal EntryPoint()
             : base(new ReadableIdentifier("START"))
         {
-            PositionC1 = 5000;
-            PositionC2 = 5000;
+            PositionX = 50;
+            PositionY = 50;
             initialize();
         }
 
@@ -49,18 +40,6 @@ namespace ControllerCNC.GUI
         }
 
         /// <inheritdoc/>
-        internal override void Build(WorkspacePanel workspace, List<Speed4Dstep> speedPoints, ItemJoin incommingJoin)
-        {
-            if (incommingJoin != null)
-                throw new NotSupportedException("Incomming join point has to be empty for entry point.");
-
-            foreach (var join in workspace.FindOutgoingJoins(this))
-            {
-                join.Build(workspace, speedPoints);
-            }
-        }
-
-        /// <inheritdoc/>
         protected override object createContent()
         {
             var entryPoint = new Ellipse();
@@ -73,6 +52,19 @@ namespace ControllerCNC.GUI
             entryPoint.Fill = brush;
 
             return entryPoint;
+        }
+
+        protected override Point2Dmm getEntryPoint()
+        {
+            return new Point2Dmm(PositionX, PositionY);
+        }
+
+        internal override void BuildPlan(PlanBuilder3D builder, MillingWorkspacePanel workspace)
+        {
+            foreach (var join in workspace.FindOutgoingJoins(this))
+            {
+                join.BuildPlan(builder, workspace);
+            }
         }
     }
 }

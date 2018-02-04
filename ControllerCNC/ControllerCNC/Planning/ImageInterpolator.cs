@@ -47,6 +47,13 @@ namespace ControllerCNC.Planning
             return shrinkedShape;
         }
 
+        public IEnumerable<Point2Dmm[]> InterpolatePointsIsolated()
+        {
+            var parts = _mash.GetShapeParts();
+            var shrinkedShapes = parts.Select(p => shrinkLines(p.Concat(new[] { p.First() })).ToArray());
+            return shrinkedShapes;
+        }
+
         private IEnumerable<Point2Dmm> joinParts(IEnumerable<Point2Dmm[]> parts)
         {
             var closedParts = new List<Point2Dmm[]>();

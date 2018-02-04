@@ -12,7 +12,7 @@ using System.Windows;
 namespace ControllerCNC.GUI
 {
     [Serializable]
-    class ScaffoldItem : PointProviderItem
+    internal class ScaffoldItem : PointProviderItem
     {
         private Pen _scaffoldPen = new Pen();
 
@@ -91,7 +91,7 @@ namespace ControllerCNC.GUI
             //there is nothing to build
         }
 
-        internal ScaffoldItem ExtendBy(Point2Dstep point)
+        public ScaffoldItem ExtendBy(Point2Dstep point)
         {
             return new ScaffoldItem(Name, _definition.Concat(new[] { point }));
         }

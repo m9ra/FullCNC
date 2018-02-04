@@ -11,14 +11,23 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC.Loading.Loaders
 {
-    class CorLoader : LoaderBase
+    class CorLoader : LoaderBase3D
     {
+        private readonly double pointsScale = 100;
+
         /// <inheritdoc/>
         internal override ShapeItem Load(string path, ReadableIdentifier identifier)
         {
+            var points = LoadPoints(path);
+            var shape = new ShapeItem2D(identifier, points.FirstOrDefault());
+            shape.MetricWidth = pointsScale;
+            return shape;
+        }
+
+        internal override IEnumerable<Point2Dmm[]> LoadPoints(string path)
+        {
             var lines = File.ReadAllLines(path);
             var points = new List<Point2Dmm>();
-            var pointsScale = 100.0;
             foreach (var line in lines)
             {
                 if (line.Trim() == "")
@@ -31,10 +40,7 @@ namespace ControllerCNC.Loading.Loaders
                 var point = new Point2Dmm(-x, -y);
                 points.Add(point);
             }
-
-            var shape = new ShapeItem2D(identifier, points);
-            shape.MetricWidth = pointsScale;
-            return shape;
+            return new[] { points.ToArray() };
         }
     }
 }

@@ -204,8 +204,8 @@ namespace ControllerCNC.Planning
             {
                 var sqrtUV = Math.Sqrt(1.0 * distanceU * distanceU + 1.0 * distanceV * distanceV);
                 var sqrtXY = Math.Sqrt(1.0 * distanceX * distanceX + 1.0 * distanceY * distanceY);
-                var transitionTimeUV = sqrtUV == 0 ? 0 : (long)(sqrtUV * transitionSpeedUV.Ticks / transitionSpeedUV.StepCount);
-                var transitionTimeXY = sqrtXY == 0 ? 0 : (long)(sqrtXY * transitionSpeedXY.Ticks / transitionSpeedXY.StepCount);
+                var transitionTimeUV = transitionSpeedUV.StepCount == 0 ? 0 : (long)(sqrtUV * transitionSpeedUV.Ticks / transitionSpeedUV.StepCount);
+                var transitionTimeXY = transitionSpeedXY.StepCount == 0 ? 0 : (long)(sqrtXY * transitionSpeedXY.Ticks / transitionSpeedXY.StepCount);
                 var transitionTime = Math.Max(transitionTimeUV, transitionTimeXY);
 
                 var remainingStepsU = distanceU;

@@ -98,7 +98,8 @@ namespace ControllerCNC.Planning
                 var tickCountDifference = tickCount - accelerationTickCount;
                 var desiredBaseDelta = tickCountDifference / StepCountAbsolute;
                 if (desiredBaseDelta > Int16.MaxValue)
-                    throw new NotSupportedException("Acceleration error is out of bounds");
+                    desiredBaseDelta = Int16.MaxValue;
+                    //throw new NotSupportedException("Acceleration error is out of bounds");
                 if (desiredBaseDelta < Int16.MinValue)
                     throw new NotSupportedException("Acceleration error is out of bounds");
 

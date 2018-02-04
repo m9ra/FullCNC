@@ -14,29 +14,26 @@ using ControllerCNC.Loading.Loaders;
 
 namespace ControllerCNC.Loading
 {
-    public class ShapeFactory
+    public class ShapeFactory3D
     {
         private readonly ILoadProvider _panel;
 
-        private readonly Dictionary<string, LoaderBase> _loaders = new Dictionary<string, LoaderBase>();
+        private readonly Dictionary<string, LoaderBase3D> _loaders = new Dictionary<string, LoaderBase3D>();
 
-        public ShapeFactory(ILoadProvider nameProvider = null)
+        public ShapeFactory3D(ILoadProvider nameProvider = null)
         {
             _panel = nameProvider;
 
-            register<Cor4dLoader>("4dcor");
-            register<LinePathLoader>("line_path");
-            register<SliceCutLoader>("slice_cut");
             register<CorLoader>("cor");
             register<DatLoader>("dat");
             register<ImageLoader>("bmp", "png", "jpg");
         }
 
-        internal ShapeItem Load(string path)
+        public IEnumerable<Point2Dmm[]> Load(string path, out ReadableIdentifier identifier)
         {
             var extension = Path.GetExtension(path).ToLowerInvariant();
             var name = Path.GetFileNameWithoutExtension(path);
-            var identifier = new ReadableIdentifier(name);
+            identifier = new ReadableIdentifier(name);
 
             if (_panel != null)
                 identifier = _panel.UnusedVersion(identifier);
@@ -49,7 +46,7 @@ namespace ControllerCNC.Loading
 
             try
             {
-                return _loaders[extension].Load(path, identifier);
+                return _loaders[extension].LoadPoints(path);
             }
             catch (Exception ex)
             {
@@ -57,6 +54,7 @@ namespace ControllerCNC.Loading
                 return null;
             }
         }
+      
 
         internal static IEnumerable<Point2Dmm> Centered(IEnumerable<Point2Dmm> points)
         {
@@ -80,7 +78,7 @@ namespace ControllerCNC.Loading
         /// </summary>
         /// <param name="extensions"></param>
         private void register<LoaderT>(params string[] extensions)
-            where LoaderT : LoaderBase, new()
+            where LoaderT : LoaderBase3D, new()
         {
             var loader = new LoaderT();
             loader.Initialize(_panel);

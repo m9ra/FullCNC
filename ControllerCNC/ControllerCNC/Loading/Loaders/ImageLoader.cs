@@ -9,7 +9,7 @@ using ControllerCNC.Planning;
 
 namespace ControllerCNC.Loading.Loaders
 {
-    class ImageLoader : LoaderBase
+    class ImageLoader : LoaderBase3D
     {
         /// <inheritdoc/>
         internal override ShapeItem Load(string path, ReadableIdentifier identifier)
@@ -23,6 +23,16 @@ namespace ControllerCNC.Loading.Loaders
             var shape = new ShapeItem2D(identifier, points);
             shape.MetricWidth = 50;
             return shape;
+        }
+
+        internal override IEnumerable<Point2Dmm[]> LoadPoints(string path)
+        {
+            Message("Image processing, please wait.");
+            var interpolator = new ImageInterpolator(path);
+            var points = interpolator.InterpolatePointsIsolated();
+            HideMessage();
+
+            return points;
         }
     }
 }

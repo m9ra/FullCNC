@@ -12,7 +12,7 @@ namespace ControllerCNC.Machine
     /// Encapsulates constants related to the CNC machine. All the configuration
     /// like machine limits and capabilities (not communication related staff) has to be here.
     /// </summary>
-    static class Constants
+    public static class Constants
     {
         /// <summary>
         /// Thickness of the hotwire [mm].
@@ -52,22 +52,48 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// U axis is 460mm long
         /// </summary>
-        public static readonly int MaxStepsU = 460 * StepsPerRevolution * 100 / 125;
+        public static readonly int HwMaxStepsU = 460 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// V axis is 256mm long
         /// </summary>
-        public static readonly int MaxStepsV = 256 * StepsPerRevolution * 100 / 125;
+        public static readonly int HwMaxStepsV = 256 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// X axis is 460mm long
         /// </summary>
-        public static readonly int MaxStepsX = 460 * StepsPerRevolution * 100 / 125;
+        public static readonly int HwMaxStepsX = 460 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// Y axis is 256mm long
         /// </summary>
-        public static readonly int MaxStepsY = 256 * StepsPerRevolution * 100 / 125;
+        public static readonly int HwMaxStepsY = 256 * StepsPerRevolution * 100 / 125;
+
+
+        /// <summary>
+        /// Max allowed steps along X axis.
+        /// </summary>
+        public static int MaxStepsX { get; private set; }
+
+        /// <summary>
+        /// Max allowed steps along Y axis.
+        /// </summary>
+        public static int MaxStepsY { get; private set; }
+
+        /// <summary>
+        /// Max allowed steps along U axis.
+        /// </summary>
+        public static int MaxStepsU { get; private set; }
+
+        /// <summary>
+        /// Max allowed steps along V axis.
+        /// </summary>
+        public static int MaxStepsV { get; private set; }
+
+        /// <summary>
+        /// Determine whether router mode with Y to V axis switched is enabled.
+        /// </summary>
+        public static bool IsRouterModeEnabled { get; private set; }
 
         /// <summary>
         /// DeltaT which can be safely used after stand still.
@@ -98,5 +124,27 @@ namespace ControllerCNC.Machine
         /// Maximal speed for head moving in a plane (X,Y or U,V).
         /// </summary>
         public static readonly Acceleration MaxPlaneAcceleration = new Acceleration(new Speed(MaxAcceleration, TimerFrequency), TimerFrequency);
+
+        static Constants()
+        {
+            MaxStepsU = HwMaxStepsU;
+            MaxStepsV = HwMaxStepsV;
+            MaxStepsX = HwMaxStepsX;
+            MaxStepsY = HwMaxStepsY;
+        }
+
+        /// <summary>
+        /// Enable milling router limitations.
+        /// Milling router limitations are also considered.
+        /// </summary>
+        public static void EnableRouterMode()
+        {
+            MaxStepsY = 200 * StepsPerRevolution * 100 / 125;
+            MaxStepsV = 245 * StepsPerRevolution * 100 / 125;
+
+            MaxStepsU = MaxStepsV; //artificial limitation
+            MaxStepsX = MaxStepsV;//artificial limitation
+            IsRouterModeEnabled = true;
+        }
     }
 }

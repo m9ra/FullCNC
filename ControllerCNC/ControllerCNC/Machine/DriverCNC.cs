@@ -16,9 +16,9 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC.Machine
 {
-    delegate void DataReceivedHandler(string data);
+    public delegate void DataReceivedHandler(string data);
 
-    class DriverCNC
+    public class DriverCNC
     {
         /// <summary>
         /// If set to true, simulation mode is used instead of the real device.
@@ -28,7 +28,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Determine whether simulator should use real speeds.
         /// </summary>
-        private readonly bool SIMULATE_REAL_DELAY = false;
+        private readonly bool SIMULATE_REAL_DELAY = true;
 
         /// <summary>
         /// Port where we will communicate with the machine.
@@ -247,7 +247,7 @@ namespace ControllerCNC.Machine
             _communicationWorker.Priority = ThreadPriority.Highest;
         }
 
-        internal void Initialize()
+        public void Initialize()
         {
             System.Diagnostics.Process myProcess = System.Diagnostics.Process.GetCurrentProcess();
             myProcess.PriorityClass = System.Diagnostics.ProcessPriorityClass.RealTime;
@@ -516,7 +516,7 @@ namespace ControllerCNC.Machine
             if (FAKE_ONLINE_MODE)
                 runCncSimulator();
 
-            for (;;)
+            for (; ; )
             {
                 //loop forever and try to establish connection
 
@@ -578,7 +578,7 @@ namespace ControllerCNC.Machine
             //welcome message
             send(new InitializationInstruction());
 
-            for (;;)
+            for (; ; )
             {
                 byte[] data;
                 lock (_L_sendQueue)

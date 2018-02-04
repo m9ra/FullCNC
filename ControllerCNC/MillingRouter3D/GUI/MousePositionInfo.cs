@@ -6,13 +6,12 @@ using System.Threading.Tasks;
 
 using System.Windows;
 using System.Windows.Controls;
-
 using ControllerCNC.Primitives;
-using ControllerCNC.Machine;
+using MillingRouter3D.Primitives;
 
-namespace ControllerCNC.GUI
+namespace MillingRouter3D.GUI
 {
-    internal class MousePositionInfo : WorkspaceItem
+    class MousePositionInfo : MillingWorkspaceItem
     {
         TextBlock _xInfo;
 
@@ -21,8 +20,8 @@ namespace ControllerCNC.GUI
         public MousePositionInfo()
             : base(new ReadableIdentifier("MouseInfo"))
         {
-            PositionC1 = 1000;
-            PositionC2 = 500;
+            PositionX = 1000;
+            PositionY = 500;
 
             _xInfo = createInfo("X: 153.2");
             _yInfo = createInfo("Y: 23.8");
@@ -43,8 +42,8 @@ namespace ControllerCNC.GUI
 
         internal void UpdateInfo()
         {
-            var xPosition = PositionC1 * Constants.MilimetersPerStep;
-            var yPosition = PositionC2 * Constants.MilimetersPerStep;
+            var xPosition = PositionX;
+            var yPosition = PositionY;
 
             var infoTextX = string.Format("X: {0:0.0}mm", xPosition);
             var infoTextY = string.Format("Y: {0:0.0}mm", yPosition);

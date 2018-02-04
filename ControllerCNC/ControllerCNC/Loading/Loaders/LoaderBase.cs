@@ -11,42 +11,42 @@ namespace ControllerCNC.Loading.Loaders
 {
     abstract class LoaderBase
     {
-        private CutterPanel _panel;
+        private ILoadProvider _provider;
 
-        protected CutterPanel Panel { get { return _panel; } }
+        protected ILoadProvider Panel { get { return _provider; } }
 
         internal abstract ShapeItem Load(string path, ReadableIdentifier identifier);
 
-        internal void Initialize(CutterPanel panel)
+        internal void Initialize(ILoadProvider provider)
         {
-            if (_panel != null)
+            if (_provider != null)
                 throw new NotSupportedException("Cannot initialize twice.");
 
-            _panel = panel;
+            _provider = provider;
         }
 
         protected void Message(string message)
         {
-            if (_panel == null)
+            if (_provider == null)
                 return;
 
-            _panel.ShowMessage(message, forceRefresh: true);
+            _provider.ShowMessage(message, forceRefresh: true);
         }
 
         protected void Error(string message)
         {
-            if (_panel == null)
+            if (_provider == null)
                 return;
 
-            _panel.ShowError(message, forceRefresh: true);
+            _provider.ShowError(message, forceRefresh: true);
         }
 
         protected void HideMessage()
         {
-            if (_panel == null)
+            if (_provider == null)
                 return;
 
-            _panel.HideMessage();
+            _provider.HideMessage();
         }
     }
 }

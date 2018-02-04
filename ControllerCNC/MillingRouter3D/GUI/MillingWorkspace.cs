@@ -17,42 +17,35 @@ using System.Runtime.Serialization.Formatters.Binary;
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
+using ControllerCNC.GUI;
 
-namespace ControllerCNC.GUI
+using MillingRouter3D.Primitives;
+
+namespace MillingRouter3D.GUI
 {
-    delegate void WorkspaceItemEvent(WorkspaceItem item);
+    delegate void MillingWorkspaceItemEvent(MillingWorkspaceItem item);
 
-    public class WorkspacePanel : Panel
+    class MillingWorkspacePanel : Panel
     {
         /// <summary>
-        /// Head display for UV.
+        /// Head display for XYZ.
         /// </summary>
-        internal readonly HeadCNC HeadUV;
+        internal readonly HeadCNC HeadXYZ;
 
         /// <summary>
-        /// Head display for XY.
+        /// Range on X axis.
         /// </summary>
-        internal readonly HeadCNC HeadXY;
+        internal readonly double RangeX;
 
         /// <summary>
-        /// Maximum number of steps in x axis.
+        /// Range on Y axis.
         /// </summary>
-        internal readonly int StepCountX;
+        internal readonly double RangeY;
 
         /// <summary>
-        /// Maximum number of steps in y axis.
-        /// </summary>
-        internal readonly int StepCountY;
-
-        /// <summary>
-        /// Maximum number of steps in u axis.
+        /// Range on Z axis.
         /// </summary>        
-        internal readonly int StepCountU;
-
-        /// <summary>
-        /// Maximum number of steps in v axis.
-        /// </summary>        
-        internal readonly int StepCountV;
+        internal readonly double RangeZ;
 
         /// <summary>
         /// Entry point of the plan.
@@ -62,7 +55,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Speed that will be used for cutting.
         /// </summary>
-        internal Speed CuttingSpeed
+        internal double CuttingSpeedMm
         {
             get { return _cuttingSpeed; }
             set
@@ -74,9 +67,10 @@ namespace ControllerCNC.GUI
                 _cuttingSpeed = value;
 
                 fireSettingsChangedForAllChildren();
-
             }
         }
+
+        internal Speed CuttingSpeed => Speed.FromMilimetersPerSecond(CuttingSpeedMm);
 
         /// <summary>
         /// Wire setup for the workspace.
@@ -133,7 +127,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Speed that will be used for cutting.
         /// </summary>
-        private Speed _cuttingSpeed;
+        private double _cuttingSpeed;
 
         /// <summary>
         /// Kerf for cutting.
@@ -153,7 +147,7 @@ namespace ControllerCNC.GUI
         /// <summary>
         /// Item that is moved by using drag and drop
         /// </summary>
-        private PointProviderItem _draggedItem = null;
+        private MillingItem _draggedItem = null;
 
         /// <summary>
         /// Last position of mouse
@@ -166,11 +160,6 @@ namespace ControllerCNC.GUI
         private bool _changesDisabled = false;
 
         /// <summary>
-        /// Joints registered by the workspace.
-        /// </summary>
-        private readonly List<ItemJoin> _itemJoins = new List<ItemJoin>();
-
-        /// <summary>
         /// Where the plan starts.
         /// </summary>
         private EntryPoint _entryPoint;
@@ -181,29 +170,25 @@ namespace ControllerCNC.GUI
 
         private bool _isArrangeInitialized = false;
 
-        private static readonly Color _uvColor = Colors.Blue;
+        private readonly List<MillingJoin> _itemJoins = new List<MillingJoin>();
 
         private static readonly Color _xyColor = Colors.Red;
 
-        private static readonly Pen _joinPenUV = new Pen(new SolidColorBrush(_uvColor), 2.0);
-
         private static readonly Pen _joinPenXY = new Pen(new SolidColorBrush(_xyColor), 2.0);
 
-        internal event Action OnSettingsChanged;
+        public event Action OnSettingsChanged;
 
-        internal event Action OnWorkItemListChanged;
+        public event Action OnWorkItemListChanged;
 
-        internal event WorkspaceItemEvent OnWorkItemClicked;
+        public event MillingWorkspaceItemEvent OnWorkItemClicked;
 
-        internal WorkspacePanel(int stepCountC1, int stepCountC2)
+        internal MillingWorkspacePanel(double rangeX, double rangeY, double rangeZ)
         {
-            HeadUV = new HeadCNC(_uvColor, this);
-            HeadXY = new HeadCNC(_xyColor, this);
-
-            StepCountU = StepCountX = stepCountC1;
-            StepCountV = StepCountY = stepCountC2;
-
+            HeadXYZ = new HeadCNC(_xyColor, this);
             Background = Brushes.White;
+            RangeX = rangeX;
+            RangeY = rangeY;
+            RangeZ = rangeZ;
 
             _entryPoint = new EntryPoint();
             Children.Add(_entryPoint);
@@ -218,7 +203,7 @@ namespace ControllerCNC.GUI
             MouseLeave += (s, o) => _positionInfo.Hide();
             MouseEnter += (s, o) => _positionInfo.Show();
 
-            CuttingSpeed = Speed.FromDeltaT(6000);
+            CuttingSpeedMm = 1.0;
             WireLength = Constants.FullWireLength;
         }
 
@@ -247,20 +232,20 @@ namespace ControllerCNC.GUI
 
         internal void SaveTo(string filename)
         {
-            var itemsToSave = new List<PointProviderItem>();
+            var itemsToSave = new List<MillingItem>();
             foreach (var child in Children)
             {
-                if (child is PointProviderItem)
-                    itemsToSave.Add(child as PointProviderItem);
+                if (child is MillingItem)
+                    itemsToSave.Add(child as MillingItem);
             }
             var formatter = new BinaryFormatter();
             var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
 
             var configuration = new Dictionary<string, object>();
-            configuration.Add("CuttingSpeed", CuttingSpeed);
+            configuration.Add("CuttingSpeed", CuttingSpeedMm);
             configuration.Add("CuttingKerf", CuttingKerf);
             configuration.Add("WireLength", WireLength);
-            var workspaceRepresentation = Tuple.Create<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>(itemsToSave, _itemJoins, configuration);
+            var workspaceRepresentation = Tuple.Create<List<MillingItem>, List<MillingJoin>, Dictionary<string, object>>(itemsToSave, _itemJoins, configuration);
             formatter.Serialize(stream, workspaceRepresentation);
             stream.Close();
         }
@@ -271,7 +256,7 @@ namespace ControllerCNC.GUI
 
             using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                var workspaceRepresentation = (Tuple<List<PointProviderItem>, List<ItemJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
+                var workspaceRepresentation = (Tuple<List<MillingItem>, List<MillingJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
 
                 Children.Clear();
                 Children.Add(_positionInfo);
@@ -292,7 +277,7 @@ namespace ControllerCNC.GUI
                 }
 
                 var configuration = workspaceRepresentation.Item3;
-                _cuttingSpeed = (Speed)configuration["CuttingSpeed"];
+                _cuttingSpeed = (double)configuration["CuttingSpeed"];
 
                 if (configuration.ContainsKey("CuttingKerf"))
                     _cuttingKerf = (double)configuration["CuttingKerf"];
@@ -307,12 +292,12 @@ namespace ControllerCNC.GUI
             }
         }
 
-        public ReadableIdentifier UnusedVersion(ReadableIdentifier name)
+        internal ReadableIdentifier UnusedVersion(ReadableIdentifier name)
         {
             var names = new HashSet<ReadableIdentifier>();
             foreach (var child in Children)
             {
-                var item = child as WorkspaceItem;
+                var item = child as MillingWorkspaceItem;
                 if (item == null)
                     continue;
 
@@ -327,71 +312,11 @@ namespace ControllerCNC.GUI
             return currentVersion;
         }
 
-        /// <summary>
-        /// Builds plan configured by the workspace. 
-        /// ASSUMING the starting position be correctly set up on <see cref="EntryPoint"/>.
-        /// </summary>
-        internal void BuildPlan(PlanBuilder plan)
-        {
-            var speedPoints = new List<Speed4Dstep>();
-            _entryPoint.Build(this, speedPoints, null);
-
-            var planPoints = speedPoints.Select(p => p.Point).ToList();
-            var segmentSpeeds = speedPoints.Select(p => Tuple.Create(p.SpeedUV, p.SpeedXY)).ToArray();
-
-            //scheduler needs referential point
-            planPoints.Insert(0, _entryPoint.CutPoints.First());
-
-            var scheduler = new StraightLinePlanner4D(CuttingSpeed);
-            var trajectoryPlan = scheduler.CreateConstantPlan(new Trajectory4D(planPoints), segmentSpeeds);
-
-            plan.Add(trajectoryPlan.Build());
-        }
-
-        internal IEnumerable<ItemJoin> GetOutgoingJoinsFrom(int currentIndex, IEnumerable<ItemJoin> outgoingJoins)
-        {
-            var result = new List<ItemJoin>();
-            foreach (var join in outgoingJoins)
-            {
-                if (join.JoinPointIndex1 == currentIndex)
-                    result.Add(join);
-            }
-
-            return result;
-        }
-
-        internal IEnumerable<ItemJoin> FindOutgoingJoins(PointProviderItem item)
-        {
-            var result = new List<ItemJoin>();
-            foreach (var join in _itemJoins)
-            {
-                if (join.Item1 == item)
-                    result.Add(join);
-            }
-
-            return result;
-        }
-
-        internal IEnumerable<ItemJoin> GetIncomingJoins(WorkspaceItem item)
-        {
-            foreach (var join in _itemJoins)
-                if (join.Item2 == item)
-                    yield return join;
-        }
-
-        internal void SetJoin(PointProviderItem shape1, int joinPointIndex1, PointProviderItem shape2, int joinPointIndex2)
+        internal void SetJoin(MillingItem shape1, MillingItem shape2)
         {
             if (shape1 is ScaffoldItem || shape2 is ScaffoldItem)
                 //scaffold cannot be joined
                 return;
-
-            if (shape1 is NativeControlItem || (shape2 is NativeControlItem && !(shape1 is EntryPoint)))
-                //native items cant be joined with other items
-                return;
-
-            if (shape2 is NativeControlItem)
-                //native items can run only separately
-                _itemJoins.Clear();
 
             var joinCopy = _itemJoins.ToArray();
             foreach (var join in joinCopy)
@@ -405,7 +330,7 @@ namespace ControllerCNC.GUI
                     _itemJoins.Remove(join);
             }
 
-            var newJoin = new ItemJoin(shape1, joinPointIndex1, shape2, joinPointIndex2);
+            var newJoin = new MillingJoin(shape1, shape2);
             _itemJoins.Add(newJoin);
 
             InvalidateVisual();
@@ -413,44 +338,32 @@ namespace ControllerCNC.GUI
             fireOnWorkItemListChanged();
         }
 
-        internal void SetJoin(PointProviderItem shape1, PointProviderItem shape2)
+        internal IEnumerable<MillingJoin> FindOutgoingJoins(MillingItem item)
         {
-            var points1 = shape1.CutPoints.ToArray();
-            var points2 = shape2.CutPoints.ToArray();
-
-            var best1 = 0;
-            var best2 = 0;
-            var bestDistance = double.PositiveInfinity;
-            for (var i = 0; i < points1.Length; ++i)
+            var result = new List<MillingJoin>();
+            foreach (var join in _itemJoins)
             {
-                var point1 = points1[i];
-                for (var j = 0; j < points2.Length; ++j)
-                {
-                    var point2 = points2[j];
-                    var distance = point1.DistanceSquaredTo(point2);
-
-                    if (distance < bestDistance)
-                    {
-                        bestDistance = distance;
-                        best1 = i;
-                        best2 = j;
-                    }
-                }
+                if (join.Item1 == item)
+                    result.Add(join);
             }
 
-            if (shape2 is NativeControlItem)
-                best2 = 0;
-
-            SetJoin(shape1, best1, shape2, best2);
+            return result;
         }
 
-        internal void RemoveJoin(ItemJoin join)
+        internal IEnumerable<MillingJoin> GetIncomingJoins(MillingWorkspaceItem item)
         {
-            _itemJoins.Remove(join);
+            foreach (var join in _itemJoins)
+                if (join.Item2 == item)
+                    yield return join;
+        }
 
-            InvalidateVisual();
-            fireOnWorkItemListChanged();
-            fireOnSettingsChanged();
+        /// <summary>
+        /// Builds plan configured by the workspace. 
+        /// ASSUMING the starting position be correctly set up on <see cref="EntryPoint"/>.
+        /// </summary>
+        internal void BuildPlan(PlanBuilder3D builder)
+        {
+            EntryPoint.BuildPlan(builder, this);
         }
 
         internal void RefreshJoins()
@@ -477,12 +390,12 @@ namespace ControllerCNC.GUI
 
             if (_draggedItem != null)
             {
-                _draggedItem.PositionC1 += (int)(mouseDelta.X / ActualWidth * StepCountX);
-                _draggedItem.PositionC2 += (int)(mouseDelta.Y / ActualHeight * StepCountY);
+                _draggedItem.PositionX += mouseDelta.X / ActualWidth * RangeX;
+                _draggedItem.PositionY += mouseDelta.Y / ActualHeight * RangeY;
             }
 
-            _positionInfo.PositionC1 = (int)(position.X / ActualWidth * StepCountX);
-            _positionInfo.PositionC2 = (int)(position.Y / ActualHeight * StepCountY);
+            _positionInfo.PositionX = position.X / ActualWidth * RangeX;
+            _positionInfo.PositionY = position.Y / ActualHeight * RangeY;
             _positionInfo.UpdateInfo();
         }
 
@@ -513,16 +426,16 @@ namespace ControllerCNC.GUI
 
 
             if (_lastScaffold == null)
-                _lastScaffold = new ScaffoldItem(UnusedVersion(new ReadableIdentifier("scaffold")), new Point2Dstep[0]);
+                _lastScaffold = new ScaffoldItem(UnusedVersion(new ReadableIdentifier("scaffold")), new Point2Dmm[0]);
             else
             {
                 Children.Remove(_lastScaffold);
             }
 
             var position = e.GetPosition(this);
-            var stepsX = (int)(position.X / ActualWidth * StepCountX);
-            var stepsY = (int)(position.Y / ActualHeight * StepCountY);
-            _lastScaffold = _lastScaffold.ExtendBy(new Point2Dstep(stepsX, stepsY));
+            var mmX = position.X / ActualWidth * RangeX;
+            var mmY = position.Y / ActualHeight * RangeY;
+            _lastScaffold = _lastScaffold.ExtendBy(new Point2Dmm(mmX, mmY));
 
             Children.Add(_lastScaffold);
         }
@@ -536,20 +449,26 @@ namespace ControllerCNC.GUI
             //render join lines
             foreach (var join in _itemJoins)
             {
-                var startPointUV = getJoinPointProjectedUV(join.Item1, join.JoinPointIndex1);
-                var endPointUV = getJoinPointProjectedUV(join.Item2, join.JoinPointIndex2);
-                var startPointXY = getJoinPointProjectedXY(join.Item1, join.JoinPointIndex1);
-                var endPointXY = getJoinPointProjectedXY(join.Item2, join.JoinPointIndex2);
+                var startPointXY = getJoinPointProjected(join.Item1);
+                var endPointXY = getJoinPointProjected(join.Item2);
 
-                var geometryUV = CreateLinkArrow(startPointUV, endPointUV);
-                var geometryXY = CreateLinkArrow(startPointXY, endPointXY);
-                dc.DrawGeometry(null, _joinPenUV, geometryUV);
+                var geometryXY = WorkspacePanel.CreateLinkArrow(startPointXY, endPointXY);
                 dc.DrawGeometry(null, _joinPenXY, geometryXY);
             }
 
-            HeadUV.Draw(dc);
-            HeadXY.Draw(dc);
+            HeadXYZ.Draw(dc);
         }
+
+        private Point getJoinPointProjected(MillingItem item)
+        {
+            var point = item.EntryPoint;
+
+            var x = ActualWidth * point.C1 / RangeX;
+            var y = ActualHeight * point.C2 / RangeY;
+
+            return new Point(x, y);
+        }
+
 
         /// <inheritdoc/>
         protected override void OnVisualChildrenChanged(DependencyObject visualAdded, DependencyObject visualRemoved)
@@ -566,17 +485,17 @@ namespace ControllerCNC.GUI
 
             if (visualAdded != null)
             {
-                var pointProvider = visualAdded as PointProviderItem;
+                var pointProvider = visualAdded as MillingItem;
                 if (pointProvider != null)
                 {
                     //enable drag 
                     pointProvider.PreviewMouseLeftButtonDown += (s, e) => _draggedItem = pointProvider;
                     //enable properties dialog
-                    pointProvider.MouseRightButtonUp += (s, e) => new PointProviderPropertiesDialog(pointProvider);
+                    pointProvider.MouseRightButtonUp += (s, e) => throw new NotImplementedException();
                 }
 
                 //setup change listener to work items
-                var workItem = visualAdded as WorkspaceItem;
+                var workItem = visualAdded as MillingWorkspaceItem;
                 if (workItem != null)
                 {
                     workItem.OnSettingsChanged += fireOnSettingsChanged;
@@ -593,7 +512,7 @@ namespace ControllerCNC.GUI
         {
             OnWorkItemListChanged?.Invoke();
         }
-
+        
         private void fireSettingsChangedForAllChildren()
         {
             fireOnSettingsChanged();
@@ -604,12 +523,21 @@ namespace ControllerCNC.GUI
             }
         }
 
+        internal void RemoveJoin(MillingJoin join)
+        {
+            _itemJoins.Remove(join);
+
+            InvalidateVisual();
+            fireOnWorkItemListChanged();
+            fireOnSettingsChanged();
+        }
+
         private void fireOnSettingsChanged()
         {
             OnSettingsChanged?.Invoke();
         }
 
-        private void fireOnWorkitemClicked(WorkspaceItem item)
+        private void fireOnWorkitemClicked(MillingWorkspaceItem item)
         {
             OnWorkItemClicked?.Invoke(item);
         }
@@ -620,8 +548,8 @@ namespace ControllerCNC.GUI
             if (!_invalidateArrange)
                 return DesiredSize;
 
-            var ratioX = 1.0 * StepCountX / StepCountY;
-            var ratioY = 1.0 * StepCountY / StepCountX;
+            var ratioX = 1.0 * RangeX / RangeY;
+            var ratioY = 1.0 * RangeY / RangeX;
 
             var finalY = ratioY * availableSize.Width;
             var finalX = ratioX * availableSize.Height;
@@ -649,7 +577,7 @@ namespace ControllerCNC.GUI
 
             InvalidateVisual();
             finalSize = this.DesiredSize;
-            foreach (WorkspaceItem child in Children)
+            foreach (MillingWorkspaceItem child in Children)
             {
                 var positionX = projectToX(finalSize, child);
                 var positionY = projectToY(finalSize, child);
@@ -662,75 +590,16 @@ namespace ControllerCNC.GUI
             return finalSize;
         }
 
-        private double projectToX(Size finalSize, WorkspaceItem child)
+        private double projectToX(Size finalSize, MillingWorkspaceItem child)
         {
-            var positionX = finalSize.Width * child.PositionC1 / StepCountX;
+            var positionX = finalSize.Width * child.PositionX / RangeX;
             return positionX;
         }
 
-        private double projectToY(Size finalSize, WorkspaceItem child)
+        private double projectToY(Size finalSize, MillingWorkspaceItem child)
         {
-            var positionX = finalSize.Height * child.PositionC2 / StepCountY;
+            var positionX = finalSize.Height * child.PositionY / RangeY;
             return positionX;
-        }
-
-        private Point getJoinPointProjectedUV(PointProviderItem item, int pointIndex)
-        {
-            var point4D = item.CutPoints.Skip(pointIndex).First();
-
-            var coordU = ActualWidth * point4D.U / StepCountU;
-            var coordV = ActualHeight * point4D.V / StepCountV;
-
-            return new Point(coordU, coordV);
-        }
-
-        private Point getJoinPointProjectedXY(PointProviderItem item, int pointIndex)
-        {
-            var point4D = item.CutPoints.Skip(pointIndex).First();
-
-            var coordX = ActualWidth * point4D.X / StepCountX;
-            var coordY = ActualHeight * point4D.Y / StepCountY;
-
-            return new Point(coordX, coordY);
-        }
-
-        public static Geometry CreateLinkArrow(Point p1, Point p2)
-        {
-            var lineGroup = new GeometryGroup();
-            var theta = Math.Atan2((p2.Y - p1.Y), (p2.X - p1.X)) * 180 / Math.PI;
-
-            var pathGeometry = new PathGeometry();
-            var pathFigure = new PathFigure();
-            var p = new Point(p1.X + ((p2.X - p1.X) / 1.35), p1.Y + ((p2.Y - p1.Y) / 1.35));
-            pathFigure.StartPoint = p;
-
-            var lpoint = new Point(p.X + 6, p.Y + 15);
-            var rpoint = new Point(p.X - 6, p.Y + 15);
-            var seg1 = new LineSegment();
-            seg1.Point = lpoint;
-            pathFigure.Segments.Add(seg1);
-
-            var seg2 = new LineSegment();
-            seg2.Point = rpoint;
-            pathFigure.Segments.Add(seg2);
-
-            var seg3 = new LineSegment();
-            seg3.Point = p;
-            pathFigure.Segments.Add(seg3);
-
-            pathGeometry.Figures.Add(pathFigure);
-            var transform = new RotateTransform();
-            transform.Angle = theta + 90;
-            transform.CenterX = p.X;
-            transform.CenterY = p.Y;
-            pathGeometry.Transform = transform;
-            lineGroup.Children.Add(pathGeometry);
-
-            var connectorGeometry = new LineGeometry();
-            connectorGeometry.StartPoint = p1;
-            connectorGeometry.EndPoint = p2;
-            lineGroup.Children.Add(connectorGeometry);
-            return lineGroup;
         }
     }
 }

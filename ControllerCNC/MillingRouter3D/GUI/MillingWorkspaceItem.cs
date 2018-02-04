@@ -1,43 +1,30 @@
-﻿using System;
+﻿using ControllerCNC.Primitives;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-
-using System.Runtime.Serialization;
-
+using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
 
-using System.Windows;
-using System.Windows.Controls;
-
-using ControllerCNC.Primitives;
-
-namespace ControllerCNC.GUI
+namespace MillingRouter3D.GUI
 {
-    [Serializable]
-    public abstract class WorkspaceItem : UserControl, ISerializable
+    abstract class MillingWorkspaceItem : UserControl, ISerializable
     {
-        /// <summary>
-        /// Actual position x in steps.
-        /// </summary>
-        private int _positionX;
-
-        /// <summary>
-        /// Actual position y in steps.
-        /// </summary>
-        private int _positionY;
-
-        /// <summary>
-        /// Determine whether item is highlighted.
-        /// </summary>
         private bool _isHighlighted;
 
         /// <summary>
-        /// Event fired when settings of the item changes.
+        /// Actual position x in mm.
         /// </summary>
-        internal event Action OnSettingsChanged;
+        private double _positionX;
+
+        /// <summary>
+        /// Actual position y in mm.
+        /// </summary>
+        private double _positionY;
 
         /// <summary>
         /// Name of the item.
@@ -45,8 +32,44 @@ namespace ControllerCNC.GUI
         new internal readonly ReadableIdentifier Name;
 
         /// <summary>
-        /// 
+        /// Event fired when settings of the item changes.
         /// </summary>
+        internal event Action OnSettingsChanged;
+
+        /// <summary>
+        /// Position of the item in steps.
+        /// </summary>
+        internal double PositionX
+        {
+            get { return _positionX; }
+            set
+            {
+                if (_positionX == value)
+                    //nothing changed
+                    return;
+
+                _positionX = value;
+                fireOnSettingsChanged();
+            }
+        }
+
+        /// <summary>
+        /// Position of the item in steps.
+        /// </summary>
+        internal double PositionY
+        {
+            get { return _positionY; }
+            set
+            {
+                if (_positionY == value)
+                    //nothing changed
+                    return;
+
+                _positionY = value;
+                fireOnSettingsChanged();
+            }
+        }
+
         public bool IsHighlighted
         {
             get { return _isHighlighted; }
@@ -75,51 +98,17 @@ namespace ControllerCNC.GUI
         }
 
         /// <summary>
-        /// Position of the item in steps.
-        /// </summary>
-        internal int PositionC1
-        {
-            get { return _positionX; }
-            set
-            {
-                if (_positionX == value)
-                    //nothing changed
-                    return;
-
-                _positionX = value;
-                fireOnSettingsChanged();
-            }
-        }
-
-        /// <summary>
-        /// Position of the item in steps.
-        /// </summary>
-        internal int PositionC2
-        {
-            get { return _positionY; }
-            set
-            {
-                if (_positionY == value)
-                    //nothing changed
-                    return;
-
-                _positionY = value;
-                fireOnSettingsChanged();
-            }
-        }
-
-        /// <summary>
         /// Creates visual face of the item
         /// </summary>
         /// <returns></returns>
         protected abstract object createContent();
 
-        internal WorkspaceItem(ReadableIdentifier name)
+        internal MillingWorkspaceItem(ReadableIdentifier name)
         {
             Name = name;
         }
 
-        internal WorkspaceItem(SerializationInfo info, StreamingContext context)
+        internal MillingWorkspaceItem(SerializationInfo info, StreamingContext context)
         {
             _positionX = info.GetInt32("_positionX");
             _positionY = info.GetInt32("_positionY");
@@ -133,7 +122,7 @@ namespace ControllerCNC.GUI
             info.AddValue("Name", Name);
         }
 
-        internal virtual void RecalculateToWorkspace(WorkspacePanel workspace, Size size)
+        internal virtual void RecalculateToWorkspace(MillingWorkspacePanel workspace, Size size)
         {
             //nothing to do by default
         }
@@ -154,9 +143,9 @@ namespace ControllerCNC.GUI
             OnSettingsChanged?.Invoke();
 
             InvalidateVisual();
-            var workspace = Parent as WorkspacePanel;
+            var workspace = Parent as MillingWorkspacePanel;
             if (workspace != null)
                 workspace.InvalidateArrange();
-        }
+        }        
     }
 }

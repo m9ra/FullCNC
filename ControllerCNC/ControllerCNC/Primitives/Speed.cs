@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ControllerCNC.Machine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -49,10 +50,15 @@ namespace ControllerCNC.Primitives
             return new Speed(1, (uint)deltaT);
         }
 
+        public static Speed FromMilimetersPerSecond(double mmPerSecond)
+        {
+            return new Speed((int)Math.Round(mmPerSecond / Constants.MilimetersPerStep), Constants.TimerFrequency);
+        }
+
         /// <summary>
         /// Converts speed to deltaT.
         /// </summary>
-        internal int ToDeltaT()
+        public int ToDeltaT()
         {
             return (int)Math.Round(1.0 * Ticks / StepCount);
         }
