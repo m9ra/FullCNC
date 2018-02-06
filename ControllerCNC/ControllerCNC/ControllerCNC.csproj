@@ -56,7 +56,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Coord3DController.cs" />
     <Compile Include="Coord2DController.cs" />
     <Compile Include="CutterPanel.xaml.cs">
       <DependentUpon>CutterPanel.xaml</DependentUpon>
@@ -102,6 +101,7 @@
     <Compile Include="Machine\StateDataInstruction.cs" />
     <Compile Include="Machine\StepInstrution.cs" />
     <Compile Include="Planning\BitmapMash.cs" />
+    <Compile Include="Planning\CoordController.cs" />
     <Compile Include="Planning\ImageInterpolator.cs" />
     <Compile Include="Planning\PlanBuilder3D.cs" />
     <Compile Include="Planning\StraightLinePlanner4D.cs" />

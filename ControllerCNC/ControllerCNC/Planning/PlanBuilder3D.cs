@@ -162,7 +162,7 @@ namespace ControllerCNC.Planning
             return new Point4Dmm(point.Y, point.X, point.Y, point.Z);
         }
 
-        public static Point3Dmm GetPositionFromSteps(double u, double v, double x, double y)
+        public static Point3Dmm GetPositionFromSteps(int u, int v, int x, int y)
         {
             var m = Constants.MilimetersPerStep;
             return GetPositionFromMm(u * m, v * m, x * m, y * m);

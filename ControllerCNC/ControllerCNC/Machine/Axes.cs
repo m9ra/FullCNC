@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Machine
 {
-    class Axes : InstructionCNC
+    public class Axes : InstructionCNC
     {
         /// <summary>
         /// Instruction for x axis.
@@ -132,7 +132,9 @@ namespace ControllerCNC.Machine
             groupBytes[0] = getInstructionIdentifier();
 
             var instructionIndex = 0;
-            var instructionOrdering = new[] { InstructionX, InstructionY, InstructionU, InstructionV };
+            StepInstrution[] instructionOrdering;
+            instructionOrdering = new[] { InstructionX.WithOrientation(Constants.DirX), InstructionY.WithOrientation(Constants.DirY), InstructionU.WithOrientation(Constants.DirU), InstructionV.WithOrientation(Constants.DirV) };
+
             foreach (var instruction in instructionOrdering)
             {
                 var instructionOffset = 1 + instructionIndex * payloadLength;

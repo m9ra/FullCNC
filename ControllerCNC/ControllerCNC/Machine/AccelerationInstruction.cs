@@ -17,7 +17,7 @@ namespace ControllerCNC.Machine
         public readonly Int16 BaseRemainder;
 
         public AccelerationInstruction(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 baseRemainder, int startN)
-            : base(stepCount)
+            : base(stepCount, InstructionOrientation.Normal)
         {
             InitialDeltaT = initialDeltaT;
             StartN = startN;
@@ -31,6 +31,14 @@ namespace ControllerCNC.Machine
                 throw new NotSupportedException("Invalid StartN value");
         }
 
+        private AccelerationInstruction(AccelerationInstruction originalInstruction, InstructionOrientation newOrientation)
+            : base(originalInstruction.StepCount, newOrientation)
+        {
+            InitialDeltaT = originalInstruction.InitialDeltaT;
+            StartN = originalInstruction.StartN;
+            BaseDelta = originalInstruction.BaseDelta;
+            BaseRemainder = originalInstruction.BaseRemainder;
+        }
 
         internal AccelerationInstruction WithReversedDirection()
         {
@@ -43,7 +51,7 @@ namespace ControllerCNC.Machine
             var sendBuffer = new List<byte>();
 
             sendBuffer.Add((byte)'A');
-            sendBuffer.AddRange(ToBytes(StepCount));
+            sendBuffer.AddRange(ToBytes((Int16)(StepCount * (Int16)Orientation)));
             sendBuffer.AddRange(ToBytes(InitialDeltaT));
             sendBuffer.AddRange(ToBytes(StartN));
             sendBuffer.AddRange(ToBytes(BaseDelta));
@@ -107,13 +115,22 @@ namespace ControllerCNC.Machine
         /// </inheritdoc>
         public override string ToString()
         {
-            return string.Format("A({0},{1},{2})", StepCount, InitialDeltaT, StartN);
+            return string.Format("A({0},{1},{2},{3},{4},{5})", StepCount, InitialDeltaT, StartN, BaseRemainder, BaseDelta, Orientation);
         }
 
         /// </inheritdoc>
         internal override ulong GetInstructionDuration()
         {
-            return (ulong)GetStepTimings().Sum();
+            return (ulong)GetStepTimings().Select(s => Math.Abs(s)).Sum();
+        }
+
+        /// </inheritdoc>
+        internal override StepInstrution WithOrientation(InstructionOrientation orientation)
+        {
+            if (Orientation == orientation)
+                return this;
+
+            return new AccelerationInstruction(this, orientation);
         }
     }
 }

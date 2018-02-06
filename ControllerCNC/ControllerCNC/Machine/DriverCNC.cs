@@ -23,7 +23,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// If set to true, simulation mode is used instead of the real device.
         /// </summary>
-        private readonly bool FAKE_ONLINE_MODE = false;
+        private readonly bool FAKE_ONLINE_MODE = true;
 
         /// <summary>
         /// Determine whether simulator should use real speeds.
@@ -199,7 +199,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// How many from sent plans was not completed
         /// </summary>
-        public int IncompletePlanCount { get { return _incompleteInstructions + _sendQueue.Count; } }
+        public int IncompletePlanCount { get { lock (_L_instructionCompletition) return _incompleteInstructionQueue.Count; } }
 
         /// <summary>
         /// Position estimation.
@@ -681,7 +681,7 @@ namespace ControllerCNC.Machine
             _plannedState.Completed(new HomingInstruction());
             _completedState.Completed(new HomingInstruction());
 
-            var simulationDelay = 100;
+            var simulationDelay = 10;
             while (true)
             {
                 Thread.Sleep(simulationDelay);
@@ -696,7 +696,7 @@ namespace ControllerCNC.Machine
                     }
 
                     var tickCount = instruction.CalculateTotalTime();
-                    var time = 1000 * tickCount / Constants.TimerFrequency;
+                    var time = 1000.0 * tickCount / Constants.TimerFrequency;
 
                     if (SIMULATE_REAL_DELAY)
                     {

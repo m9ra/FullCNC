@@ -55,6 +55,14 @@ namespace ControllerCNC.Primitives
             return new Speed((int)Math.Round(mmPerSecond / Constants.MilimetersPerStep), Constants.TimerFrequency);
         }
 
+        public double ToMetric()
+        {
+            var trajectory = StepCount * Constants.MilimetersPerStep;
+            var duration = 1.0 * Ticks / Constants.TimerFrequency;
+
+            return trajectory / duration;
+        }
+
         /// <summary>
         /// Converts speed to deltaT.
         /// </summary>

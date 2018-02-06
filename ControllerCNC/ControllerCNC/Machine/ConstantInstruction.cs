@@ -15,7 +15,7 @@ namespace ControllerCNC.Machine
         public readonly UInt16 PeriodDenominator;
 
         public ConstantInstruction(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator)
-            : base(stepCount)
+            : base(stepCount, InstructionOrientation.Normal)
         {
             BaseDeltaT = baseDeltaT;
             PeriodNumerator = periodNumerator;
@@ -25,13 +25,21 @@ namespace ControllerCNC.Machine
             PeriodDenominator = (UInt16)Math.Abs(StepCount);
         }
 
+        private ConstantInstruction(ConstantInstruction originalInstruction, InstructionOrientation newOrientation)
+            : base(originalInstruction.StepCount, newOrientation)
+        {
+            BaseDeltaT = originalInstruction.BaseDeltaT;
+            PeriodNumerator = originalInstruction.PeriodNumerator;
+            PeriodDenominator = originalInstruction.PeriodDenominator;
+        }
+
         /// </inheritdoc>
         internal override byte[] GetInstructionBytes()
         {
             var sendBuffer = new List<byte>();
 
             sendBuffer.Add((byte)'C');
-            sendBuffer.AddRange(ToBytes(StepCount));
+            sendBuffer.AddRange(ToBytes((Int16)(StepCount * (Int16)Orientation)));
             sendBuffer.AddRange(ToBytes(BaseDeltaT));
             sendBuffer.AddRange(ToBytes(PeriodNumerator));
             sendBuffer.AddRange(ToBytes(PeriodDenominator));
@@ -58,7 +66,7 @@ namespace ControllerCNC.Machine
 
                 result[i] = activationTime;
                 if (StepCount < 0)
-                    result[i] *= -1;
+                    result[i] *= -1 * (int)Orientation;
             }
             return result;
         }
@@ -66,7 +74,7 @@ namespace ControllerCNC.Machine
         /// </inheritdoc>
         public override string ToString()
         {
-            return string.Format("C({0},{1},{2},{3}", StepCount, BaseDeltaT, PeriodNumerator, PeriodDenominator);
+            return string.Format("C({0},{1},{2},{3},{4})", StepCount, BaseDeltaT, PeriodNumerator, PeriodDenominator, Orientation);
         }
 
         /// </inheritdoc>
@@ -77,6 +85,15 @@ namespace ControllerCNC.Machine
                 result += (ulong)(PeriodNumerator / PeriodDenominator);
 
             return result;
+        }
+
+        /// </inheritdoc>
+        internal override StepInstrution WithOrientation(InstructionOrientation orientation)
+        {
+            if (Orientation == orientation)
+                return this;
+
+            return new ConstantInstruction(this, orientation);
         }
     }
 }

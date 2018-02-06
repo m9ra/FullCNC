@@ -39,7 +39,7 @@ namespace MillingRouter3D
             "Scaffolding"
         };
 
-        internal readonly Coord3DController CoordController;
+        internal readonly CoordController CoordController;
 
         internal MillingWorkspacePanel Workspace { get; private set; }
 
@@ -48,6 +48,8 @@ namespace MillingRouter3D
         private static string _autosaveFile = "workspace_autosave.mwspc";
 
         private string _workspaceFile;
+
+        private int _tr_dirX, _tr_dirY, _tr_dirZ;
 
         private readonly ShapeFactory3D _factory;
 
@@ -84,7 +86,7 @@ namespace MillingRouter3D
         public RouterPanel()
         {
             Constants.EnableRouterMode();
-
+            System.Windows.Forms.Integration.ElementHost.EnableModelessKeyboardInterop(this);
             System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
             Thread.CurrentThread.CurrentCulture = customCulture;
@@ -96,6 +98,7 @@ namespace MillingRouter3D
             _motionCommands.Add(GoToZerosXY);
             _motionCommands.Add(StartPlan);
             _motionCommands.Add(Speed);
+            _motionCommands.Add(SetZLevel);
 
             Cnc = new DriverCNC();
             Cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
@@ -103,7 +106,7 @@ namespace MillingRouter3D
 
             Cnc.Initialize();
 
-            CoordController = new Coord3DController(Cnc);
+            CoordController = new CoordController(Cnc);
 
             _messageTimer.Interval = TimeSpan.FromMilliseconds(_messageShowDelay);
             _messageTimer.IsEnabled = false;
@@ -115,8 +118,8 @@ namespace MillingRouter3D
             _autosaveTime.Interval = TimeSpan.FromMilliseconds(1000);
             _autosaveTime.Tick += _autosaveTime_Tick;
 
-            KeyUp += keyUp;
-            KeyDown += keyDown;
+            PreviewKeyUp += previewKeyUp;
+            PreviewKeyDown += previewKeyDown;
             ContextMenu = createWorkspaceMenu();
 
             resetWorkspace(true);
@@ -124,12 +127,8 @@ namespace MillingRouter3D
             initializeTransitionHandlers();
 
             _factory = new ShapeFactory3D(this);
-
-            /*/
-            OpenEditor_Click(null, null);
-            this.Hide();
-            /**/
         }
+
 
         #region Panel service
 
@@ -138,6 +137,11 @@ namespace MillingRouter3D
             return Workspace.UnusedVersion(identifier);
         }
 
+        protected override void OnRender(DrawingContext drawingContext)
+        {
+            base.OnRender(drawingContext);
+            Keyboard.Focus(this);
+        }
         #endregion
 
         #region Message handling
@@ -372,7 +376,8 @@ namespace MillingRouter3D
             return item;
         }
 
-        void keyDown(object sender, KeyEventArgs e)
+
+        private void previewKeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.LeftAlt || e.Key == Key.RightAlt || e.Key == Key.System)
             {
@@ -384,9 +389,31 @@ namespace MillingRouter3D
             {
                 setMode(WorkspaceMode.ScaffoldMode);
             }
+
+            switch (e.Key)
+            {
+                case Key.Down:
+                    setKeyTransition(0, 1, 0, e);
+                    break;
+                case Key.Up:
+                    setKeyTransition(0, -1, 0, e);
+                    break;
+                case Key.Left:
+                    setKeyTransition(-1, 0, 0, e);
+                    break;
+                case Key.Right:
+                    setKeyTransition(1, 0, 0, e);
+                    break;
+                case Key.Add:
+                    setKeyTransition(0, 0, 1, e);
+                    break;
+                case Key.Subtract:
+                    setKeyTransition(0, 0, -1, e);
+                    break;
+            }
         }
 
-        void keyUp(object sender, KeyEventArgs e)
+        void previewKeyUp(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Delete)
             {
@@ -417,6 +444,52 @@ namespace MillingRouter3D
             {
                 setMode(WorkspaceMode.Idle);
             }
+
+            switch (e.Key)
+            {
+                case Key.Down:
+                case Key.Up:
+                    resetKeyTransition(false, true, false, e);
+                    break;
+                case Key.Left:
+                case Key.Right:
+                    resetKeyTransition(true, false, false, e);
+                    break;
+                case Key.Add:
+                case Key.Subtract:
+                    resetKeyTransition(false, false, true, e);
+                    break;
+            }
+        }
+
+        private void setKeyTransition(int dirX, int dirY, int dirZ, KeyEventArgs e)
+        {
+            if (dirX != 0)
+                _tr_dirX = dirX;
+
+            if (dirY != 0)
+                _tr_dirY = dirY;
+
+            if (dirZ != 0)
+                _tr_dirZ = dirZ;
+
+            e.Handled = true;
+            refreshTransitionSpeed();
+        }
+
+        private void resetKeyTransition(bool x, bool y, bool z, KeyEventArgs e)
+        {
+            if (x)
+                _tr_dirX = 0;
+
+            if (y)
+                _tr_dirY = 0;
+
+            if (z)
+                _tr_dirZ = 0;
+
+            e.Handled = true;
+            refreshTransitionSpeed();
         }
 
         void _autosaveTime_Tick(object sender, EventArgs e)
@@ -541,7 +614,7 @@ namespace MillingRouter3D
             }
 
             var plan = builder.Build();
-
+            System.Windows.MessageBox.Show("Check the engine power!", "Confirm");
             if (!Cnc.SEND(plan))
             {
                 planCompleted();
@@ -594,15 +667,15 @@ namespace MillingRouter3D
 
         private void initializeTransitionHandlers()
         {
-            initializeTransitionHandlers(UpB, 1, 0, 0);
-            initializeTransitionHandlers(BottomB, -1, 0, 0);
-            initializeTransitionHandlers(LeftB, 0, -1, 0);
-            initializeTransitionHandlers(RightB, 0, 1, 0);
+            initializeTransitionHandlers(UpB, 0, -1, 0);
+            initializeTransitionHandlers(BottomB, 0, 1, 0);
+            initializeTransitionHandlers(LeftB, -1, 0, 0);
+            initializeTransitionHandlers(RightB, 1, 0, 0);
 
-            initializeTransitionHandlers(LeftUpB, 1, -1, 0);
-            initializeTransitionHandlers(UpRightB, 1, 1, 0);
-            initializeTransitionHandlers(LeftBottomB, -1, -1, 0);
-            initializeTransitionHandlers(BottomRightB, -1, 1, 0);
+            initializeTransitionHandlers(LeftUpB, -1, -1, 0);
+            initializeTransitionHandlers(UpRightB, 1, -1, 0);
+            initializeTransitionHandlers(LeftBottomB, -1, 1, 0);
+            initializeTransitionHandlers(BottomRightB, 1, 1, 0);
             initializeTransitionHandlers(AscendB, 0, 0, -1);
             initializeTransitionHandlers(DescendB, 0, 0, 1);
 
@@ -645,8 +718,10 @@ namespace MillingRouter3D
                 buttonToDisable.IsChecked = false;
             }
 
+            _tr_dirX = dirX;
+            _tr_dirY = dirY;
+            _tr_dirZ = dirZ;
             refreshTransitionSpeed();
-            CoordController.SetMovement(dirX, dirZ, dirY);
         }
 
         private void refreshTransitionSpeed()
@@ -654,7 +729,9 @@ namespace MillingRouter3D
             if (CoordController == null)
                 return;
 
-            CoordController.SetSpeed(getTransitionSpeed().ToDeltaT());
+            var speed = getTransitionSpeed().ToMetric();
+            var speeds = PlanBuilder3D.GetPositionRev(_tr_dirX * speed, _tr_dirY * speed, _tr_dirZ * speed);
+            CoordController.SetDesiredSpeeds(speeds.U, speeds.V, speeds.X, speeds.Y);
         }
 
         private Speed getCuttingSpeed()
@@ -720,7 +797,7 @@ namespace MillingRouter3D
                 if (flatShape != null)
                 {
                     var shapeItem = new MillingShapeItem2D(name, flatShape);
-                    shapeItem.MetricWidth = 30;
+                    shapeItem.MetricHeight = 100;
                     Workspace.Children.Add(shapeItem);
                 }
             }
@@ -846,6 +923,14 @@ namespace MillingRouter3D
                 _workspaceFile = dlg.FileName;
                 Workspace.SaveTo(_workspaceFile);
             }
+        }
+
+        private void Tet_Click(object sender, RoutedEventArgs e)
+        {
+            var stepI = new ConstantInstruction((short)4, 25000, 0);
+            var waitI = new ConstantInstruction((short)0, 1000000, 0);
+            var instruction = Axes.UVXY(waitI, stepI, waitI, waitI);
+            Cnc.SEND(instruction);
         }
 
         private void NewPlan_Click(object sender, RoutedEventArgs e)

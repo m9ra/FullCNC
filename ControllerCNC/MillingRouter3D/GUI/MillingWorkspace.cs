@@ -147,7 +147,7 @@ namespace MillingRouter3D.GUI
         /// <summary>
         /// Item that is moved by using drag and drop
         /// </summary>
-        private MillingItem _draggedItem = null;
+        private MillingWorkspaceItem _draggedItem = null;
 
         /// <summary>
         /// Last position of mouse
@@ -186,9 +186,9 @@ namespace MillingRouter3D.GUI
         {
             HeadXYZ = new HeadCNC(_xyColor, this);
             Background = Brushes.White;
-            RangeX = rangeX;
-            RangeY = rangeY;
-            RangeZ = rangeZ;
+            RangeX = Math.Abs(rangeX);
+            RangeY = Math.Abs(rangeY);
+            RangeZ = Math.Abs(rangeZ);
 
             _entryPoint = new EntryPoint();
             Children.Add(_entryPoint);
@@ -314,10 +314,6 @@ namespace MillingRouter3D.GUI
 
         internal void SetJoin(MillingItem shape1, MillingItem shape2)
         {
-            if (shape1 is ScaffoldItem || shape2 is ScaffoldItem)
-                //scaffold cannot be joined
-                return;
-
             var joinCopy = _itemJoins.ToArray();
             foreach (var join in joinCopy)
             {
@@ -485,13 +481,13 @@ namespace MillingRouter3D.GUI
 
             if (visualAdded != null)
             {
-                var pointProvider = visualAdded as MillingItem;
-                if (pointProvider != null)
+                var millingItem = visualAdded as MillingWorkspaceItem;
+                if (millingItem != null)
                 {
                     //enable drag 
-                    pointProvider.PreviewMouseLeftButtonDown += (s, e) => _draggedItem = pointProvider;
+                    millingItem.PreviewMouseLeftButtonDown += (s, e) => _draggedItem = millingItem;
                     //enable properties dialog
-                    pointProvider.MouseRightButtonUp += (s, e) => throw new NotImplementedException();
+                    millingItem.MouseRightButtonUp += (s, e) => new MillingItemPropertiesDialog(millingItem);
                 }
 
                 //setup change listener to work items
@@ -512,7 +508,7 @@ namespace MillingRouter3D.GUI
         {
             OnWorkItemListChanged?.Invoke();
         }
-        
+
         private void fireSettingsChangedForAllChildren()
         {
             fireOnSettingsChanged();

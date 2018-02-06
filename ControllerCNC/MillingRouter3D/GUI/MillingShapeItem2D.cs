@@ -71,6 +71,11 @@ namespace MillingRouter3D.GUI
         private double _kerfXY;
 
         /// <summary>
+        /// Depth of the milling process.
+        /// </summary>
+        private double _millingDepth = 0.0;
+
+        /// <summary>
         /// Determine whether <see cref="KerfUV"/> and <see cref="KerfXY"/> will be used.
         /// </summary>
         internal bool UseExplicitKerf
@@ -164,6 +169,23 @@ namespace MillingRouter3D.GUI
             }
         }
 
+
+        internal double MillingDepth
+        {
+            get
+            {
+                return _millingDepth;
+            }
+
+            set
+            {
+                if (value == _millingDepth)
+                    return;
+                _millingDepth = value;
+                fireOnSettingsChanged();
+            }
+        }
+
         internal bool UseClockwiseCut
         {
             get
@@ -234,6 +256,7 @@ namespace MillingRouter3D.GUI
 
             _shapeDefinition = shapeDefinition.ToArray();
             _useClockwiseCut = true;
+            _millingDepth = 1.0;
 
             constructionInitialization();
         }
@@ -247,6 +270,7 @@ namespace MillingRouter3D.GUI
             _useExplicitKerf = info.GetBoolean("_useExplicitKerf");
             _kerfXY = info.GetDouble("_kerfXY");
             _useClockwiseCut = info.GetBoolean("_useClockwiseCut");
+            _millingDepth = info.GetDouble("_millingDepth");
 
             constructionInitialization();
         }
@@ -261,6 +285,7 @@ namespace MillingRouter3D.GUI
             info.AddValue("_useExplicitKerf", _useExplicitKerf);
             info.AddValue("_kerfXY", _kerfXY);
             info.AddValue("_useClockwiseCut", _useClockwiseCut);
+            info.AddValue("_millingDepth", _millingDepth);
         }
 
         /// <summary>
@@ -354,6 +379,7 @@ namespace MillingRouter3D.GUI
             foreach (var pointCluster in ShapeDefinition)
             {
                 shapes.Add(new PlaneShape(pointCluster));
+                shapes = shapes.OrderBy(s => s.MaxC2).ToList();
             }
             Shapes = shapes.ToArray();
 
@@ -510,6 +536,8 @@ namespace MillingRouter3D.GUI
             shapeItem.MetricWidth = MetricWidth;
             shapeItem.RotationAngle = RotationAngle;
             shapeItem.MetricHeight = MetricHeight;
+            shapeItem.MillingDepth = MillingDepth;
+            shapeItem.UseClockwiseCut = UseClockwiseCut;
             return shapeItem;
         }
 
@@ -520,10 +548,16 @@ namespace MillingRouter3D.GUI
                 builder.GotoTransitionLevel();
                 builder.AddRampedLine(cluster[0], builder.PlaneAcceleration, builder.TransitionSpeed);
 
-                builder.GotoZ(2.0);
-                foreach (var point in cluster)
+                var currentDepth = 0.0;
+                while (currentDepth < MillingDepth)
                 {
-                    builder.AddConstantSpeedTransition(point, workspace.CuttingSpeed);
+                    var depthIncrement = Math.Min(3.0, MillingDepth - currentDepth);
+                    currentDepth += depthIncrement;
+                    builder.GotoZ(currentDepth);
+                    foreach (var point in cluster)
+                    {
+                        builder.AddConstantSpeedTransition(point, workspace.CuttingSpeed);
+                    }
                 }
             }
 

@@ -52,22 +52,22 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// U axis is 460mm long
         /// </summary>
-        public static readonly int HwMaxStepsU = 460 * StepsPerRevolution * 100 / 125;
+        internal static readonly int HwMaxStepsU = 460 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// V axis is 256mm long
         /// </summary>
-        public static readonly int HwMaxStepsV = 256 * StepsPerRevolution * 100 / 125;
+        internal static readonly int HwMaxStepsV = 256 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// X axis is 460mm long
         /// </summary>
-        public static readonly int HwMaxStepsX = 460 * StepsPerRevolution * 100 / 125;
+        internal static readonly int HwMaxStepsX = 460 * StepsPerRevolution * 100 / 125;
 
         /// <summary>
         /// Y axis is 256mm long
         /// </summary>
-        public static readonly int HwMaxStepsY = 256 * StepsPerRevolution * 100 / 125;
+        internal static readonly int HwMaxStepsY = 256 * StepsPerRevolution * 100 / 125;
 
 
         /// <summary>
@@ -89,6 +89,26 @@ namespace ControllerCNC.Machine
         /// Max allowed steps along V axis.
         /// </summary>
         public static int MaxStepsV { get; private set; }
+
+        /// <summary>
+        /// Direction mapping to the machine. TODO refactor out of driver.
+        /// </summary>
+        internal static InstructionOrientation DirU { get; private set; }
+
+        /// <summary>
+        /// Direction mapping to the machine. TODO refactor out of driver.
+        /// </summary>
+        internal static InstructionOrientation DirV { get; private set; }
+
+        /// <summary>
+        /// Direction mapping to the machine. TODO refactor out of driver.
+        /// </summary>
+        internal static InstructionOrientation DirX { get; private set; }
+
+        /// <summary>
+        /// Direction mapping to the machine. TODO refactor out of driver.
+        /// </summary>
+        internal static InstructionOrientation DirY { get; private set; }
 
         /// <summary>
         /// Determine whether router mode with Y to V axis switched is enabled.
@@ -131,6 +151,8 @@ namespace ControllerCNC.Machine
             MaxStepsV = HwMaxStepsV;
             MaxStepsX = HwMaxStepsX;
             MaxStepsY = HwMaxStepsY;
+
+            DirU = DirV = DirY = DirX = InstructionOrientation.Normal;
         }
 
         /// <summary>
@@ -145,6 +167,7 @@ namespace ControllerCNC.Machine
             MaxStepsU = MaxStepsV; //artificial limitation
             MaxStepsX = MaxStepsV;//artificial limitation
             IsRouterModeEnabled = true;
+            DirU = DirX = InstructionOrientation.Reversed;
         }
     }
 }

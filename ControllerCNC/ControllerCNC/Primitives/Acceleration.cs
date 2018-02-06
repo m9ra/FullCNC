@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ControllerCNC.Machine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Primitives
 {
-    
+
     /// <summary>
     /// Determines how many steps per second will be accelerated per second
     /// </summary>
@@ -18,6 +19,7 @@ namespace ControllerCNC.Primitives
         /// </summary>
         public readonly Speed Speed;
 
+
         /// <summary>
         /// How long it take to accelerate to <see cref="Speed"/> (in CNC timer tick count).
         /// </summary>
@@ -27,6 +29,14 @@ namespace ControllerCNC.Primitives
         {
             Speed = speed;
             Ticks = ticks;
+        }
+
+        public double ToMetric()
+        {
+            var metricSpeed = Speed.ToMetric();
+            var time = 1.0 * Ticks / Constants.TimerFrequency;
+
+            return metricSpeed / time;
         }
     }
 }

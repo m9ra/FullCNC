@@ -41,10 +41,18 @@ namespace ControllerCNC.Machine
         internal void SetState(byte[] dataBuffer)
         {
             IsHomeCalibrated = getStateDataBool(dataBuffer, 0);
-            X = getStateDataInt32(dataBuffer, 1);
-            Y = getStateDataInt32(dataBuffer, 4 + 1);
-            U = getStateDataInt32(dataBuffer, 4 + 4 + 1);
-            V = getStateDataInt32(dataBuffer, 4 + 4 + 4 + 1);
+            X = transformSteps(getStateDataInt32(dataBuffer, 1), Constants.DirX, Constants.MaxStepsX);
+            Y = transformSteps(getStateDataInt32(dataBuffer, 4 + 1), Constants.DirY, Constants.MaxStepsY);
+            U = transformSteps(getStateDataInt32(dataBuffer, 4 + 4 + 1), Constants.DirU, Constants.MaxStepsU);
+            V = transformSteps(getStateDataInt32(dataBuffer, 4 + 4 + 4 + 1), Constants.DirV, Constants.MaxStepsV);
+        }
+
+        private int transformSteps(int stepCount, InstructionOrientation dirV, int maxSteps)
+        {
+            if (dirV == InstructionOrientation.Reversed)
+                return maxSteps - stepCount;
+
+            return stepCount;
         }
 
         internal void Completed(InstructionCNC instruction)
@@ -52,12 +60,7 @@ namespace ControllerCNC.Machine
             var homing = instruction as HomingInstruction;
             if (homing != null)
             {
-                X = 0;
-                Y = 0;
-                U = 0;
-                V = 0;
-                TickCount = 0;
-                IsHomeCalibrated = true;
+                calibrateHome();
                 return;
             }
 
@@ -65,16 +68,16 @@ namespace ControllerCNC.Machine
             if (axesInstruction != null)
             {
                 if (axesInstruction.InstructionU != null)
-                    U += axesInstruction.InstructionU.StepCount;
+                    U += axesInstruction.InstructionU.HwStepCount;
 
                 if (axesInstruction.InstructionV != null)
-                    V += axesInstruction.InstructionV.StepCount;
+                    V += axesInstruction.InstructionV.HwStepCount;
 
                 if (axesInstruction.InstructionX != null)
-                    X += axesInstruction.InstructionX.StepCount;
+                    X += axesInstruction.InstructionX.HwStepCount;
 
                 if (axesInstruction.InstructionY != null)
-                    Y += axesInstruction.InstructionY.StepCount;
+                    Y += axesInstruction.InstructionY.HwStepCount;
 
                 TickCount += axesInstruction.GetInstructionDuration();
                 return;
@@ -83,7 +86,7 @@ namespace ControllerCNC.Machine
             var stepInstruction = instruction as StepInstrution;
             if (stepInstruction != null)
             {
-                X += stepInstruction.StepCount;
+                X += stepInstruction.HwStepCount;
                 TickCount += stepInstruction.GetInstructionDuration();
             }
         }
@@ -113,11 +116,13 @@ namespace ControllerCNC.Machine
 
         private void calibrateHome()
         {
+            X = transformSteps(0, Constants.DirX, Constants.MaxStepsX);
+            Y = transformSteps(0, Constants.DirY, Constants.MaxStepsY);
+            U = transformSteps(0, Constants.DirU, Constants.MaxStepsU);
+            V = transformSteps(0, Constants.DirV, Constants.MaxStepsV);
+
+            TickCount = 0;
             IsHomeCalibrated = true;
-            U = 0;
-            V = 0;
-            X = 0;
-            Y = 0;
         }
 
         private bool getStateDataBool(byte[] buffer, int position)
