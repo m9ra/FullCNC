@@ -184,7 +184,7 @@
                                     </CheckBox.LayoutTransform>
                                 </CheckBox>
 
-                                <CheckBox Name="MoveByCuttingSpeed">
+                                <CheckBox Name="MoveByCuttingSpeed" IsChecked="True">
                                     <TextBlock Text="Cutting speed"/>
                                     <CheckBox.LayoutTransform>
                                         <ScaleTransform ScaleX="2" ScaleY="2" />

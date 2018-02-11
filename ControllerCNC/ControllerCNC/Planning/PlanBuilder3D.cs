@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
 
@@ -12,9 +13,19 @@ namespace ControllerCNC.Planning
     public class PlanBuilder3D
     {
         /// <summary>
-        /// Underlying builder.
+        /// Plan stored by the builder. Instructions are not emitted directly, so it is easy to stream them.
         /// </summary>
-        private readonly PlanBuilder _builder = new PlanBuilder();
+        private readonly List<PlanPart3D> _plan = new List<PlanPart3D>();
+
+        /// <summary>
+        /// Current cutting speed for stream genertion.
+        /// </summary>
+        private Speed _stream_cuttingSpeed = Speed.Zero;
+
+        /// <summary>
+        /// Lock for stream generation.
+        /// </summary>
+        private object _L_stream = new object();
 
         /// <summary>
         /// Where the builder starts.
@@ -25,6 +36,11 @@ namespace ControllerCNC.Planning
         /// Current zero level.
         /// </summary>
         private double _currentLevel = 0;
+
+        /// <summary>
+        /// How much of time remains to the end of stream.
+        /// </summary>
+        private double _totalSeconds;
 
         /// <summary>
         /// Level where material cutting starts.
@@ -43,9 +59,16 @@ namespace ControllerCNC.Planning
         public readonly Acceleration PlaneAcceleration;
 
         /// <summary>
+        /// Event fired after plan streaming is complete.
+        /// </summary>
+        public event Action StreamingIsComplete;
+
+        /// <summary>
         /// Point where the builder currently is.
         /// </summary>
         public Point3Dmm CurrentPoint => _currentPoint;
+
+        public double TotalSeconds => _totalSeconds;
 
         public PlanBuilder3D(double transitionLevel, double zeroLevel, Speed cuttingSpeed, Speed transitionSpeed, Acceleration planeAcceleration)
         {
@@ -56,34 +79,24 @@ namespace ControllerCNC.Planning
             _zeroLevel = zeroLevel;
         }
 
-        public void AddRampedLine(Point3Dmm target, Acceleration planeAcceleration, Speed planeSpeedLimit)
+        public void AddRampedLine(Point3Dmm target)
         {
-            var diff = moveTo(target);
-
-            _builder.AddRampedLineUVXY(diff.U, diff.V, diff.X, diff.Y, planeAcceleration, planeSpeedLimit);
+            moveTo(target, PlaneAcceleration, TransitionSpeed);
         }
 
-        public void AddConstantSpeedTransition(Point3Dmm target, Speed transitionSpeed)
+        public void AddCuttingLine(Point3Dmm target)
         {
-            var startPoint = _currentPoint;
-            var diff = moveTo(target);
-
-            _builder.AddConstantSpeedTransitionUVXY(diff.U, diff.V, transitionSpeed, diff.X, diff.Y, transitionSpeed);
+            moveTo(target, null, TransitionSpeed);
         }
 
-        public void AddRampedLine(Point2Dmm target, Acceleration planeAcceleration, Speed planeSpeedLimit)
+        public void AddRampedLine(Point2Dmm target)
         {
-            var diff = moveTo(target);
-
-            _builder.AddRampedLineUVXY(diff.U, diff.V, diff.X, diff.Y, planeAcceleration, planeSpeedLimit);
+            moveTo(target, PlaneAcceleration, TransitionSpeed);
         }
 
-        public void AddConstantSpeedTransition(Point2Dmm target, Speed transitionSpeed)
+        public void AddCuttingSpeedTransition(Point2Dmm target)
         {
-            var startPoint = _currentPoint;
-            var diff = moveTo(target);
-
-            _builder.AddConstantSpeedTransitionUVXY(diff.U, diff.V, transitionSpeed, diff.X, diff.Y, transitionSpeed);
+            moveTo(target, null, CuttingSpeed);
         }
 
         public void GotoTransitionLevel()
@@ -101,17 +114,117 @@ namespace ControllerCNC.Planning
             var nextTarget = new Point3Dmm(_currentPoint.X, _currentPoint.Y, zLevel + _zeroLevel);
             if (nextTarget.Z < _currentPoint.Z)
             {
-                AddRampedLine(nextTarget, PlaneAcceleration, TransitionSpeed);
+                AddRampedLine(nextTarget);
             }
             else
             {
-                AddConstantSpeedTransition(nextTarget, CuttingSpeed);
+                AddCuttingLine(nextTarget);
             }
+        }
+
+        public void StreamInstructions(DriverCNC driver)
+        {
+            var streamThread = new Thread(() =>
+              {
+                  _stream(driver);
+              });
+
+            streamThread.IsBackground = true;
+            streamThread.Start();
+        }
+
+        private void _stream(DriverCNC driver)
+        {
+            var planStream = new PlanStream3D(_plan.ToArray());
+            var preloadTime = 0.05;
+            var currentlyQueuedTime = 0.0;
+            var lastTimeMeasure = DateTime.Now;
+
+            var startTime = lastTimeMeasure;
+            var lastTotalSecondsRefreshTime = startTime;
+            var lastCuttingSpeed = Speed.Zero;
+            while (!planStream.IsComplete)
+            {
+                var currentCuttingSpeed = _stream_cuttingSpeed;
+                var currentTime = DateTime.Now;
+
+                if ((currentTime - lastTotalSecondsRefreshTime).TotalSeconds > 5.0)
+                    //force recalculation every few seconds
+                    lastCuttingSpeed = null;
+
+                if (lastCuttingSpeed != currentCuttingSpeed)
+                {
+                    //recalculate totalSeconds
+                    lastCuttingSpeed = currentCuttingSpeed;
+                    var cuttingDistance = planStream.GetRemainingConstantDistance();
+                    var rampTime = planStream.GetRemainingRampTime();
+                    var totalElapsedTime = (currentTime - startTime).TotalSeconds;
+                    _totalSeconds = totalElapsedTime + rampTime + cuttingDistance / currentCuttingSpeed.ToMetric() + currentlyQueuedTime;
+                    lastTotalSecondsRefreshTime = currentTime;
+                }
+
+
+                var timeElapsed = (currentTime - lastTimeMeasure).TotalSeconds;
+                lastTimeMeasure = currentTime;
+
+                currentlyQueuedTime = Math.Max(0, currentlyQueuedTime - timeElapsed);
+                if (currentlyQueuedTime > preloadTime)
+                {
+                    //wait some time so we are not spinning like crazy
+                    Thread.Sleep(10);
+                    continue;
+                }
+
+                IEnumerable<InstructionCNC> nextInstructions;
+                if (planStream.IsSpeedLimitedBy(Constants.MaxCuttingSpeed))
+                {
+                    var lengthLimit = preloadTime * currentCuttingSpeed.ToMetric();
+                    nextInstructions = planStream.ShiftByConstantSpeed(lengthLimit, currentCuttingSpeed);
+                }
+                else
+                {
+                    nextInstructions = planStream.NextRampInstructions();
+                }
+
+                var duration = nextInstructions.Select(i => i.CalculateTotalTime());
+                currentlyQueuedTime += duration.Sum(d => (float)d) / Constants.TimerFrequency;
+
+                driver.SEND(nextInstructions);
+            }
+
+            StreamingIsComplete?.Invoke();
         }
 
         public IEnumerable<InstructionCNC> Build()
         {
-            return _builder.Build();
+            var builder = new PlanBuilder();
+
+            foreach (var part in _plan)
+            {
+                var startSteps = GetPositionRev(part.StartPoint);
+                var targetSteps = GetPositionRev(part.EndPoint);
+
+                var diffU = ToStep(targetSteps.U - startSteps.U);
+                var diffV = ToStep(targetSteps.V - startSteps.V);
+                var diffX = ToStep(targetSteps.X - startSteps.X);
+                var diffY = ToStep(targetSteps.Y - startSteps.Y);
+
+                if (part.AccelerationRamp == null)
+                {
+                    builder.AddConstantSpeedTransitionUVXY(diffU, diffV, part.SpeedLimit, diffX, diffY, part.SpeedLimit);
+                }
+                else
+                {
+                    builder.AddRampedLineUVXY(diffU, diffV, diffX, diffY, part.AccelerationRamp, part.SpeedLimit);
+                }
+            }
+
+            return builder.Build();
+        }
+
+        public void SetStreamingCuttingSpeed(Speed speed)
+        {
+            _stream_cuttingSpeed = speed;
         }
 
         public void SetPosition(Point3Dmm target)
@@ -119,26 +232,19 @@ namespace ControllerCNC.Planning
             _currentPoint = target;
         }
 
-        private Point4Dstep moveTo(Point2Dmm target)
+        private void moveTo(Point2Dmm target, Acceleration accelerationRamp, Speed speedLimit)
         {
-            return moveTo(new Point3Dmm(target.C1, target.C2, _currentLevel));
+            moveTo(new Point3Dmm(target.C1, target.C2, _currentLevel), accelerationRamp, speedLimit);
         }
 
-        private Point4Dstep moveTo(Point3Dmm target)
+        private void moveTo(Point3Dmm target, Acceleration accelerationRamp, Speed speedLimit)
         {
             _currentLevel = target.Z;
-            var c = ToStepsRev(_currentPoint);
-            var p = ToStepsRev(target);
+
+            _plan.Add(new PlanPart3D(_currentPoint, target, accelerationRamp, speedLimit));
+
             _currentPoint = target;
-
-            var diffU = p.U - c.U;
-            var diffV = p.V - c.V;
-            var diffX = p.X - c.X;
-            var diffY = p.Y - c.Y;
-
-            return new Point4Dstep(diffU, diffV, diffX, diffY);
         }
-
 
         #region 4D to 3D conversions
 
@@ -173,7 +279,6 @@ namespace ControllerCNC.Planning
             return (int)Math.Round(mm / Constants.MilimetersPerStep);
         }
 
-
         public static Point4Dstep ToStepsRev(Point3Dmm point)
         {
             return ToStepsRev(point.X, point.Y, point.Z);
@@ -185,6 +290,20 @@ namespace ControllerCNC.Planning
 
             return new Point4Dstep(ToStep(p.U), ToStep(p.V), ToStep(p.X), ToStep(p.Y));
         }
+
+        public static Point4Dstep GetStepDiff(Point3Dmm startPoint, Point3Dmm endPoint)
+        {
+            var startSteps = GetPositionRev(startPoint);
+            var targetSteps = GetPositionRev(endPoint);
+
+            var diffU = ToStep(targetSteps.U - startSteps.U);
+            var diffV = ToStep(targetSteps.V - startSteps.V);
+            var diffX = ToStep(targetSteps.X - startSteps.X);
+            var diffY = ToStep(targetSteps.Y - startSteps.Y);
+
+            return new Point4Dstep(diffU, diffV, diffX, diffY);
+        }
+
         #endregion
     }
 }

@@ -14,16 +14,6 @@ namespace MillingRouter3D.GUI
 {
     abstract class MillingItem : MillingWorkspaceItem
     {
-        /// <summary>
-        /// Factor which gives ratio between single step and visual size.
-        /// </summary>
-        private double _mmToVisualFactorC1;
-
-        /// <summary>
-        /// Factor which gives ratio between single step and visual size.
-        /// </summary>
-        private double _mmToVisualFactorC2;
-
         internal virtual Point2Dmm EntryPoint => getEntryPoint();
 
         internal abstract void BuildPlan(PlanBuilder3D builder, MillingWorkspacePanel workspace);
@@ -66,21 +56,6 @@ namespace MillingRouter3D.GUI
             }
             var geometry = new PathGeometry(figures, FillRule.EvenOdd, Transform.Identity);
             return geometry;
-        }
-
-        /// <inheritdoc/>
-        internal override void RecalculateToWorkspace(MillingWorkspacePanel workspace, Size size)
-        {
-            _mmToVisualFactorC1 = size.Width / workspace.RangeX;
-            _mmToVisualFactorC2 = size.Height / workspace.RangeY;
-        }
-
-        protected Point ConvertToVisual(Point2Dmm point)
-        {
-            var visualPoint = new Point(point.C1 - PositionX, point.C2 - PositionY);
-            visualPoint.X = visualPoint.X * _mmToVisualFactorC1;
-            visualPoint.Y = visualPoint.Y * _mmToVisualFactorC2;
-            return visualPoint;
         }
 
         protected override object createContent()

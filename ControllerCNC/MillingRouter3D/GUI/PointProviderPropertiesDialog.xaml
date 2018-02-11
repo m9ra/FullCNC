@@ -54,8 +54,12 @@
                             </CheckBox>
                         </StackPanel>
 
-                        <TextBlock  TextAlignment="Center" Margin="0 10 0 0" Style="{StaticResource ValueLabel}">Angle [deg.]</TextBlock>
-                        <Slider Value="0" Minimum="0" Maximum="359" Name="ShapeRotation">
+                        <StackPanel Orientation="Horizontal" Margin="0 20 0 0">
+                            <TextBlock  TextAlignment="Center" Margin="0 10 0 0" Style="{StaticResource ValueLabel}">Angle [deg.]</TextBlock>
+                            <TextBox Style="{StaticResource ValueInput}" Name="AngleNum">1.0</TextBox>
+                        </StackPanel>
+
+                        <Slider Value="0" Minimum="0" Maximum="359" Name="ShapeRotation" Margin="0,0,0.2,0">
                             <Slider.LayoutTransform>
                                 <ScaleTransform ScaleX="2" ScaleY="2" />
                             </Slider.LayoutTransform>

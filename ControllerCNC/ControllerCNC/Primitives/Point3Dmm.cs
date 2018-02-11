@@ -44,6 +44,23 @@ namespace ControllerCNC.Primitives
             return 1.0 * diffZ * diffZ + 1.0 * diffX * diffX + 1.0 * diffY * diffY;
         }
 
+        /// <summary>
+        /// Euclidian distance to given point.
+        /// </summary>
+        public double DistanceTo(Point3Dmm point)
+        {
+            return Math.Sqrt(DistanceSquaredTo(point));
+        }
+
+        internal Point3Dmm ShiftTo(Point3Dmm target, double percentage)
+        {
+            var dx = target.X - X;
+            var dy = target.Y - Y;
+            var dz = target.Z - Z;
+
+            return new Point3Dmm(X + dx * percentage, Y + dy * percentage, Z + dz * percentage);
+        }
+
         /// <inheritdoc/>
         public override bool Equals(object obj)
         {

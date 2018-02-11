@@ -77,11 +77,16 @@ namespace MillingRouter3D
 
         private bool _addJoinsEnabled = false;
 
-        private bool _isPlanRunning = false;
+        private bool _allowCommands = false;
 
         private DateTime _planStart;
 
         private MillingItem _joinItemCandidate;
+
+        /// <summary>
+        /// Plan builder that currently streams instructions to cnc.
+        /// </summary>
+        private PlanBuilder3D _streamingBuilder;
 
         public RouterPanel()
         {
@@ -97,8 +102,8 @@ namespace MillingRouter3D
             _motionCommands.Add(Calibration);
             _motionCommands.Add(GoToZerosXY);
             _motionCommands.Add(StartPlan);
-            _motionCommands.Add(Speed);
             _motionCommands.Add(SetZLevel);
+            _motionCommands.Add(Speed);
 
             Cnc = new DriverCNC();
             Cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
@@ -128,7 +133,6 @@ namespace MillingRouter3D
 
             _factory = new ShapeFactory3D(this);
         }
-
 
         #region Panel service
 
@@ -185,6 +189,11 @@ namespace MillingRouter3D
 
         #region Workspace handling
 
+        private void refreshFocus()
+        {
+            Focus();
+        }
+
         private void resetWorkspace(bool withReload)
         {
             _workspaceFile = _autosaveFile;
@@ -194,7 +203,7 @@ namespace MillingRouter3D
             }
 
             var limitPoint = PlanBuilder3D.GetPositionFromSteps(Constants.MaxStepsU, Constants.MaxStepsV, Constants.MaxStepsX, Constants.MaxStepsY);
-            Workspace = new MillingWorkspacePanel(limitPoint.X, limitPoint.Y, limitPoint.Z);
+            Workspace = new MillingWorkspacePanel(this, limitPoint.X, limitPoint.Y, limitPoint.Z);
             WorkspaceSlot.Child = Workspace;
             if (withReload)
             {
@@ -387,7 +396,15 @@ namespace MillingRouter3D
 
             if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
             {
+                _allowCommands = true;
+                e.Handled = true;
+                refreshTransitionSpeed();
+            }
+
+            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            {
                 setMode(WorkspaceMode.ScaffoldMode);
+                e.Handled = true;
             }
 
             switch (e.Key)
@@ -413,7 +430,7 @@ namespace MillingRouter3D
             }
         }
 
-        void previewKeyUp(object sender, KeyEventArgs e)
+        private void previewKeyUp(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Delete)
             {
@@ -438,11 +455,20 @@ namespace MillingRouter3D
             if (e.Key == Key.LeftAlt || e.Key == Key.RightAlt || e.Key == Key.System)
             {
                 setMode(WorkspaceMode.Idle);
+                e.Handled = true;
+            }
+
+            if (e.Key == Key.LeftShift || e.Key == Key.RightShift)
+            {
+                setMode(WorkspaceMode.Idle);
+                e.Handled = true;
             }
 
             if (e.Key == Key.LeftCtrl || e.Key == Key.RightCtrl)
             {
-                setMode(WorkspaceMode.Idle);
+                _allowCommands = false;
+                e.Handled = true;
+                refreshTransitionSpeed();
             }
 
             switch (e.Key)
@@ -536,20 +562,18 @@ namespace MillingRouter3D
 
             Workspace.HeadXYZ.Position = position;
 
-            if (_isPlanRunning)
+            if (_streamingBuilder != null)
             {
-                var remainingTicks = Cnc.PlannedState.TickCount - Cnc.EstimationTicks;
-                var remainingSeconds = (int)(remainingTicks / Constants.TimerFrequency);
-                if (_lastRemainingSeconds > remainingSeconds || Math.Abs(_lastRemainingSeconds - remainingSeconds) > 2)
-                {
-                    _lastRemainingSeconds = remainingSeconds;
-                    var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);
-                    var elapsedTime = new TimeSpan(0, 0, 0, (int)(DateTime.Now - _planStart).TotalSeconds);
+                var elapsedSeconds = (int)Math.Round((DateTime.Now - _planStart).TotalSeconds);
+                var totalSeconds = (int)Math.Round(_streamingBuilder.TotalSeconds);
 
-                    if (remainingTime.TotalDays < 2)
-                    {
-                        ShowMessage(elapsedTime.ToString() + "/" + remainingTime.ToString());
-                    }
+                _lastRemainingSeconds = totalSeconds - elapsedSeconds;
+                var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);
+                var elapsedTime = new TimeSpan(0, 0, 0, elapsedSeconds);
+
+                if (remainingTime.TotalDays < 2)
+                {
+                    ShowMessage(elapsedTime.ToString() + "/" + remainingTime.ToString());
                 }
             }
 
@@ -594,14 +618,14 @@ namespace MillingRouter3D
             var start = new Point3Dmm(startPoint.PositionX, startPoint.PositionY, _zLevel);
             var aboveStart = new Point3Dmm(start.X, start.Y, currentPosition.Z);
 
-            var builder = new PlanBuilder3D(currentPosition.Z, _zLevel, Workspace.CuttingSpeed, getTransitionSpeed(), Constants.MaxPlaneAcceleration);
+            var builder = new PlanBuilder3D(currentPosition.Z, _zLevel, Workspace.CuttingSpeed, Constants.MaxPlaneSpeed, Constants.MaxPlaneAcceleration);
             builder.SetPosition(currentPosition);
 
-            builder.AddRampedLine(aboveStart, Constants.MaxPlaneAcceleration, getTransitionSpeed());
+            builder.AddRampedLine(aboveStart);
 
             try
             {
-                if (_zLevel < aboveStart.Z)
+                if (_zLevel <= aboveStart.Z)
                     throw new PlanningException("Level Z is above the current position.");
 
                 Workspace.BuildPlan(builder);
@@ -614,25 +638,30 @@ namespace MillingRouter3D
             }
 
             var plan = builder.Build();
-            System.Windows.MessageBox.Show("Check the engine power!", "Confirm");
-            if (!Cnc.SEND(plan))
+            if (!Cnc.Check(plan))
             {
                 planCompleted();
                 ShowError("Plan overflows the workspace!");
                 return;
             }
 
-            Cnc.OnInstructionQueueIsComplete += planCompleted;
-            _planStart = DateTime.Now;
-            _isPlanRunning = true;
-
-            if (!plan.Any())
-                planCompleted();
+            CheckEngineDialog.WaitForConfirmation(() =>
+            {
+                /**/
+                builder.SetStreamingCuttingSpeed(getCuttingSpeed());
+                builder.StreamingIsComplete += () => Cnc.OnInstructionQueueIsComplete += planCompleted;/*/
+                Cnc.SEND(plan);
+                Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
+                _streamingBuilder = builder;
+                _planStart = DateTime.Now;
+                builder.StreamInstructions(Cnc);
+                this.Focus();
+            });
         }
 
         private void planCompleted()
         {
-            _isPlanRunning = false;
+            _streamingBuilder = null;
             _lastRemainingSeconds = 0;
             Cnc.OnInstructionQueueIsComplete -= planCompleted;
             Workspace.EnableChanges();
@@ -729,9 +758,15 @@ namespace MillingRouter3D
             if (CoordController == null)
                 return;
 
+            if (_streamingBuilder != null)
+                Speed.IsEnabled = _allowCommands;
+
             var speed = getTransitionSpeed().ToMetric();
             var speeds = PlanBuilder3D.GetPositionRev(_tr_dirX * speed, _tr_dirY * speed, _tr_dirZ * speed);
             CoordController.SetDesiredSpeeds(speeds.U, speeds.V, speeds.X, speeds.Y);
+            var builder = _streamingBuilder;
+            if (builder != null)
+                builder.SetStreamingCuttingSpeed(getCuttingSpeed());
         }
 
         private Speed getCuttingSpeed()
@@ -741,6 +776,9 @@ namespace MillingRouter3D
 
         private Speed getTransitionSpeed()
         {
+            if (_allowCommands)
+                return Constants.MaxPlaneSpeed;
+
             if (MoveByCuttingSpeed.IsChecked.Value)
             {
                 return getCuttingSpeed();
@@ -835,7 +873,7 @@ namespace MillingRouter3D
         private void ModeSwitch_Checked(object sender, RoutedEventArgs e)
         {
             if (_currentMode == WorkspaceMode.Idle)
-                //idle mode is neve checked 
+                //idle mode is never checked 
                 _currentMode = WorkspaceMode.JoinMode;
 
             switch (_currentMode)
@@ -869,7 +907,7 @@ namespace MillingRouter3D
             Workspace.ScaffoldModeEnabled = false;
 
             var nextMode = (int)(_currentMode + 1);
-            if (nextMode >= (int)WorkspaceMode.LastMode)
+            if (nextMode > (int)WorkspaceMode.LastMode)
                 nextMode = 0;
 
             _currentMode = (WorkspaceMode)nextMode;

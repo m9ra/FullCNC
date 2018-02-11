@@ -23,7 +23,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// If set to true, simulation mode is used instead of the real device.
         /// </summary>
-        private readonly bool FAKE_ONLINE_MODE = true;
+        private readonly bool FAKE_ONLINE_MODE = false;
 
         /// <summary>
         /// Determine whether simulator should use real speeds.
@@ -257,10 +257,9 @@ namespace ControllerCNC.Machine
         }
 
         /// <summary>
-        /// Sends parts of the given plan.
+        /// Checks whether plan fits the workspace.
         /// </summary>
-        /// <param name="plan">Plan which parts will be executed.</param>
-        public bool SEND(IEnumerable<InstructionCNC> plan)
+        public bool Check(IEnumerable<InstructionCNC> plan)
         {
             var testState = _plannedState.Copy();
             foreach (var instruction in plan)
@@ -269,6 +268,17 @@ namespace ControllerCNC.Machine
                     //atomic behaviour for whole plan
                     return false;
             }
+            return true;
+        }
+
+        /// <summary>
+        /// Sends parts of the given plan.
+        /// </summary>
+        /// <param name="plan">Plan which parts will be executed.</param>
+        public bool SEND(IEnumerable<InstructionCNC> plan)
+        {
+            if (!Check(plan))
+                return false;
 
             foreach (var instruction in plan)
             {
@@ -617,7 +627,7 @@ namespace ControllerCNC.Machine
                 }
             }
         }
-
+        
         private string getCncPortName()
         {
             var ports = SerialPort.GetPortNames();

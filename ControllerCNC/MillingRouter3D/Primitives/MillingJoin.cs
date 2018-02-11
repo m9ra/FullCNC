@@ -34,7 +34,7 @@ namespace MillingRouter3D.Primitives
 
             var entryPoint = Item2.EntryPoint;
             builder.GotoTransitionLevel();
-            builder.AddRampedLine(entryPoint, builder.PlaneAcceleration, builder.TransitionSpeed);
+            builder.AddRampedLine(entryPoint);
 
             Item2.BuildPlan(builder, workspace);
             builder.GotoTransitionLevel();
@@ -45,7 +45,7 @@ namespace MillingRouter3D.Primitives
             }
 
             builder.GotoTransitionLevel();
-            builder.AddRampedLine(initialPoint, builder.PlaneAcceleration, builder.TransitionSpeed);
+            builder.AddRampedLine(initialPoint);
         }
     }
 }

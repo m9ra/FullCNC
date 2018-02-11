@@ -27,6 +27,31 @@ namespace MillingRouter3D.GUI
         private double _positionY;
 
         /// <summary>
+        /// Factor which gives ratio between single step and visual size.
+        /// </summary>
+        protected double _mmToVisualFactorC1;
+
+        /// <summary>
+        /// Factor which gives ratio between single step and visual size.
+        /// </summary>
+        protected double _mmToVisualFactorC2;
+
+        /// <summary>
+        /// Angle of rotation [0..360)degree
+        /// </summary>
+        protected double _rotationAngle;
+
+        /// <summary>
+        /// Sin of the current rotation.
+        /// </summary>
+        protected double _rotationSin;
+
+        /// <summary>
+        /// Cos of the current rotation.
+        /// </summary>
+        protected double _rotationCos;
+
+        /// <summary>
         /// Name of the item.
         /// </summary>
         new internal readonly ReadableIdentifier Name;
@@ -70,6 +95,28 @@ namespace MillingRouter3D.GUI
             }
         }
 
+        /// <summary>
+        /// Rotation in degrees.
+        /// </summary>
+        internal double RotationAngle
+        {
+            get
+            {
+                return _rotationAngle;
+            }
+
+            set
+            {
+                if (value == _rotationAngle)
+                    return;
+
+                _rotationAngle = value;
+                _rotationSin = Math.Sin(_rotationAngle / 360 * 2 * Math.PI);
+                _rotationCos = Math.Cos(_rotationAngle / 360 * 2 * Math.PI);
+                fireOnSettingsChanged();
+            }
+        }
+
         public bool IsHighlighted
         {
             get { return _isHighlighted; }
@@ -106,25 +153,72 @@ namespace MillingRouter3D.GUI
         internal MillingWorkspaceItem(ReadableIdentifier name)
         {
             Name = name;
+            constructionInitialization();
         }
 
         internal MillingWorkspaceItem(SerializationInfo info, StreamingContext context)
         {
             _positionX = info.GetInt32("_positionX");
             _positionY = info.GetInt32("_positionY");
+            _rotationAngle = info.GetDouble("_rotationAngle");
             Name = (ReadableIdentifier)info.GetValue("Name", typeof(ReadableIdentifier));
+            constructionInitialization();
         }
 
         public virtual void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("_positionX", _positionX);
             info.AddValue("_positionY", _positionY);
+            info.AddValue("_rotationAngle", _rotationAngle);
             info.AddValue("Name", Name);
         }
 
+        /// <inheritdoc/>
         internal virtual void RecalculateToWorkspace(MillingWorkspacePanel workspace, Size size)
         {
-            //nothing to do by default
+            _mmToVisualFactorC1 = size.Width / workspace.RangeX;
+            _mmToVisualFactorC2 = size.Height / workspace.RangeY;
+        }
+        
+        /// <summary>
+        /// Creates figure by joining the given points.
+        /// </summary>
+        protected PathGeometry CreatePathGeometry(IEnumerable<Point2Dmm[]> geometryPointClusters)
+        {
+            var figures = new List<PathFigure>();
+            foreach (var geometryPoints in geometryPointClusters)
+            {
+                PathFigure figure = CreatePathFigure(geometryPoints);
+                figures.Add(figure);
+            }
+            var geometry = new PathGeometry(figures, FillRule.EvenOdd, Transform.Identity);
+            return geometry;
+        }
+
+        protected PathFigure CreatePathFigure(Point2Dmm[] geometryPoints)
+        {
+            var pathSegments = new PathSegmentCollection();
+            var firstPoint = new Point(0, 0);
+            var isFirst = true;
+            foreach (var point in geometryPoints)
+            {
+                var visualPoint = ConvertToVisual(point);
+
+                pathSegments.Add(new LineSegment(visualPoint, !isFirst));
+                if (isFirst)
+                    firstPoint = visualPoint;
+                isFirst = false;
+            }
+            var figure = new PathFigure(firstPoint, pathSegments, false);
+            return figure;
+        }
+
+        protected Point ConvertToVisual(Point2Dmm point)
+        {
+            var visualPoint = new Point(point.C1 - PositionX, point.C2 - PositionY);
+            visualPoint.X = visualPoint.X * _mmToVisualFactorC1;
+            visualPoint.Y = visualPoint.Y * _mmToVisualFactorC2;
+            return visualPoint;
         }
 
         /// <summary>
@@ -146,6 +240,14 @@ namespace MillingRouter3D.GUI
             var workspace = Parent as MillingWorkspacePanel;
             if (workspace != null)
                 workspace.InvalidateArrange();
-        }        
+        }
+
+        private void constructionInitialization()
+        {
+            //reset rotation
+            var desiredAngle = _rotationAngle;
+            RotationAngle = desiredAngle + 1;
+            RotationAngle = desiredAngle;
+        }
     }
 }

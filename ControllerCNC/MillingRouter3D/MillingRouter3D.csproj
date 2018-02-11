@@ -60,11 +60,14 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="GUI\CheckEngineDialog.xaml.cs">
+      <DependentUpon>CheckEngineDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="GUI\EntryPoint.cs" />
     <Compile Include="GUI\HeadCnc.cs" />
     <Compile Include="GUI\MillingItem.cs" />
     <Compile Include="GUI\MillingShapeItem2D.cs" />
-    <Compile Include="GUI\MillingWorkspace.cs" />
+    <Compile Include="GUI\MillingWorkspacePanel.cs" />
     <Compile Include="GUI\MillingWorkspaceItem.cs" />
     <Compile Include="GUI\MousePositionInfo.cs" />
     <Compile Include="GUI\PointProviderPropertiesDialog.xaml.cs">
@@ -103,6 +106,10 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
+    <Page Include="GUI\CheckEngineDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="GUI\PointProviderPropertiesDialog.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -116,6 +123,7 @@
     <ProjectReference Include="..\ControllerCNC\ControllerCNC.csproj">
       <Project>{bdf528a3-cd7a-49f5-8ca7-f3e49eb9fd90}</Project>
       <Name>ControllerCNC</Name>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -46,21 +46,6 @@ namespace MillingRouter3D.GUI
         private Size _shapeMetricSize;
 
         /// <summary>
-        /// Angle of rotation [0..360)degree
-        /// </summary>
-        private double _rotationAngle;
-
-        /// <summary>
-        /// Sin of the current rotation.
-        /// </summary>
-        private double _rotationSin;
-
-        /// <summary>
-        /// Cos of the current rotation.
-        /// </summary>
-        private double _rotationCos;
-
-        /// <summary>
         /// Determine whether explicit kerf will be used for cutting.
         /// </summary>
         private bool _useExplicitKerf;
@@ -111,28 +96,6 @@ namespace MillingRouter3D.GUI
                     return;
 
                 _kerfXY = value;
-                fireOnSettingsChanged();
-            }
-        }
-
-        /// <summary>
-        /// Rotation in degrees.
-        /// </summary>
-        internal double RotationAngle
-        {
-            get
-            {
-                return _rotationAngle;
-            }
-
-            set
-            {
-                if (value == _rotationAngle)
-                    return;
-
-                _rotationAngle = value;
-                _rotationSin = Math.Sin(_rotationAngle / 360 * 2 * Math.PI);
-                _rotationCos = Math.Cos(_rotationAngle / 360 * 2 * Math.PI);
                 fireOnSettingsChanged();
             }
         }
@@ -265,8 +228,7 @@ namespace MillingRouter3D.GUI
             : base(info, context)
         {
             _shapeDefinition = (Point2Dmm[][])info.GetValue("_shapeDefinition", typeof(Point2Dmm[][]));
-            _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));
-            _rotationAngle = info.GetDouble("_rotationAngle");
+            _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));            
             _useExplicitKerf = info.GetBoolean("_useExplicitKerf");
             _kerfXY = info.GetDouble("_kerfXY");
             _useClockwiseCut = info.GetBoolean("_useClockwiseCut");
@@ -281,7 +243,6 @@ namespace MillingRouter3D.GUI
             base.GetObjectData(info, context);
             info.AddValue("_shapeDefinition", _shapeDefinition);
             info.AddValue("_shapeMetricSize", _shapeMetricSize);
-            info.AddValue("_rotationAngle", _rotationAngle);
             info.AddValue("_useExplicitKerf", _useExplicitKerf);
             info.AddValue("_kerfXY", _kerfXY);
             info.AddValue("_useClockwiseCut", _useClockwiseCut);
@@ -386,11 +347,7 @@ namespace MillingRouter3D.GUI
             BorderThickness = new Thickness(0);
             Padding = new Thickness(0);
             Background = null;
-
-            //reset rotation
-            var desiredAngle = _rotationAngle;
-            RotationAngle = desiredAngle + 1;
-            RotationAngle = desiredAngle;
+                        
             initialize();
 
             _itemBrush = new SolidColorBrush(Colors.LightGray);
@@ -546,7 +503,7 @@ namespace MillingRouter3D.GUI
             foreach (var cluster in CutPoints)
             {
                 builder.GotoTransitionLevel();
-                builder.AddRampedLine(cluster[0], builder.PlaneAcceleration, builder.TransitionSpeed);
+                builder.AddRampedLine(cluster[0]);
 
                 var currentDepth = 0.0;
                 while (currentDepth < MillingDepth)
@@ -556,13 +513,13 @@ namespace MillingRouter3D.GUI
                     builder.GotoZ(currentDepth);
                     foreach (var point in cluster)
                     {
-                        builder.AddConstantSpeedTransition(point, workspace.CuttingSpeed);
+                        builder.AddCuttingSpeedTransition(point);
                     }
                 }
             }
 
             builder.GotoTransitionLevel();
-            builder.AddRampedLine(EntryPoint, builder.PlaneAcceleration, builder.TransitionSpeed);
+            builder.AddRampedLine(EntryPoint);
         }
 
         protected override Point2Dmm getEntryPoint()

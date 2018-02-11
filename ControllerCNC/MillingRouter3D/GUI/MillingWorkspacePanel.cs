@@ -182,7 +182,7 @@ namespace MillingRouter3D.GUI
 
         public event MillingWorkspaceItemEvent OnWorkItemClicked;
 
-        internal MillingWorkspacePanel(double rangeX, double rangeY, double rangeZ)
+        internal MillingWorkspacePanel(RouterPanel parent, double rangeX, double rangeY, double rangeZ)
         {
             HeadXYZ = new HeadCNC(_xyColor, this);
             Background = Brushes.White;
@@ -414,6 +414,7 @@ namespace MillingRouter3D.GUI
             if (e.RightButton == MouseButtonState.Pressed)
             {
                 _lastScaffold = null;
+                e.Handled = true;
                 return;
             }
 
@@ -487,7 +488,7 @@ namespace MillingRouter3D.GUI
                     //enable drag 
                     millingItem.PreviewMouseLeftButtonDown += (s, e) => _draggedItem = millingItem;
                     //enable properties dialog
-                    millingItem.MouseRightButtonUp += (s, e) => new MillingItemPropertiesDialog(millingItem);
+                    millingItem.MouseRightButtonUp += (s, e) => new MillingItemPropertiesDialog(millingItem, this);
                 }
 
                 //setup change listener to work items

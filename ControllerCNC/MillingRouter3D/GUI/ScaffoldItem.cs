@@ -15,7 +15,8 @@ namespace MillingRouter3D.GUI
 
         private readonly Point2Dmm[] _definition;
 
-      
+        internal IEnumerable<Point2Dmm> ShapePoints => _definition.Select(p => new Point2Dmm(p.C1 + PositionX, p.C2 + PositionY)).ToArray();
+
         internal ScaffoldItem(ReadableIdentifier name, IEnumerable<Point2Dmm> points)
             : base(name)
         {
@@ -57,17 +58,28 @@ namespace MillingRouter3D.GUI
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
-            var workspace = Parent as MillingWorkspaceItem;
+            var workspace = Parent as MillingWorkspacePanel;
             if (workspace == null)
                 return;
 
-            throw new NotImplementedException();
+            var transformedPoints = ShapePoints.ToArray();
+
+            var figure = CreatePathFigure(transformedPoints);
+            var cutGeometry = new PathGeometry(new[] { figure });
+            drawingContext.DrawGeometry(null, _scaffoldPen, cutGeometry);
+
+            var radius = 10;
+            foreach (var point in transformedPoints)
+            {
+                var visualPoint = ConvertToVisual(point);
+                drawingContext.DrawEllipse(_scaffoldPen.Brush, null, visualPoint, radius, radius);
+            }
         }
 
-       
         public ScaffoldItem ExtendBy(Point2Dmm point)
         {
-            return new ScaffoldItem(Name, _definition.Concat(new[] { point }));
+            var item = new ScaffoldItem(Name, ShapePoints.Concat(new[] { point }));
+            return item;
         }
     }
 }

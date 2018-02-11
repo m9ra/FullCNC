@@ -1,0 +1,19 @@
+﻿<Window x:Class="MillingRouter3D.GUI.CheckEngineDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:MillingRouter3D.GUI"
+        mc:Ignorable="d"
+        Title="CheckEngineDialog" Height="200" Width="500" WindowStyle="None" Background="Orange" ResizeMode="NoResize">
+    <Grid>
+        <StackPanel>
+            <TextBlock Background="Transparent" HorizontalAlignment="Center" FontSize="40">
+                Check the engine power!
+            </TextBlock>
+            <Button FontSize="50" Margin="20" Click="Button_Click">
+               OK
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>
