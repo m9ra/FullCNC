@@ -121,7 +121,7 @@ namespace ControllerCNC.Planning
                 if (stepCountLimit == 0)
                     return new AccelerationBuilder(0, 0, 0, 0);
 
-                var timeScale = Constants.TimerFrequency;
+                var timeScale = Configuration.TimerFrequency;
 
                 Speed reachedSpeed;
                 int accelerationSteps;
@@ -138,14 +138,14 @@ namespace ControllerCNC.Planning
         {
             var absoluteInitialSpeed = Math.Abs(initialSpeed);
             var absoluteEndSpeed = Math.Abs(endSpeed);
-            var tickCount = (int)(exactDuration * Constants.TimerFrequency);
+            var tickCount = (int)(exactDuration * Configuration.TimerFrequency);
 
             var acceleration = Math.Abs(absoluteEndSpeed - absoluteInitialSpeed) / exactDuration;
-            var rawC0 = Constants.TimerFrequency * Math.Sqrt(2 / acceleration);
+            var rawC0 = Configuration.TimerFrequency * Math.Sqrt(2 / acceleration);
 
             var isDeceleration = absoluteInitialSpeed > absoluteEndSpeed;
 
-            var targetDelta = (int)Math.Abs(Math.Round(Constants.TimerFrequency / endSpeed));
+            var targetDelta = (int)Math.Abs(Math.Round(Configuration.TimerFrequency / endSpeed));
             if (targetDelta < 0)
                 //overflow when decelerating to stand still
                 targetDelta = int.MaxValue;
@@ -159,7 +159,7 @@ namespace ControllerCNC.Planning
 
         internal static AccelerationBuilder FromTo(Speed initialSpeed, Speed targetSpeed, int stepCount, double exactDuration)
         {
-            var timeScale = Constants.TimerFrequency;
+            var timeScale = Configuration.TimerFrequency;
             var initialSpeedF = 1.0 * initialSpeed.StepCount / initialSpeed.Ticks * timeScale;
             var targetSpeedF = 1.0 * targetSpeed.StepCount / targetSpeed.Ticks * timeScale;
 
@@ -207,7 +207,7 @@ namespace ControllerCNC.Planning
             {
                 var absStepCountLimit = Math.Abs(stepCountLimit);
                 //TODO verify/improve precision
-                var timeScale = Constants.TimerFrequency;
+                var timeScale = Configuration.TimerFrequency;
                 var initialSpeedF = initialSpeed.Ticks == 0 ? 0.0 : 1.0 * initialSpeed.StepCount / initialSpeed.Ticks * timeScale;
                 var desiredSpeedF = desiredSpeed.Ticks == 0 ? 0.0 : 1.0 * desiredSpeed.StepCount / desiredSpeed.Ticks * timeScale;
                 var accelerationF = 1.0 * acceleration.Speed.StepCount / acceleration.Speed.Ticks / acceleration.Ticks * timeScale * timeScale;

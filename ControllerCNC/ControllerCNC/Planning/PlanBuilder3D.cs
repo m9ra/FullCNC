@@ -86,7 +86,7 @@ namespace ControllerCNC.Planning
 
         public void AddCuttingLine(Point3Dmm target)
         {
-            moveTo(target, null, TransitionSpeed);
+            moveTo(target, null, CuttingSpeed);
         }
 
         public void AddRampedLine(Point2Dmm target)
@@ -137,12 +137,13 @@ namespace ControllerCNC.Planning
         {
             var planStream = new PlanStream3D(_plan.ToArray());
             var preloadTime = 0.05;
-            var currentlyQueuedTime = 0.0;
-            var lastTimeMeasure = DateTime.Now;
 
-            var startTime = lastTimeMeasure;
+            var startTime = DateTime.Now;
+            var lastTimeMeasure = startTime;
             var lastTotalSecondsRefreshTime = startTime;
             var lastCuttingSpeed = Speed.Zero;
+            var currentlyQueuedTime = 0.0;
+            var timeQueue = new Queue<double>();
             while (!planStream.IsComplete)
             {
                 var currentCuttingSpeed = _stream_cuttingSpeed;
@@ -167,16 +168,18 @@ namespace ControllerCNC.Planning
                 var timeElapsed = (currentTime - lastTimeMeasure).TotalSeconds;
                 lastTimeMeasure = currentTime;
 
-                currentlyQueuedTime = Math.Max(0, currentlyQueuedTime - timeElapsed);
-                if (currentlyQueuedTime > preloadTime)
+                if (driver.IncompletePlanCount >= 2)
                 {
                     //wait some time so we are not spinning like crazy
                     Thread.Sleep(10);
                     continue;
                 }
 
+                if (timeQueue.Count > 0)
+                    currentlyQueuedTime -= timeQueue.Dequeue();
+
                 IEnumerable<InstructionCNC> nextInstructions;
-                if (planStream.IsSpeedLimitedBy(Constants.MaxCuttingSpeed))
+                if (planStream.IsSpeedLimitedBy(Configuration.MaxCuttingSpeed))
                 {
                     var lengthLimit = preloadTime * currentCuttingSpeed.ToMetric();
                     nextInstructions = planStream.ShiftByConstantSpeed(lengthLimit, currentCuttingSpeed);
@@ -187,7 +190,9 @@ namespace ControllerCNC.Planning
                 }
 
                 var duration = nextInstructions.Select(i => i.CalculateTotalTime());
-                currentlyQueuedTime += duration.Sum(d => (float)d) / Constants.TimerFrequency;
+                var timeToQueue=duration.Sum(d => (float)d) / Configuration.TimerFrequency;
+                currentlyQueuedTime += timeToQueue;
+                timeQueue.Enqueue(currentlyQueuedTime);
 
                 driver.SEND(nextInstructions);
             }
@@ -270,13 +275,13 @@ namespace ControllerCNC.Planning
 
         public static Point3Dmm GetPositionFromSteps(int u, int v, int x, int y)
         {
-            var m = Constants.MilimetersPerStep;
+            var m = Configuration.MilimetersPerStep;
             return GetPositionFromMm(u * m, v * m, x * m, y * m);
         }
 
         public static int ToStep(double mm)
         {
-            return (int)Math.Round(mm / Constants.MilimetersPerStep);
+            return (int)Math.Round(mm / Configuration.MilimetersPerStep);
         }
 
         public static Point4Dstep ToStepsRev(Point3Dmm point)

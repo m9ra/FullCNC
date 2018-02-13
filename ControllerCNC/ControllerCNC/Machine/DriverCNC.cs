@@ -42,11 +42,6 @@ namespace ControllerCNC.Machine
         internal static readonly uint MaxIncompletePlanCount = 7;
 
         /// <summary>
-        /// Length of the instruction sent to machine.
-        /// </summary>
-        private readonly int _instructionLength = 59;
-
-        /// <summary>
         /// Delay between finish and next instruction fetch.
         /// </summary>
         private readonly double _startDelay = 0.001;
@@ -55,11 +50,6 @@ namespace ControllerCNC.Machine
         /// Ration between machine and real clock.
         /// </summary>
         private readonly double _clockRatio = 1.0 / 1.004;
-
-        /// <summary>
-        /// Baud rate for serial communication.
-        /// </summary>
-        private readonly int _communicationBaudRate = 128000;
 
         /// <summary>
         /// Queue waiting for sending.
@@ -238,6 +228,9 @@ namespace ControllerCNC.Machine
 
         public DriverCNC()
         {
+            _plannedState = new StateInfo();
+            _completedState = new StateInfo();
+
             _positionEstimator = new Thread(runPositionEstimation);
             _positionEstimator.IsBackground = true;
             _positionEstimator.Priority = ThreadPriority.Lowest;
@@ -331,7 +324,7 @@ namespace ControllerCNC.Machine
 
                 var realTargetTime = (DateTime.Now - _lastInstructionStartTime).TotalSeconds;
                 var targetTime = realTargetTime * _clockRatio + _startDelay;
-                var targetTicks = (long)Math.Round(targetTime * Constants.TimerFrequency);
+                var targetTicks = (long)Math.Round(targetTime * Configuration.TimerFrequency);
 
                 var uSteps = uEstimator.GetSteps(targetTicks);
                 var vSteps = vEstimator.GetSteps(targetTicks);
@@ -400,6 +393,11 @@ namespace ControllerCNC.Machine
                     case '1':
                         //_resetConnection = true;
                         clearDriverState();
+                        break;
+                    case 'a':
+                        //authentication is required
+                        clearDriverState();
+                        _port.Write("$%#");
                         break;
                     case 'I':
                         //first reset plans - the driver is blocked on expects confirmation
@@ -504,6 +502,8 @@ namespace ControllerCNC.Machine
         {
             lock (_L_instructionCompletition)
             {
+                _completedState = new StateInfo();
+                _plannedState = new StateInfo();
                 _sendQueue.Clear();
                 _incompleteInstructionQueue.Clear();
                 _incompleteInstructions = 0;
@@ -512,9 +512,6 @@ namespace ControllerCNC.Machine
 
             lock (_L_confirmation)
             {
-                if (!_expectsConfirmation)
-                    throw new NotSupportedException("Race condition threat");
-
                 _stateDataRemainingBytes = 0;
                 _expectsConfirmation = false;
                 Monitor.Pulse(_L_confirmation);
@@ -539,7 +536,7 @@ namespace ControllerCNC.Machine
                         _port = new SerialPort(portName);
                         _port.DtrEnable = false;
                         _port.RtsEnable = false;
-                        _port.BaudRate = _communicationBaudRate;
+                        _port.BaudRate = Configuration.CommunicationBaudRate;
                         _port.Open();
 
                         _port.DataReceived += _port_DataReceived;
@@ -652,10 +649,10 @@ namespace ControllerCNC.Machine
         private void send(InstructionCNC instruction)
         {
             var data = new List<byte>(instruction.GetInstructionBytes());
-            while (data.Count < _instructionLength - 2)
+            while (data.Count < Configuration.InstructionLength - 2)
                 data.Add(0);
 
-            if (data.Count != _instructionLength - 2)
+            if (data.Count != Configuration.InstructionLength - 2)
                 throw new NotSupportedException("Invalid instruction length detected.");
 
             //checksum is used for error detection
@@ -706,7 +703,7 @@ namespace ControllerCNC.Machine
                     }
 
                     var tickCount = instruction.CalculateTotalTime();
-                    var time = 1000.0 * tickCount / Constants.TimerFrequency;
+                    var time = 1000.0 * tickCount / Configuration.TimerFrequency;
 
                     if (SIMULATE_REAL_DELAY)
                     {

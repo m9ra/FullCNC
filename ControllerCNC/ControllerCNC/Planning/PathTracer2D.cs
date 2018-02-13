@@ -25,7 +25,7 @@ namespace ControllerCNC.Planning
 
         public void AppendAcceleration(Vector acceleration, double time)
         {
-            var tickCount = time * Constants.TimerFrequency;
+            var tickCount = time * Configuration.TimerFrequency;
             if ((int)tickCount <= 0)
                 //nothing to add here
                 return;
@@ -41,7 +41,7 @@ namespace ControllerCNC.Planning
             if (Math.Sign(initialVelocity.X) * Math.Sign(newVelocity.X) < 0)
             {
                 var stopTime = Math.Abs(initialVelocity.X / acceleration.X);
-                if (stopTime * Constants.TimerFrequency >= 1)
+                if (stopTime * Configuration.TimerFrequency >= 1)
                 {
                     AppendAcceleration(acceleration, stopTime);
                     AppendAcceleration(acceleration, time - stopTime);
@@ -52,7 +52,7 @@ namespace ControllerCNC.Planning
             if (Math.Sign(initialVelocity.Y) * Math.Sign(newVelocity.Y) < 0)
             {
                 var stopTime = Math.Abs(initialVelocity.Y / acceleration.Y);
-                if (stopTime * Constants.TimerFrequency >= 1)
+                if (stopTime * Configuration.TimerFrequency >= 1)
                 {
                     AppendAcceleration(acceleration, stopTime);
                     AppendAcceleration(acceleration, time - stopTime);
@@ -75,7 +75,7 @@ namespace ControllerCNC.Planning
 
             var endPosition = _actualPosition;
             var distance = endPosition - startPosition;
-            var tickCount = (int)(Constants.TimerFrequency * time);
+            var tickCount = (int)(Configuration.TimerFrequency * time);
             addConstantPlan(tickCount, distance.X, _pathPlansX);
             addConstantPlan(tickCount, distance.Y, _pathPlansY);
         }
@@ -125,7 +125,7 @@ namespace ControllerCNC.Planning
             checked
             {
                 var profile = AccelerationBuilder.FromTo(initialSpeed, endSpeed, (int)Math.Round(distance), exactDuration);
-                var timeDiff = Math.Abs(profile.TotalTickCount - exactDuration * Constants.TimerFrequency);
+                var timeDiff = Math.Abs(profile.TotalTickCount - exactDuration * Configuration.TimerFrequency);
                 System.Diagnostics.Debug.WriteLine("Acceleration time diff: " + timeDiff);
                 System.Diagnostics.Debug.WriteLine("\t" + profile);
                 pathPlans.Add(profile.ToInstruction());

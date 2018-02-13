@@ -195,7 +195,7 @@ namespace ControllerCNC
                 _autosaveTime.IsEnabled = false;
             }
 
-            Workspace = new WorkspacePanel(Constants.MaxStepsX, Constants.MaxStepsY);
+            Workspace = new WorkspacePanel(Configuration.MaxStepsX, Configuration.MaxStepsY);
             WorkspaceSlot.Child = Workspace;
             if (withReload)
             {
@@ -465,20 +465,20 @@ namespace ControllerCNC
             var currentV = Cnc.EstimationV;
             var currentX = Cnc.EstimationX;
             var currentY = Cnc.EstimationY;
-            var positionU = Constants.MilimetersPerStep * (currentU - _positionOffsetU);
-            var positionV = Constants.MilimetersPerStep * (currentV - _positionOffsetV);
-            var positionX = Constants.MilimetersPerStep * (currentX - _positionOffsetX);
-            var positionY = Constants.MilimetersPerStep * (currentY - _positionOffsetY);
+            var positionU = Configuration.MilimetersPerStep * (currentU - _positionOffsetU);
+            var positionV = Configuration.MilimetersPerStep * (currentV - _positionOffsetV);
+            var positionX = Configuration.MilimetersPerStep * (currentX - _positionOffsetX);
+            var positionY = Configuration.MilimetersPerStep * (currentY - _positionOffsetY);
 
             PositionU.Text = positionU.ToString("0.000");
             PositionV.Text = positionV.ToString("0.000");
             PositionX.Text = positionX.ToString("0.000");
             PositionY.Text = positionY.ToString("0.000");
 
-            positionU = Constants.MilimetersPerStep * currentU;
-            positionV = Constants.MilimetersPerStep * currentV;
-            positionX = Constants.MilimetersPerStep * currentX;
-            positionY = Constants.MilimetersPerStep * currentY;
+            positionU = Configuration.MilimetersPerStep * currentU;
+            positionV = Configuration.MilimetersPerStep * currentV;
+            positionX = Configuration.MilimetersPerStep * currentX;
+            positionY = Configuration.MilimetersPerStep * currentY;
 
             var uv = new Point2Dmm(positionU, positionV);
             var xy = new Point2Dmm(positionX, positionY);
@@ -489,7 +489,7 @@ namespace ControllerCNC
             if (_isPlanRunning)
             {
                 var remainingTicks = Cnc.PlannedState.TickCount - Cnc.EstimationTicks;
-                var remainingSeconds = (int)(remainingTicks / Constants.TimerFrequency);
+                var remainingSeconds = (int)(remainingTicks / Configuration.TimerFrequency);
                 if (_lastRemainingSeconds > remainingSeconds || Math.Abs(_lastRemainingSeconds - remainingSeconds) > 2)
                 {
                     _lastRemainingSeconds = remainingSeconds;
@@ -547,7 +547,7 @@ namespace ControllerCNC
             var initY = point.PositionC2 - state.Y;
 
 
-            builder.AddRampedLineUVXY(initU, initV, initX, initY, Constants.MaxPlaneAcceleration, getTransitionSpeed());
+            builder.AddRampedLineUVXY(initU, initV, initX, initY, Configuration.MaxPlaneAcceleration, getTransitionSpeed());
             try
             {
                 Workspace.BuildPlan(builder);
@@ -684,7 +684,7 @@ namespace ControllerCNC
             }
             else
             {
-                return Constants.MaxPlaneSpeed;
+                return Configuration.MaxPlaneSpeed;
             }
         }
 
@@ -700,7 +700,7 @@ namespace ControllerCNC
             var ySteps = state.Y - state.V;
 
             var builder = new PlanBuilder();
-            builder.AddRampedLineXY(-xSteps, -ySteps, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            builder.AddRampedLineXY(-xSteps, -ySteps, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed);
             Cnc.SEND(builder.Build());
         }
 
@@ -728,7 +728,7 @@ namespace ControllerCNC
             var stepsY = _positionOffsetY - state.Y;
 
             var planner = new PlanBuilder();
-            planner.AddRampedLineUVXY(stepsU, stepsV, stepsX, stepsY, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            planner.AddRampedLineUVXY(stepsU, stepsV, stepsX, stepsY, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed);
             Cnc.SEND(planner.Build());
         }
 
@@ -840,7 +840,7 @@ namespace ControllerCNC
             if (Workspace != null)
                 Workspace.CuttingSpeed = Speed.FromDeltaT(deltaT);
 
-            var speed = Constants.MilimetersPerStep * Constants.TimerFrequency / deltaT;
+            var speed = Configuration.MilimetersPerStep * Configuration.TimerFrequency / deltaT;
             CuttingSpeed.Text = string.Format("{0:0.000}mm/s", speed);
         }
 

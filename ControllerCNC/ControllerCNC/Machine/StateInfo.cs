@@ -37,17 +37,17 @@ namespace ControllerCNC.Machine
         /// Determine whether home is calibrated.
         /// </summary>
         public bool IsHomeCalibrated { get; private set; }
-
+        
         internal void SetState(byte[] dataBuffer)
         {
             IsHomeCalibrated = getStateDataBool(dataBuffer, 0);
-            X = transformSteps(getStateDataInt32(dataBuffer, 1), Constants.DirX, Constants.MaxStepsX);
-            Y = transformSteps(getStateDataInt32(dataBuffer, 4 + 1), Constants.DirY, Constants.MaxStepsY);
-            U = transformSteps(getStateDataInt32(dataBuffer, 4 + 4 + 1), Constants.DirU, Constants.MaxStepsU);
-            V = transformSteps(getStateDataInt32(dataBuffer, 4 + 4 + 4 + 1), Constants.DirV, Constants.MaxStepsV);
+            X = transformSteps(getStateDataInt32(dataBuffer, 1), Configuration.DirX, Configuration.MaxStepsX);
+            Y = transformSteps(getStateDataInt32(dataBuffer, 4 + 1), Configuration.DirY, Configuration.MaxStepsY);
+            U = transformSteps(getStateDataInt32(dataBuffer, 4 + 4 + 1), Configuration.DirU, Configuration.MaxStepsU);
+            V = transformSteps(getStateDataInt32(dataBuffer, 4 + 4 + 4 + 1), Configuration.DirV, Configuration.MaxStepsV);
         }
 
-        private int transformSteps(int stepCount, InstructionOrientation dirV, int maxSteps)
+        private static int transformSteps(int stepCount, InstructionOrientation dirV, int maxSteps)
         {
             if (dirV == InstructionOrientation.Reversed)
                 return maxSteps - stepCount;
@@ -102,7 +102,7 @@ namespace ControllerCNC.Machine
             if (U < 0 || V < 0 || X < 0 || Y < 0)
                 return false;
 
-            if (U > Constants.MaxStepsU || V > Constants.MaxStepsV || X > Constants.MaxStepsX || Y > Constants.MaxStepsY)
+            if (U > Configuration.MaxStepsU || V > Configuration.MaxStepsV || X > Configuration.MaxStepsX || Y > Configuration.MaxStepsY)
                 return false;
 
             return true;
@@ -116,10 +116,10 @@ namespace ControllerCNC.Machine
 
         private void calibrateHome()
         {
-            X = transformSteps(0, Constants.DirX, Constants.MaxStepsX);
-            Y = transformSteps(0, Constants.DirY, Constants.MaxStepsY);
-            U = transformSteps(0, Constants.DirU, Constants.MaxStepsU);
-            V = transformSteps(0, Constants.DirV, Constants.MaxStepsV);
+            X = transformSteps(0, Configuration.DirX, Configuration.MaxStepsX);
+            Y = transformSteps(0, Configuration.DirY, Configuration.MaxStepsY);
+            U = transformSteps(0, Configuration.DirU, Configuration.MaxStepsU);
+            V = transformSteps(0, Configuration.DirV, Configuration.MaxStepsV);
 
             TickCount = 0;
             IsHomeCalibrated = true;

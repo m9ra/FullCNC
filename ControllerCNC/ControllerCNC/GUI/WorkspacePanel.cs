@@ -219,7 +219,7 @@ namespace ControllerCNC.GUI
             MouseEnter += (s, o) => _positionInfo.Show();
 
             CuttingSpeed = Speed.FromDeltaT(6000);
-            WireLength = Constants.FullWireLength;
+            WireLength = Configuration.FullWireLength;
         }
 
         /// <summary>
@@ -300,7 +300,7 @@ namespace ControllerCNC.GUI
                 if (configuration.ContainsKey("WireLength"))
                     _wireLength = (double)configuration["WireLength"];
                 else
-                    _wireLength = Constants.FullWireLength;
+                    _wireLength = Configuration.FullWireLength;
 
                 fireOnWorkItemListChanged();
                 fireOnSettingsChanged();

@@ -12,7 +12,7 @@ namespace ControllerCNC.Machine
     /// Encapsulates constants related to the CNC machine. All the configuration
     /// like machine limits and capabilities (not communication related staff) has to be here.
     /// </summary>
-    public static class Constants
+    public static class Configuration
     {
         /// <summary>
         /// Thickness of the hotwire [mm].
@@ -69,6 +69,30 @@ namespace ControllerCNC.Machine
         /// </summary>
         internal static readonly int HwMaxStepsY = 256 * StepsPerRevolution * 100 / 125;
 
+        /// <summary>
+        /// Baud rate for serial communication.
+        /// </summary>
+        internal static readonly int CommunicationBaudRate = 128000;
+
+        /// <summary>
+        /// Length of the instruction sent to machine.
+        /// </summary>
+        internal static readonly int InstructionLength = 59;
+
+        /// <summary>
+        /// How many instructions fit into the buffer.
+        /// </summary>
+        internal static int InstructionBufferLimit = 5;
+
+        /// <summary>
+        /// How many steps can be stored in step buffer.
+        /// </summary>
+        internal static int StepBufferSize = 256;
+
+        /// <summary>
+        /// Size of machine state buffer.
+        /// </summary>
+        internal static readonly int MachineStateBufferSize = 1 + 4 * 4;
 
         /// <summary>
         /// Max allowed steps along X axis.
@@ -145,7 +169,7 @@ namespace ControllerCNC.Machine
         /// </summary>
         public static readonly Acceleration MaxPlaneAcceleration = new Acceleration(new Speed(MaxAcceleration, TimerFrequency), TimerFrequency);
 
-        static Constants()
+        static Configuration()
         {
             MaxStepsU = HwMaxStepsU;
             MaxStepsV = HwMaxStepsV;

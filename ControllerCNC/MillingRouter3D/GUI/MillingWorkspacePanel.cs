@@ -204,7 +204,7 @@ namespace MillingRouter3D.GUI
             MouseEnter += (s, o) => _positionInfo.Show();
 
             CuttingSpeedMm = 1.0;
-            WireLength = Constants.FullWireLength;
+            WireLength = Configuration.FullWireLength;
         }
 
         /// <summary>
@@ -285,7 +285,7 @@ namespace MillingRouter3D.GUI
                 if (configuration.ContainsKey("WireLength"))
                     _wireLength = (double)configuration["WireLength"];
                 else
-                    _wireLength = Constants.FullWireLength;
+                    _wireLength = Configuration.FullWireLength;
 
                 fireOnWorkItemListChanged();
                 fireOnSettingsChanged();

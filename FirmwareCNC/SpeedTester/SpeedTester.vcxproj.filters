@@ -15,14 +15,11 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="__vm\.StepperControl.vsarduino.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="StepperControl.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <None Include="SpeedTester.ino" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="StepperControl.cpp" />
+    <ClInclude Include="__vm\.SpeedTester.vsarduino.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

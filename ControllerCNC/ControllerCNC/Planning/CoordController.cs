@@ -23,10 +23,10 @@ namespace ControllerCNC.Planning
 
         private readonly double[] _axesCurrentSpeed = new double[_axesCount];
 
-        private readonly double _axisAcceleration = Constants.MaxPlaneAcceleration.ToMetric();
+        private readonly double _axisAcceleration = Configuration.MaxPlaneAcceleration.ToMetric();
 
         //its safe to go back and forth with this speed delta without acceleration
-        private readonly double _fastChangeSpeedDiff = 2 * Speed.FromDeltaT(Constants.StartDeltaT).ToMetric();
+        private readonly double _fastChangeSpeedDiff = 2 * Speed.FromDeltaT(Configuration.StartDeltaT).ToMetric();
 
         /// <summary>
         /// Limit single instruction to a small time - it helps keeping controller responsive.
@@ -60,15 +60,12 @@ namespace ControllerCNC.Planning
 
         private void worker()
         {
-            var lastSend = DateTime.Now;
-            var sentStreak = 0;
             while (true)
             {
                 lock (_L_desiredSpeed)
                 {
                     while (canWorkerStop())
                     {
-                        sentStreak = 0;
                         Monitor.Wait(_L_desiredSpeed);
                     }
 
@@ -80,17 +77,11 @@ namespace ControllerCNC.Planning
                             _axesCurrentSpeed[i] = _axesDesiredSpeed[i];
                     }
                 }
+                
 
-                while (sentStreak>0 && (DateTime.Now - lastSend).TotalSeconds > _instructionDurationLimit)
-                {
-                    --sentStreak;
-                    lastSend = DateTime.Now;
-                }
-
-                if (_cnc.IncompletePlanCount < 2 && sentStreak < 3)
+                if (_cnc.IncompletePlanCount < 2)
                 {
                     sendNextPlan();
-                    ++sentStreak;
                 }
                 else
                     Thread.Sleep(1);
@@ -159,9 +150,9 @@ namespace ControllerCNC.Planning
             var acceleration = speedDiff / accelerationTime;
 
             var trajectory = currentSpeed * accelerationTime + 0.5 * acceleration * accelerationTime * accelerationTime;
-            var trajectorySteps = (int)Math.Round(trajectory / Constants.MilimetersPerStep);
-            var currentSpeedSteps = currentSpeed / Constants.MilimetersPerStep;
-            var desiredSpeedSteps = desiredSpeed / Constants.MilimetersPerStep;
+            var trajectorySteps = (int)Math.Round(trajectory / Configuration.MilimetersPerStep);
+            var currentSpeedSteps = currentSpeed / Configuration.MilimetersPerStep;
+            var desiredSpeedSteps = desiredSpeed / Configuration.MilimetersPerStep;
             var builder = AccelerationBuilder.FromTo(Math.Abs(currentSpeedSteps), Math.Abs(desiredSpeedSteps), trajectorySteps, accelerationTime);
             var instruction = builder.ToInstruction();
             return instruction;
@@ -172,8 +163,8 @@ namespace ControllerCNC.Planning
             checked
             {
                 var trajectory = speed * _instructionDurationLimit;
-                var trajectorySteps = (Int16)Math.Round(trajectory / Constants.MilimetersPerStep);
-                var tickCount = _instructionDurationLimit * Constants.TimerFrequency;
+                var trajectorySteps = (Int16)Math.Round(trajectory / Configuration.MilimetersPerStep);
+                var tickCount = _instructionDurationLimit * Configuration.TimerFrequency;
 
                 StepInstrution instruction;
                 if (trajectorySteps == 0)

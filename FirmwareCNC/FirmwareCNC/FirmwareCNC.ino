@@ -1,9 +1,9 @@
-#include<StepperControl.h>
+#include "StepperControl.h"
 
 // how many bytes contains instruction from controller
 
 #define INSTRUCTION_SIZE 59
-#define BUFFERED_INSTRUCTION_COUNT 8
+#define BUFFERED_INSTRUCTION_COUNT 6
 #define STEPPER_COUNT 2
 
 //Buffer used in form of INSTRUCTION_SIZE segments which are filled with Serial data.
@@ -87,6 +87,10 @@ void setup() {
 
 void loop() {
 	Serial.print('1'); // the device is ready
+
+	//wait until machine authenticates - this prevenets stall instructions from beiing executed.
+	waitForAuthentication();
+
 	for (;;) {
 		if (!enableAccelerationSchedule && !enableConstantSchedule)
 			tryToFetchNextPlans();
@@ -109,7 +113,7 @@ void loop() {
 				enableAccelerationSchedule = false;
 			}
 
-			Serial.print('F');
+			//Serial.print('F');  //report instruction steps are all scheduled
 			continue;
 		}
 
@@ -274,6 +278,27 @@ void homing() {
 	IS_HOME_CALIBRATED = true;
 	//homing was successful
 	Serial.print('H');
+}
+
+void waitForAuthentication() {
+	int authenticationStep = 0;
+	const char* password = "$%#";
+	Serial.print("a");
+	while (authenticationStep < strlen(password))
+	{
+		char b = Serial.read();
+		if (b <= 0)
+			continue;
+
+		if (password[authenticationStep] == b) {
+			++authenticationStep;
+		}
+		else
+		{
+			authenticationStep = 0;
+			Serial.print("a");
+		}
+	}
 }
 
 void pciSetup(byte pin)

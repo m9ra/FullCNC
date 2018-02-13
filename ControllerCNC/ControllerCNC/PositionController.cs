@@ -25,7 +25,7 @@ namespace ControllerCNC
 
             var builder = new Planning.PlanBuilder();
             //builder.AddRampedSteps(steps, Constants.FastestDeltaT);
-            builder.AddConstantSpeedTransitionXY(steps, steps, Constants.ReverseSafeSpeed);
+            builder.AddConstantSpeedTransitionXY(steps, steps, Configuration.ReverseSafeSpeed);
             builder.DuplicateXYtoUV();
             _cnc.SEND(builder.Build());
 

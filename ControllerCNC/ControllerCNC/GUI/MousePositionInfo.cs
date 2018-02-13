@@ -43,8 +43,8 @@ namespace ControllerCNC.GUI
 
         internal void UpdateInfo()
         {
-            var xPosition = PositionC1 * Constants.MilimetersPerStep;
-            var yPosition = PositionC2 * Constants.MilimetersPerStep;
+            var xPosition = PositionC1 * Configuration.MilimetersPerStep;
+            var yPosition = PositionC2 * Configuration.MilimetersPerStep;
 
             var infoTextX = string.Format("X: {0:0.0}mm", xPosition);
             var infoTextY = string.Format("Y: {0:0.0}mm", yPosition);

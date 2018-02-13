@@ -140,7 +140,7 @@ namespace ControllerCNC.Planning
             var planInstructions = builder.Build();
             foreach (var instruction in planInstructions)
             {
-                var instructionTime = 1.0 * instruction.CalculateTotalTime() / Constants.TimerFrequency;
+                var instructionTime = 1.0 * instruction.CalculateTotalTime() / Configuration.TimerFrequency;
                 accumulator += instructionTime;
             }
 

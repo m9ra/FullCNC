@@ -213,7 +213,7 @@ namespace ControllerCNC.Planning
                 var remainingStepsX = distanceX;
                 var remainingStepsY = distanceY;
 
-                var chunkLengthLimit = Constants.MaxStepInstructionLimit;
+                var chunkLengthLimit = Configuration.MaxStepInstructionLimit;
                 var maxUV = Math.Max(Math.Abs(distanceU), Math.Abs(distanceV));
                 var maxXY = Math.Max(Math.Abs(distanceX), Math.Abs(distanceY));
                 var chunkCount = (int)Math.Ceiling(1.0 * Math.Max(maxUV, maxXY) / chunkLengthLimit);
@@ -460,7 +460,7 @@ namespace ControllerCNC.Planning
             {
                 var composedSpeed = Math.Sqrt(1.0 * speedX.StepCount * speedX.StepCount / speedX.Ticks / speedX.Ticks + 1.0 * speedY.StepCount * speedY.StepCount / speedY.Ticks / speedY.Ticks);
 
-                var resolution = Constants.TimerFrequency * 1000;
+                var resolution = Configuration.TimerFrequency * 1000;
                 return new Speed((long)Math.Round(Math.Abs(composedSpeed * resolution)), resolution);
             }
         }
@@ -487,7 +487,7 @@ namespace ControllerCNC.Planning
                 direction.Normalize();
 
                 var speedVector = direction * planeSpeed.StepCount / planeSpeed.Ticks;
-                var resolution = Constants.TimerFrequency;
+                var resolution = Configuration.TimerFrequency;
 
                 speedX = new Speed((long)Math.Round(Math.Abs(speedVector.X * resolution)), resolution);
                 speedY = new Speed((long)Math.Round(Math.Abs(speedVector.Y * resolution)), resolution);
@@ -526,11 +526,11 @@ namespace ControllerCNC.Planning
         public int DeltaTFromRPM(int rpm)
         {
             if (rpm == 0)
-                return Constants.StartDeltaT;
+                return Configuration.StartDeltaT;
 
             checked
             {
-                var deltaT = Constants.TimerFrequency * 60 / 400 / rpm;
+                var deltaT = Configuration.TimerFrequency * 60 / 400 / rpm;
                 return (int)deltaT;
             }
         }
@@ -576,7 +576,7 @@ namespace ControllerCNC.Planning
             checked
             {
                 var endN = Math.Abs(startN + stepCount);
-                return (UInt16)(Constants.TimerFrequency / Math.Sqrt(2.0 * endN * (long)Constants.MaxAcceleration));
+                return (UInt16)(Configuration.TimerFrequency / Math.Sqrt(2.0 * endN * (long)Configuration.MaxAcceleration));
             }
         }
 
@@ -584,7 +584,7 @@ namespace ControllerCNC.Planning
         {
             checked
             {
-                var n1 = (long)Constants.TimerFrequency * Constants.TimerFrequency * accelerationDenominator / 2 / startDeltaT / startDeltaT / Constants.MaxAcceleration / accelerationNumerator;
+                var n1 = (long)Configuration.TimerFrequency * Configuration.TimerFrequency * accelerationDenominator / 2 / startDeltaT / startDeltaT / Configuration.MaxAcceleration / accelerationNumerator;
                 return (Int16)Math.Max(1, n1);
             }
         }

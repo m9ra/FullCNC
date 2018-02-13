@@ -28,7 +28,7 @@ namespace ControllerCNC.Demos
         public static PlanBuilder DrawByConstantSpeed(CoordinateProvider provider, Speed speed = null)
         {
             if (speed == null)
-                speed = Constants.ReverseSafeSpeed;
+                speed = Configuration.ReverseSafeSpeed;
 
             var points = provider();
             var trajectory = new Trajectory4D(points);
@@ -45,7 +45,7 @@ namespace ControllerCNC.Demos
         public static PlanBuilder DrawByRampedLines(CoordinateProvider provider, Speed speed = null)
         {
             if (speed == null)
-                speed = Constants.MaxPlaneSpeed;
+                speed = Configuration.MaxPlaneSpeed;
 
             var points = provider();
             var trajectory = new Trajectory4D(points);
@@ -62,7 +62,7 @@ namespace ControllerCNC.Demos
         public static PlanBuilder DrawContinuousLines(CoordinateProvider provider, Speed speed = null)
         {
             if (speed == null)
-                speed = Constants.MaxPlaneSpeed;
+                speed = Configuration.MaxPlaneSpeed;
 
             var points = provider();
             var trajectory = new Trajectory4D(points);
@@ -76,8 +76,8 @@ namespace ControllerCNC.Demos
         /// </summary>
         public static PlanBuilder DrawSquareWithDiagonals()
         {
-            var speed = Constants.MaxPlaneSpeed;
-            var acceleration = Constants.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
+            var speed = Configuration.MaxPlaneSpeed;
+            var acceleration = Configuration.MaxPlaneAcceleration; //new Acceleration(Constants.MaxPlaneAcceleration.Speed,Constants.MaxPlaneAcceleration.Ticks*10);
             var squareSize = 6000;
             var diagonalDistance = 300;
 

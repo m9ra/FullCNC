@@ -133,7 +133,7 @@ namespace ControllerCNC.Machine
 
             var instructionIndex = 0;
             StepInstrution[] instructionOrdering;
-            instructionOrdering = new[] { InstructionX.WithOrientation(Constants.DirX), InstructionY.WithOrientation(Constants.DirY), InstructionU.WithOrientation(Constants.DirU), InstructionV.WithOrientation(Constants.DirV) };
+            instructionOrdering = new[] { InstructionX?.WithOrientation(Configuration.DirX), InstructionY?.WithOrientation(Configuration.DirY), InstructionU?.WithOrientation(Configuration.DirU), InstructionV?.WithOrientation(Configuration.DirV) };
 
             foreach (var instruction in instructionOrdering)
             {

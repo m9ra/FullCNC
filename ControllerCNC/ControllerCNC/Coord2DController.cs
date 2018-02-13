@@ -140,7 +140,7 @@ namespace ControllerCNC
         internal static AccelerationInstruction[] CreateAcceleration(int speed, int desiredSpeed)
         {
             var canSkipAcceleration = speed == desiredSpeed;
-            canSkipAcceleration |= Math.Abs(speed) >= Constants.StartDeltaT && Math.Abs(desiredSpeed) >= Constants.StartDeltaT;
+            canSkipAcceleration |= Math.Abs(speed) >= Configuration.StartDeltaT && Math.Abs(desiredSpeed) >= Configuration.StartDeltaT;
             if (canSkipAcceleration)
             {
                 //no acceleration is required
@@ -159,10 +159,10 @@ namespace ControllerCNC
             speed = Math.Abs(speed);
             desiredSpeed = Math.Abs(desiredSpeed);
             if (speed == 0)
-                speed = Constants.StartDeltaT;
+                speed = Configuration.StartDeltaT;
 
             if (desiredSpeed == 0)
-                desiredSpeed = Constants.StartDeltaT;
+                desiredSpeed = Configuration.StartDeltaT;
 
             var acceleration = PlanBuilder.CalculateBoundedAcceleration((UInt16)speed, (UInt16)desiredSpeed, stepCount);
 

@@ -68,10 +68,10 @@ namespace ControllerCNC.GUI
             refreshStateButtons();
 
             var elevation = double.Parse(Elevation.Text);
-            var elevationSteps = (int)Math.Round(elevation / Constants.MilimetersPerStep) * elevationFactor;
+            var elevationSteps = (int)Math.Round(elevation / Configuration.MilimetersPerStep) * elevationFactor;
 
             var builder = new PlanBuilder();
-            builder.AddRampedLineUVXY(elevationSteps, 0, -elevationSteps, 0, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+            builder.AddRampedLineUVXY(elevationSteps, 0, -elevationSteps, 0, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed);
             var plan = builder.Build();
 
             _panel.Cnc.SEND(plan);
@@ -112,7 +112,7 @@ namespace ControllerCNC.GUI
         private void transition(int c1, int c2)
         {
             _panel.CoordController.SetPlanes(true, true);
-            _panel.CoordController.SetSpeed(Machine.Constants.StartDeltaT);
+            _panel.CoordController.SetSpeed(Machine.Configuration.StartDeltaT);
             _panel.CoordController.SetMovement(c1, c2);
         }
 

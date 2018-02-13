@@ -94,6 +94,8 @@
     <Compile Include="Loading\ShapeFactory3D.cs" />
     <Compile Include="Loading\ShapeFactory.cs" />
     <Compile Include="Machine\Axes.cs" />
+    <Compile Include="Machine\CommunicationParser.cs" />
+    <Compile Include="Machine\DriverCNC2.cs" />
     <Compile Include="Machine\HomingInstruction.cs" />
     <Compile Include="Machine\InitializationInstruction.cs" />
     <Compile Include="Machine\PositionEstimator.cs" />
@@ -122,7 +124,7 @@
     <Compile Include="Primitives\Acceleration.cs" />
     <Compile Include="Machine\AccelerationInstruction.cs" />
     <Compile Include="Machine\ConstantInstruction.cs" />
-    <Compile Include="Machine\Constants.cs" />
+    <Compile Include="Machine\Configuration.cs" />
     <Compile Include="Machine\InstructionCNC.cs" />
     <Compile Include="Primitives\Extensions.cs" />
     <Compile Include="Primitives\ILoadProvider.cs" />

@@ -67,7 +67,7 @@ namespace ControllerCNC.Planning
         {
             var planBuilder = new PlanBuilder();
 
-            iterateDistances(trajectory, (p, u, v, x, y) => planBuilder.AddRampedLineUVXY(u, v, x, y, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed));
+            iterateDistances(trajectory, (p, u, v, x, y) => planBuilder.AddRampedLineUVXY(u, v, x, y, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed));
             return planBuilder;
         }
 

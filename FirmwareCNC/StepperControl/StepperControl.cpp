@@ -1,8 +1,12 @@
 #include "StepperControl.h"
 
-uint16_t SCHEDULE_BUFFER[SCHEDULE_BUFFER_LEN + 1];
-byte SCHEDULE_ACTIVATIONS[SCHEDULE_BUFFER_LEN + 1];
+
+bool INSTRUCTION_ENDS[SCHEDULE_BUFFER_LEN + 1] = { 0 };
+uint16_t SCHEDULE_BUFFER[SCHEDULE_BUFFER_LEN + 1] = { 0 };
+byte SCHEDULE_ACTIVATIONS[SCHEDULE_BUFFER_LEN + 1] = { 0 };
 byte CUMULATIVE_SCHEDULE_ACTIVATION = 0;
+
+
 
 volatile byte SCHEDULE_START = 0;
 volatile byte SCHEDULE_END = 0;
@@ -22,10 +26,11 @@ ISR(TIMER1_OVF_vect) {
 
 	//THE TIMER RESET IS TUNED HERE (!!!NO CHANGES BEFORE THIS!!!)
 	TCNT1 = SCHEDULE_BUFFER[SCHEDULE_END];
-	
+
 	PORTB = B_SLOTS_MASK & activation;
 	PORTD = D_SLOTS_MASK & activation;
 
+	bool isInstructionEnd = INSTRUCTION_ENDS[SCHEDULE_END];
 	if (SCHEDULE_START == SCHEDULE_END) {
 		//we are at schedule end
 		TIMSK1 = 0;
@@ -55,19 +60,22 @@ ISR(TIMER1_OVF_vect) {
 	SLOT0_STEPS += (int32_t)(step0p - step0n);
 	SLOT1_STEPS += (int32_t)(step1p - step1n);
 	SLOT2_STEPS += (int32_t)(step2p - step2n);
-	SLOT3_STEPS += (int32_t)(step3p - step3n);
+	SLOT3_STEPS += (int32_t)(step3p - step3n);	
 
 	/*	Serial.print('|');
-		Serial.print(step2p);
-		Serial.print(' ');
-		Serial.print(step2n);
-		Serial.print(' ');
-		Serial.println(SLOT2_STEPS);*/
-		//------------------------------------
+	Serial.print(step2p);
+	Serial.print(' ');
+	Serial.print(step2n);
+	Serial.print(' ');
+	Serial.println(SLOT2_STEPS);*/
+	//------------------------------------
 
-		//pins go HIGH here (pulse end)
+	//pins go HIGH here (pulse end)
+	if (isInstructionEnd)
+		Serial.write('F');
 	PORTB |= B_SLOTS_MASK & ACTIVATIONS_CLOCK_MASK;
 	PORTD |= D_SLOTS_MASK & ACTIVATIONS_CLOCK_MASK;
+
 }
 
 bool Steppers::startScheduler() {

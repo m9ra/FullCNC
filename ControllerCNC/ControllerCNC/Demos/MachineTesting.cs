@@ -18,7 +18,7 @@ namespace ControllerCNC.Demos
         {
             var metricShapeThickness = 300;
             var points = ShapeDrawing.CircleToSquare();
-            var projector = new PlaneProjector(metricShapeThickness, Constants.FullWireLength);
+            var projector = new PlaneProjector(metricShapeThickness, Configuration.FullWireLength);
             var projectedPoints = projector.Project(points);
             var planner = new StraightLinePlanner4D(Speed.FromDeltaT(3000));
             return planner.CreateConstantPlan(new Trajectory4D(projectedPoints.As4Dstep()));
@@ -37,8 +37,8 @@ namespace ControllerCNC.Demos
         /// </summary>
         public static PlanBuilder AccelerationTest()
         {
-            var speed = Constants.MaxPlaneSpeed;
-            var acceleration = Constants.MaxPlaneAcceleration;
+            var speed = Configuration.MaxPlaneSpeed;
+            var acceleration = Configuration.MaxPlaneAcceleration;
 
             var tracer = new PathTracer2D();
             var maxAcceleration = 1 * 400;
@@ -69,9 +69,9 @@ namespace ControllerCNC.Demos
 
             for (var i = 0; i < 30; ++i)
             {
-                var distance = Constants.MaxStepsX;
-                var acceleration = Coord2DController.CreateAcceleration(Constants.StartDeltaT, traverseDelta)[0];
-                var deceleration = Coord2DController.CreateAcceleration(traverseDelta, Constants.StartDeltaT)[0];
+                var distance = Configuration.MaxStepsX;
+                var acceleration = Coord2DController.CreateAcceleration(Configuration.StartDeltaT, traverseDelta)[0];
+                var deceleration = Coord2DController.CreateAcceleration(traverseDelta, Configuration.StartDeltaT)[0];
                 distance -= Math.Abs(acceleration.StepCount);
                 distance -= Math.Abs(deceleration.StepCount);
 
@@ -115,7 +115,7 @@ namespace ControllerCNC.Demos
             var segmentation = 100;
             for (var i = 0; i < 400 / segmentation; ++i)
             {
-                plan.AddRampedLineXY(segmentation, segmentation, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+                plan.AddRampedLineXY(segmentation, segmentation, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed);
             }
 
             return plan;
@@ -132,8 +132,8 @@ namespace ControllerCNC.Demos
             var segmentation = 4;
             for (var i = 0; i < 400 / segmentation; ++i)
             {
-                plan.AddRampedLineXY(-overShoot, -overShoot, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
-                plan.AddRampedLineXY(segmentation + overShoot, segmentation + overShoot, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed);
+                plan.AddRampedLineXY(-overShoot, -overShoot, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed);
+                plan.AddRampedLineXY(segmentation + overShoot, segmentation + overShoot, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed);
             }
 
             return plan;

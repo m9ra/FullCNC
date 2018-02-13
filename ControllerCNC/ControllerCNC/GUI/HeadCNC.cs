@@ -64,7 +64,7 @@ namespace ControllerCNC.GUI
             var armLength = 50;
             var crossWidth = 2;
 
-            var mmToStep = Machine.Constants.MilimetersPerStep;
+            var mmToStep = Machine.Configuration.MilimetersPerStep;
             var c1Factor = _parent.ActualWidth / _parent.StepCountU / mmToStep;
             var c2Factor = _parent.ActualHeight / _parent.StepCountV / mmToStep;
 

@@ -90,7 +90,7 @@ namespace MillingRouter3D
 
         public RouterPanel()
         {
-            Constants.EnableRouterMode();
+            Configuration.EnableRouterMode();
             System.Windows.Forms.Integration.ElementHost.EnableModelessKeyboardInterop(this);
             System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
@@ -202,7 +202,7 @@ namespace MillingRouter3D
                 _autosaveTime.IsEnabled = false;
             }
 
-            var limitPoint = PlanBuilder3D.GetPositionFromSteps(Constants.MaxStepsU, Constants.MaxStepsV, Constants.MaxStepsX, Constants.MaxStepsY);
+            var limitPoint = PlanBuilder3D.GetPositionFromSteps(Configuration.MaxStepsU, Configuration.MaxStepsV, Configuration.MaxStepsX, Configuration.MaxStepsY);
             Workspace = new MillingWorkspacePanel(this, limitPoint.X, limitPoint.Y, limitPoint.Z);
             WorkspaceSlot.Child = Workspace;
             if (withReload)
@@ -618,7 +618,7 @@ namespace MillingRouter3D
             var start = new Point3Dmm(startPoint.PositionX, startPoint.PositionY, _zLevel);
             var aboveStart = new Point3Dmm(start.X, start.Y, currentPosition.Z);
 
-            var builder = new PlanBuilder3D(currentPosition.Z, _zLevel, Workspace.CuttingSpeed, Constants.MaxPlaneSpeed, Constants.MaxPlaneAcceleration);
+            var builder = new PlanBuilder3D(currentPosition.Z, _zLevel, Workspace.CuttingSpeed, Configuration.MaxPlaneSpeed, Configuration.MaxPlaneAcceleration);
             builder.SetPosition(currentPosition);
 
             builder.AddRampedLine(aboveStart);
@@ -777,7 +777,7 @@ namespace MillingRouter3D
         private Speed getTransitionSpeed()
         {
             if (_allowCommands)
-                return Constants.MaxPlaneSpeed;
+                return Configuration.MaxPlaneSpeed;
 
             if (MoveByCuttingSpeed.IsChecked.Value)
             {
@@ -785,7 +785,7 @@ namespace MillingRouter3D
             }
             else
             {
-                return Constants.MaxPlaneSpeed;
+                return Configuration.MaxPlaneSpeed;
             }
         }
 

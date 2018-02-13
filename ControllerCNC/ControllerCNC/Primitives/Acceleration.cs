@@ -34,7 +34,7 @@ namespace ControllerCNC.Primitives
         public double ToMetric()
         {
             var metricSpeed = Speed.ToMetric();
-            var time = 1.0 * Ticks / Constants.TimerFrequency;
+            var time = 1.0 * Ticks / Configuration.TimerFrequency;
 
             return metricSpeed / time;
         }

@@ -61,8 +61,8 @@ namespace ControllerCNC.GUI
         private void refreshWindow()
         {
             Title = _item.Name.ToString();
-            writeNumber(ShapeTop, _item.PositionC2 * Constants.MilimetersPerStep);
-            writeNumber(ShapeLeft, _item.PositionC1 * Constants.MilimetersPerStep);
+            writeNumber(ShapeTop, _item.PositionC2 * Configuration.MilimetersPerStep);
+            writeNumber(ShapeLeft, _item.PositionC1 * Configuration.MilimetersPerStep);
 
             var shapeItem = _item as ShapeItem;
             if (shapeItem == null)
@@ -144,7 +144,7 @@ namespace ControllerCNC.GUI
         {
             double value;
             if (double.TryParse(ShapeTop.Text, out value))
-                _item.PositionC2 = (int)Math.Round(value / Constants.MilimetersPerStep);
+                _item.PositionC2 = (int)Math.Round(value / Configuration.MilimetersPerStep);
 
             refreshWindow();
         }
@@ -153,7 +153,7 @@ namespace ControllerCNC.GUI
         {
             double value;
             if (double.TryParse(ShapeLeft.Text, out value))
-                _item.PositionC1 = (int)Math.Round(value / Constants.MilimetersPerStep);
+                _item.PositionC1 = (int)Math.Round(value / Configuration.MilimetersPerStep);
 
             refreshWindow();
         }

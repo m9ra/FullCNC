@@ -51,7 +51,7 @@ namespace ControllerCNC.Planning
         {
             var planBuilder = new PlanBuilder();
 
-            iterateDistances(trajectory, (p, x, y) => planBuilder.AddRampedLineXY(x, y, Constants.MaxPlaneAcceleration, Constants.MaxPlaneSpeed));
+            iterateDistances(trajectory, (p, x, y) => planBuilder.AddRampedLineXY(x, y, Configuration.MaxPlaneAcceleration, Configuration.MaxPlaneSpeed));
             return planBuilder;
         }
 
@@ -70,8 +70,8 @@ namespace ControllerCNC.Planning
             iterateDistances(trajectory, (p, x, y) =>
             {
                 var targetSpeedF = pointSpeeds[p];
-                var targetSpeed = new Speed((int)(targetSpeedF), Constants.TimerFrequency);
-                planBuilder.AddLineXY(x, y, currentSpeed, Constants.MaxPlaneAcceleration, targetSpeed);
+                var targetSpeed = new Speed((int)(targetSpeedF), Configuration.TimerFrequency);
+                planBuilder.AddLineXY(x, y, currentSpeed, Configuration.MaxPlaneAcceleration, targetSpeed);
                 currentSpeed = targetSpeed;
             });
 
@@ -103,7 +103,7 @@ namespace ControllerCNC.Planning
 
             var calculationPlan = new PlanBuilder();
             var speedLimits = new Dictionary<Point4Dstep, double>();
-            var currentSpeedF = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
+            var currentSpeedF = 1.0 * Configuration.TimerFrequency / Configuration.StartDeltaT;
             var stepAcceleration = 1;
             Point4Dstep previousPoint = null;
             foreach (var point in points.Reverse())
@@ -113,12 +113,12 @@ namespace ControllerCNC.Planning
                 var newSpeedF = currentSpeedF + stepAcceleration;
                 if (previousPoint != null)
                 {
-                    var currentSpeed = new Speed((int)(currentSpeedF), Constants.TimerFrequency);
-                    var junctionSpeed = new Speed((int)(junctionLimitF), Constants.TimerFrequency);
+                    var currentSpeed = new Speed((int)(currentSpeedF), Configuration.TimerFrequency);
+                    var junctionSpeed = new Speed((int)(junctionLimitF), Configuration.TimerFrequency);
                     var stepsX = previousPoint.X - point.X;
                     var stepsY = previousPoint.Y - point.Y;
-                    var newSpeed = calculationPlan.AddLineXY(stepsX, stepsY, currentSpeed, Constants.MaxPlaneAcceleration, junctionSpeed);
-                    newSpeedF = 1.0 * newSpeed.StepCount / newSpeed.Ticks * Constants.TimerFrequency;
+                    var newSpeed = calculationPlan.AddLineXY(stepsX, stepsY, currentSpeed, Configuration.MaxPlaneAcceleration, junctionSpeed);
+                    newSpeedF = 1.0 * newSpeed.StepCount / newSpeed.Ticks * Configuration.TimerFrequency;
                 }
 
 
@@ -131,19 +131,19 @@ namespace ControllerCNC.Planning
             }
 
             previousPoint = null;
-            currentSpeedF = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
+            currentSpeedF = 1.0 * Configuration.TimerFrequency / Configuration.StartDeltaT;
             foreach (var point in points)
             {
                 var speedLimitF = speedLimits[point];
                 var newSpeedF = currentSpeedF + stepAcceleration;
                 if (previousPoint != null)
                 {
-                    var currentSpeed = new Speed((int)(currentSpeedF), Constants.TimerFrequency);
-                    var limitSpeed = new Speed((int)(speedLimitF), Constants.TimerFrequency);
+                    var currentSpeed = new Speed((int)(currentSpeedF), Configuration.TimerFrequency);
+                    var limitSpeed = new Speed((int)(speedLimitF), Configuration.TimerFrequency);
                     var stepsX = previousPoint.X - point.X;
                     var stepsY = previousPoint.Y - point.Y;
-                    var newSpeed = calculationPlan.AddLineXY(stepsX, stepsY, currentSpeed, Constants.MaxPlaneAcceleration, limitSpeed);
-                    newSpeedF = 1.0 * newSpeed.StepCount / newSpeed.Ticks * Constants.TimerFrequency;
+                    var newSpeed = calculationPlan.AddLineXY(stepsX, stepsY, currentSpeed, Configuration.MaxPlaneAcceleration, limitSpeed);
+                    newSpeedF = 1.0 * newSpeed.StepCount / newSpeed.Ticks * Configuration.TimerFrequency;
                 }
                 currentSpeedF = Math.Min(newSpeedF, speedLimitF);
                 speedLimits[point] = currentSpeedF;
@@ -156,9 +156,9 @@ namespace ControllerCNC.Planning
 
         private Dictionary<Point4Dstep, double> createJunctionLimits(IEnumerable<Point4Dstep> points)
         {
-            var startVelocity = 1.0 * Constants.TimerFrequency / Constants.StartDeltaT;
-            var maxVelocity = 1.0 * Constants.TimerFrequency / Constants.FastestDeltaT;
-            var aMax = 1.0 * Constants.MaxAcceleration / Constants.TimerFrequency / Constants.TimerFrequency;
+            var startVelocity = 1.0 * Configuration.TimerFrequency / Configuration.StartDeltaT;
+            var maxVelocity = 1.0 * Configuration.TimerFrequency / Configuration.FastestDeltaT;
+            var aMax = 1.0 * Configuration.MaxAcceleration / Configuration.TimerFrequency / Configuration.TimerFrequency;
 
             var junctionLimits = new Dictionary<Point4Dstep, double>();
             var pointsArrayRev = points.Reverse().ToArray();

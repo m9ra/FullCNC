@@ -82,12 +82,12 @@ namespace ControllerCNC.Primitives
 
         private static int mmToStep(double mm)
         {
-            return (int)Math.Round(mm / Constants.MilimetersPerStep);
+            return (int)Math.Round(mm / Configuration.MilimetersPerStep);
         }
 
         private static double stepToMm(int step)
         {
-            return step * Constants.MilimetersPerStep;
+            return step * Configuration.MilimetersPerStep;
         }
     }
 }

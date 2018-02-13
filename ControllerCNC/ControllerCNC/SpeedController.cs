@@ -35,7 +35,7 @@ namespace ControllerCNC
         internal SpeedController(DriverCNC cnc)
         {
             _cnc = cnc;
-            _desiredDeltaT = Constants.StartDeltaT;
+            _desiredDeltaT = Configuration.StartDeltaT;
             _currentDeltaT = _desiredDeltaT;
             _speedWorker = new Thread(worker);
             _speedWorker.IsBackground = true;

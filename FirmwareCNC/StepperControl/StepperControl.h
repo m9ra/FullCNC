@@ -84,6 +84,8 @@ Editor:	http://www.visualmicro.com
 // length of the schedule buffer (CANNOT be changed easily - it counts on byte overflows)
 #define SCHEDULE_BUFFER_LEN 256
 
+// buffer where instruction ends are marked for schedule.
+extern bool INSTRUCTION_ENDS[];
 // buffer for step signal timing
 extern uint16_t SCHEDULE_BUFFER[];
 // bitwise activation mask for step signals (selecting active ports)
@@ -97,6 +99,8 @@ extern volatile int32_t SLOT1_STEPS;
 extern volatile int32_t SLOT2_STEPS;
 // distance from home in steps
 extern volatile int32_t SLOT3_STEPS;
+
+extern volatile byte FINISHED_INSTRUCTION_COUNT;
 
 // pointer where new timing will be stored
 extern volatile byte SCHEDULE_START;
@@ -239,7 +243,7 @@ public:
 	ActivationSlack4D slack;
 
 	PlanScheduler4D(byte clkMask1, byte dirMask1, byte clkMask2, byte dirMask2, byte clkMask3, byte dirMask3, byte clkMask4, byte dirMask4)
-		:_d1(clkMask1, dirMask1), _d2(clkMask2, dirMask2), _d3(clkMask3, dirMask3), _d4(clkMask4, dirMask4), _needInit(false), slack()
+		:_d1(clkMask1, dirMask1), _d2(clkMask2, dirMask2), _d3(clkMask3, dirMask3), _d4(clkMask4, dirMask4), _needInit(false),_hasEnd(false), slack()
 	{
 		slack.reset();
 	}
@@ -259,6 +263,7 @@ public:
 		this->_d3.createNextActivation();
 		this->_d4.createNextActivation();
 		this->_needInit = true;
+		this->_hasEnd = false;
 	}
 
 	// loads plan from given data
@@ -292,6 +297,7 @@ public:
 			Serial.print('M');
 
 		this->_needInit = true;
+		this->_hasEnd = true;
 	}
 
 	// fills schedule buffer with plan data
@@ -339,7 +345,9 @@ public:
 			}
 
 			SCHEDULE_BUFFER[SCHEDULE_START] = UINT16_MAX - earliestActivationTime + TIMER_RESET_COMPENSATION;
+			INSTRUCTION_ENDS[SCHEDULE_START] = this->_hasEnd && !(_d1.isActive || _d2.isActive || _d3.isActive || _d4.isActive);
 			SCHEDULE_ACTIVATIONS[(byte)(SCHEDULE_START + 1)] = CUMULATIVE_SCHEDULE_ACTIVATION;
+			
 			//we can shift the start after activation is properly saved to array
 			++SCHEDULE_START;
 
@@ -356,7 +364,8 @@ public:
 		this->slack.d2 = _d2.nextActivationTime;
 		this->slack.d3 = _d3.nextActivationTime;
 		this->slack.d4 = _d4.nextActivationTime;
-		if(startScheduler)
+		
+		if (startScheduler)
 			Steppers::startScheduler();
 		return false;
 	}
@@ -423,6 +432,9 @@ private:
 
 	//determine whether initialization is needed
 	bool _needInit;
+
+	///determine whether instruction end will be reported to scheduler
+	bool _hasEnd;
 };
 
 #endif

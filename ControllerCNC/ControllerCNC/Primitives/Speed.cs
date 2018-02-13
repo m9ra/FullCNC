@@ -52,13 +52,13 @@ namespace ControllerCNC.Primitives
 
         public static Speed FromMilimetersPerSecond(double mmPerSecond)
         {
-            return new Speed((int)Math.Round(mmPerSecond / Constants.MilimetersPerStep), Constants.TimerFrequency);
+            return new Speed((int)Math.Round(mmPerSecond / Configuration.MilimetersPerStep), Configuration.TimerFrequency);
         }
 
         public double ToMetric()
         {
-            var trajectory = StepCount * Constants.MilimetersPerStep;
-            var duration = 1.0 * Ticks / Constants.TimerFrequency;
+            var trajectory = StepCount * Configuration.MilimetersPerStep;
+            var duration = 1.0 * Ticks / Configuration.TimerFrequency;
 
             return trajectory / duration;
         }

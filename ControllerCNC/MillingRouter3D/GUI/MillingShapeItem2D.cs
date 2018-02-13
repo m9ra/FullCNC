@@ -508,7 +508,7 @@ namespace MillingRouter3D.GUI
                 var currentDepth = 0.0;
                 while (currentDepth < MillingDepth)
                 {
-                    var depthIncrement = Math.Min(3.0, MillingDepth - currentDepth);
+                    var depthIncrement = Math.Min(2.0, MillingDepth - currentDepth);
                     currentDepth += depthIncrement;
                     builder.GotoZ(currentDepth);
                     foreach (var point in cluster)

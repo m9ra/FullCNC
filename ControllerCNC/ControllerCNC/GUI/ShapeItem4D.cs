@@ -255,8 +255,8 @@ namespace ControllerCNC.GUI
 
                 var speeds = getSpeeds(definitionPoints, currentIndex, cuttingSpeed, projector);
                 //System.Diagnostics.Debug.Print(speeds.ToString());
-                var speed1Limit = speeds.Item1.ToDeltaT() >= Constants.StartDeltaT || speeds.Item1.ToDeltaT() < 0;
-                var speed2Limit = speeds.Item2.ToDeltaT() >= Constants.StartDeltaT || speeds.Item2.ToDeltaT() < 0;
+                var speed1Limit = speeds.Item1.ToDeltaT() >= Configuration.StartDeltaT || speeds.Item1.ToDeltaT() < 0;
+                var speed2Limit = speeds.Item2.ToDeltaT() >= Configuration.StartDeltaT || speeds.Item2.ToDeltaT() < 0;
 
                 if (!speed1Limit || !speed2Limit)
                     throw new PlanningException("Speed limit exceeded");
@@ -456,7 +456,7 @@ namespace ControllerCNC.GUI
 
             var facetSpeedConverted = 1.0 * facetSpeed.StepCount / facetSpeed.Ticks;
 
-            if (facetUV.Length <= Constants.MilimetersPerStep && facetXY.Length <= Constants.MilimetersPerStep)
+            if (facetUV.Length <= Configuration.MilimetersPerStep && facetXY.Length <= Configuration.MilimetersPerStep)
                 //TODO  this accounts for numerical instability
                 return Tuple.Create(facetSpeed, facetSpeed);
 
@@ -483,7 +483,7 @@ namespace ControllerCNC.GUI
 
             getFacetVectors(currentProjected, speedProjected, out var speedUV, out var speedXY);
 
-            var speedFactor = Constants.TimerFrequency;
+            var speedFactor = Configuration.TimerFrequency;
 
             var uvSpeed = speedUV.Length * speedFactor;
             var xySpeed = speedXY.Length * speedFactor;
@@ -578,11 +578,11 @@ namespace ControllerCNC.GUI
         {
             referentialKerf = reCalculateKerf(referentialKerf);
             var referentialSpeed = workspace.CuttingSpeed;
-            var metricReferentialSpeed = Constants.MilimetersPerStep * referentialSpeed.StepCount / (1.0 * referentialSpeed.Ticks / Constants.TimerFrequency);
+            var metricReferentialSpeed = Configuration.MilimetersPerStep * referentialSpeed.StepCount / (1.0 * referentialSpeed.Ticks / Configuration.TimerFrequency);
 
             var referenceFactor = metricReferentialSpeed / metricSpeed;
 
-            var wireKerf = Math.Min(Constants.HotwireThickness / 2, Math.Abs(referentialKerf));
+            var wireKerf = Math.Min(Configuration.HotwireThickness / 2, Math.Abs(referentialKerf));
             var radiationKerf = Math.Abs(referentialKerf) - wireKerf;
             var adjustedKerf = radiationKerf * referenceFactor + wireKerf;
 
@@ -608,7 +608,7 @@ namespace ControllerCNC.GUI
         private void getSpeedVectors(WorkspacePanel workspace, Point4Dmm t1, Point4Dmm t2, out Vector speedVector12UVt, out Vector speedVector12XYt)
         {
             var maxSpeed = workspace.CuttingSpeed;
-            var maxSpeedRatio = (maxSpeed.StepCount * Constants.MilimetersPerStep) / (1.0 * maxSpeed.Ticks / Constants.TimerFrequency);
+            var maxSpeedRatio = (maxSpeed.StepCount * Configuration.MilimetersPerStep) / (1.0 * maxSpeed.Ticks / Configuration.TimerFrequency);
 
             //tower speeds
             speedVector12UVt = diffVector(t1.ToUV(), t2.ToUV());
