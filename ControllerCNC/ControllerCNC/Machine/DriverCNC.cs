@@ -64,7 +64,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// State which was already completed by machine.
         /// </summary>
-        private StateInfo _completedState;
+        private StateInfo _currentState;
 
         /// <summary>
         /// State which will be achieved after completing all planned instructions.
@@ -107,7 +107,7 @@ namespace ControllerCNC.Machine
         private int _stateDataRemainingBytes = 0;
 
         /// <summary>
-        /// How many ticks was made during estimation.
+        /// How many ticks were made during estimation.
         /// </summary>
         private ulong _tickEstimation;
 
@@ -159,7 +159,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// State which was already completed by the machine.
         /// </summary>
-        public StateInfo CompletedState { get { return _completedState.Copy(); } }
+        public StateInfo CurrentState { get { return _currentState.Copy(); } }
 
         /// <summary>
         /// State which will be achieved after confirming all planned instructions.
@@ -179,7 +179,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Event fired when homing result arrived.
         /// </summary>
-        public event Action OnHomingEnded;
+        public event Action OnHomeCalibrated;
 
         /// <summary>
         /// Event fired when all instructions have been confirmed.
@@ -189,32 +189,32 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// How many from sent plans was not completed
         /// </summary>
-        public int IncompletePlanCount { get { lock (_L_instructionCompletition) return _incompleteInstructionQueue.Count; } }
+        public int IncompleteInstructionCount { get { lock (_L_instructionCompletition) return _incompleteInstructionQueue.Count; } }
 
         /// <summary>
         /// Position estimation.
         /// </summary>
-        public ulong EstimationTicks { get { return CompletedState.TickCount + _tickEstimation; } }
+        public ulong EstimationTicks { get { return CurrentState.TickCount + _tickEstimation; } }
 
         /// <summary>
         /// Position estimation.
         /// </summary>
-        public int EstimationU { get { return CompletedState.U + _uEstimation; } }
+        public int EstimationU { get { return CurrentState.U + _uEstimation; } }
 
         /// <summary>
         /// Position estimation.
         /// </summary>
-        public int EstimationV { get { return CompletedState.V + _vEstimation; } }
+        public int EstimationV { get { return CurrentState.V + _vEstimation; } }
 
         /// <summary>
         /// Position estimation.
         /// </summary>
-        public int EstimationX { get { return CompletedState.X + _xEstimation; } }
+        public int EstimationX { get { return CurrentState.X + _xEstimation; } }
 
         /// <summary>
         /// Position estimation.
         /// </summary>
-        public int EstimationY { get { return CompletedState.Y + _yEstimation; } }
+        public int EstimationY { get { return CurrentState.Y + _yEstimation; } }
 
         /// <summary>
         /// Determine whether machine is connected.
@@ -224,12 +224,13 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Determine whether last homing attempt was successful.
         /// </summary>
-        public bool IsHomeCalibrated { get { return CompletedState.IsHomeCalibrated || FAKE_ONLINE_MODE; } }
+        public bool IsHomeCalibrated { get { return CurrentState.IsHomeCalibrated || FAKE_ONLINE_MODE; } }
 
         public DriverCNC()
         {
-            _plannedState = new StateInfo();
-            _completedState = new StateInfo();
+            _currentState = new StateInfo();
+            _currentState.Initialize();
+            _plannedState = _currentState.Copy();
 
             _positionEstimator = new Thread(runPositionEstimation);
             _positionEstimator.IsBackground = true;
@@ -285,16 +286,19 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Sends a given part to the machine.
         /// </summary>
-        /// <param name="part">Part to send.</param>
-        public bool SEND(InstructionCNC part)
+        /// <param name="instruction">Part to send.</param>
+        public bool SEND(InstructionCNC instruction)
         {
+            if (instruction.IsEmpty)
+                return true;
+
             var testState = _plannedState.Copy();
-            if (!checkBoundaries(part, ref testState))
+            if (!checkBoundaries(instruction, ref testState))
                 return false;
 
             _plannedState = testState;
 
-            send(part);
+            send(instruction);
             return true;
         }
 
@@ -367,12 +371,12 @@ namespace ControllerCNC.Machine
                         lock (_L_instructionCompletition)
                         {
                             _incompleteInstructionQueue.Dequeue();
-                            _completedState.SetState(_stateDataBuffer);
+                            _currentState.SetState(_stateDataBuffer);
                             --_incompleteInstructions;
 
                             if (_incompleteInstructionQueue.Count > 0)
                                 throw new NotSupportedException("State retrieval requires empty queue");
-                            _plannedState = _completedState.Copy();
+                            _plannedState = _currentState.Copy();
 
                             Monitor.Pulse(_L_instructionCompletition);
                         }
@@ -394,11 +398,17 @@ namespace ControllerCNC.Machine
                         //_resetConnection = true;
                         clearDriverState();
                         break;
+
                     case 'a':
                         //authentication is required
                         clearDriverState();
                         _port.Write("$%#");
                         break;
+
+                    case 'A':
+                        //authentication succeeded
+                        break;
+
                     case 'I':
                         //first reset plans - the driver is blocked on expects confirmation
                         clearDriverState();
@@ -412,8 +422,8 @@ namespace ControllerCNC.Machine
                             Monitor.Pulse(_L_confirmation);
                             _stateDataRemainingBytes = _stateDataBuffer.Length;
                         }
-
                         break;
+
                     case 'H':
 
                         lock (_L_confirmation)
@@ -429,7 +439,7 @@ namespace ControllerCNC.Machine
                         }
 
                         //homing was finished successfuly
-                        OnHomingEnded?.Invoke();
+                        OnHomeCalibrated?.Invoke();
 
                         break;
                     case 'Y':
@@ -454,6 +464,7 @@ namespace ControllerCNC.Machine
                         break;
                     case 'S':
                         //scheduler was enabled
+                        System.Diagnostics.Debug.WriteLine("S: " + IncompleteInstructionCount);
                         break;
                     case 'M':
                         //step time was missed
@@ -466,6 +477,7 @@ namespace ControllerCNC.Machine
 
                     default:
                         // throw new NotImplementedException();
+                        System.Diagnostics.Debug.Write(response);
                         break;
                 }
             }
@@ -488,13 +500,13 @@ namespace ControllerCNC.Machine
                 return;
 
             var instruction = _incompleteInstructionQueue.Dequeue();
-            _completedState.Completed(instruction);
+            _currentState.Accept(instruction);
             --_incompleteInstructions;
         }
 
         private bool checkBoundaries(InstructionCNC instruction, ref StateInfo state)
         {
-            state.Completed(instruction);
+            state.Accept(instruction);
             return state.CheckBoundaries();
         }
 
@@ -502,7 +514,7 @@ namespace ControllerCNC.Machine
         {
             lock (_L_instructionCompletition)
             {
-                _completedState = new StateInfo();
+                _currentState = new StateInfo();
                 _plannedState = new StateInfo();
                 _sendQueue.Clear();
                 _incompleteInstructionQueue.Clear();
@@ -685,8 +697,8 @@ namespace ControllerCNC.Machine
         {
             IsConnected = true;
             fireOnConnectionStatusChange();
-            _plannedState.Completed(new HomingInstruction());
-            _completedState.Completed(new HomingInstruction());
+            _plannedState.Accept(new HomingInstruction());
+            _currentState.Accept(new HomingInstruction());
 
             var simulationDelay = 10;
             while (true)

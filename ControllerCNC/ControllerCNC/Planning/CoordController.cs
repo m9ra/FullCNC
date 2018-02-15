@@ -15,7 +15,7 @@ namespace ControllerCNC.Planning
     {
         private const int _axesCount = 4;
 
-        private readonly DriverCNC _cnc;
+        private readonly DriverCNC2 _cnc;
 
         private readonly Thread _movementWorker;
 
@@ -37,7 +37,7 @@ namespace ControllerCNC.Planning
 
         public double FastChangeSpeedDelta => _fastChangeSpeedDiff;
 
-        public CoordController(DriverCNC cnc)
+        public CoordController(DriverCNC2 cnc)
         {
             _cnc = cnc;
 
@@ -79,7 +79,7 @@ namespace ControllerCNC.Planning
                 }
                 
 
-                if (_cnc.IncompletePlanCount < 2)
+                if (_cnc.IncompleteInstructionCount < 2)
                 {
                     sendNextPlan();
                 }
@@ -122,9 +122,9 @@ namespace ControllerCNC.Planning
                 instructions[i] = instruction;
             }
 
-            var preCount = _cnc.IncompletePlanCount;
+            var preCount = _cnc.IncompleteInstructionCount;
             _cnc.SEND(Axes.UVXY(instructions[0], instructions[1], instructions[2], instructions[3]));
-            var postCount = _cnc.IncompletePlanCount;
+            var postCount = _cnc.IncompleteInstructionCount;
         }
 
         private double getLargestAccelerationTime()

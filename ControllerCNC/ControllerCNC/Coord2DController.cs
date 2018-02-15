@@ -53,7 +53,7 @@ namespace ControllerCNC
                 }
                 else
                 {
-                    if (_cnc.IncompletePlanCount < 4)
+                    if (_cnc.IncompleteInstructionCount < 4)
                         sendNextPlan();
                     else
                         Thread.Sleep(1);

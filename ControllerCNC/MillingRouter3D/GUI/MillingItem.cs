@@ -12,7 +12,7 @@ using System.Windows.Media;
 
 namespace MillingRouter3D.GUI
 {
-    abstract class MillingItem : MillingWorkspaceItem
+    abstract class MillingItem : PermanentMillingWorkspaceItem
     {
         internal virtual Point2Dmm EntryPoint => getEntryPoint();
 

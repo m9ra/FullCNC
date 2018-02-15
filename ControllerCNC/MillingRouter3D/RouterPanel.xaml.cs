@@ -43,7 +43,7 @@ namespace MillingRouter3D
 
         internal MillingWorkspacePanel Workspace { get; private set; }
 
-        internal readonly DriverCNC Cnc;
+        internal readonly DriverCNC2 Cnc;
 
         private static string _autosaveFile = "workspace_autosave.mwspc";
 
@@ -105,9 +105,9 @@ namespace MillingRouter3D
             _motionCommands.Add(SetZLevel);
             _motionCommands.Add(Speed);
 
-            Cnc = new DriverCNC();
+            Cnc = new DriverCNC2();
             Cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
-            Cnc.OnHomingEnded += () => Dispatcher.Invoke(enableMotionCommands);
+            Cnc.OnHomeCalibrated += () => Dispatcher.Invoke(enableMotionCommands);
 
             Cnc.Initialize();
 
@@ -231,7 +231,8 @@ namespace MillingRouter3D
             }
             catch (Exception ex) when (
                     ex is System.Reflection.TargetInvocationException ||
-                    ex is System.Runtime.Serialization.SerializationException
+                    ex is System.Runtime.Serialization.SerializationException ||
+                    ex is InvalidCastException
                 )
             {
                 ShowError("Saved workspace cannot be load (it's an old version).");
@@ -549,7 +550,9 @@ namespace MillingRouter3D
             var currentX = Cnc.EstimationX;
             var currentY = Cnc.EstimationY;
 
-            var position = PlanBuilder3D.GetPositionFromSteps(currentU, currentV, currentX, currentY);
+            var prePosition = PlanBuilder3D.GetPositionFromSteps(currentU, currentV, currentX, currentY);
+
+            var position = new Point3Dmm(prePosition.X, prePosition.Y, prePosition.Z);
             return position;
         }
 
@@ -557,7 +560,8 @@ namespace MillingRouter3D
         {
             var position = getCurrentPosition();
             PositionX.Text = (position.X - _positionOffsetX).ToString("0.000");
-            PositionY.Text = (position.Y - _positionOffsetY).ToString("0.000");
+            //TODO the axis twisting exists just because windows coord system.
+            PositionY.Text = (Workspace.RangeY - position.Y - _positionOffsetY).ToString("0.000");
             PositionZ.Text = (position.Z - _zLevel).ToString("0.000");
 
             Workspace.HeadXYZ.Position = position;
@@ -577,7 +581,7 @@ namespace MillingRouter3D
                 }
             }
 
-            if (Cnc.CompletedState.IsHomeCalibrated)
+            if (Cnc.CurrentState.IsHomeCalibrated)
             {
                 Calibration.Foreground = Brushes.Black;
             }
@@ -649,7 +653,7 @@ namespace MillingRouter3D
             {
                 /**/
                 builder.SetStreamingCuttingSpeed(getCuttingSpeed());
-                builder.StreamingIsComplete += () => Cnc.OnInstructionQueueIsComplete += planCompleted;/*/
+                builder.StreamingIsComplete += planCompleted;/*/
                 Cnc.SEND(plan);
                 Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
                 _streamingBuilder = builder;

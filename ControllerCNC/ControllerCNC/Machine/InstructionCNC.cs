@@ -15,6 +15,11 @@ namespace ControllerCNC.Machine
         internal abstract byte[] GetInstructionBytes();
 
         /// <summary>
+        /// Determine whether instruction is empty (does not make sense to send it out).
+        /// </summary>
+        internal virtual bool IsEmpty => false;
+
+        /// <summary>
         /// Converts the value to bytes.
         /// </summary>
         /// <param name="value">The value.</param>
@@ -55,6 +60,7 @@ namespace ControllerCNC.Machine
             };
         }
 
+    
         internal ulong CalculateTotalTime()
         {
             var axes = this as Axes;

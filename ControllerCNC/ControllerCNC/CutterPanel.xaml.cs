@@ -105,7 +105,7 @@ namespace ControllerCNC
 
             Cnc = new DriverCNC();
             Cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
-            Cnc.OnHomingEnded += () => Dispatcher.Invoke(enableMotionCommands);
+            Cnc.OnHomeCalibrated += () => Dispatcher.Invoke(enableMotionCommands);
 
             Cnc.Initialize();
 
@@ -503,7 +503,7 @@ namespace ControllerCNC
                 }
             }
 
-            if (Cnc.CompletedState.IsHomeCalibrated)
+            if (Cnc.CurrentState.IsHomeCalibrated)
             {
                 Calibration.Foreground = Brushes.Black;
             }
@@ -712,7 +712,7 @@ namespace ControllerCNC
 
         private void ResetCoordinates_Click(object sender, RoutedEventArgs e)
         {
-            var state = Cnc.CompletedState;
+            var state = Cnc.CurrentState;
             _positionOffsetU = state.U;
             _positionOffsetV = state.V;
             _positionOffsetX = state.X;

@@ -66,7 +66,7 @@ namespace ControllerCNC
 
         void _statusTimer_Tick(object sender, EventArgs e)
         {
-            Status.Text = "Incomplete: " + _cnc.IncompletePlanCount;
+            Status.Text = "Incomplete: " + _cnc.IncompleteInstructionCount;
         }
 
         void _driver_OnDataReceived(string data)

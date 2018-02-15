@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Machine
 {
-    internal enum MachineResponse { IsOnline, Welcome, StateData, HomingCompleted, ConfirmationReceived, InstructionFinished, SchedulerWasEnabled, BadDataReceived, Comment, StepTimeMissed };
+    internal enum MachineResponse { IsOnline, Welcome, StateData, HomingCompleted, ConfirmationReceived, InstructionFinished, SchedulerWasEnabled, IncompleteDataErased, InvalidChecksum, Comment, StepTimeMissed, RequiresAuthentication, FullInstructionBuffer, HomingIsNotAllowed };
 
     class CommunicationParser
     {
@@ -74,6 +74,10 @@ namespace ControllerCNC.Machine
                     Response = MachineResponse.IsOnline;
                     break;
 
+                case 'a':
+                    Response = MachineResponse.RequiresAuthentication;
+                    break;
+
                 case 'I':
                     Response = MachineResponse.Welcome;
                     break;
@@ -99,7 +103,19 @@ namespace ControllerCNC.Machine
                     break;
 
                 case 'E':
-                    Response = MachineResponse.BadDataReceived;
+                    Response = MachineResponse.IncompleteDataErased;
+                    break;
+
+                case 'C':
+                    Response = MachineResponse.InvalidChecksum;
+                    break;
+
+                case 'O':
+                    Response = MachineResponse.FullInstructionBuffer;
+                    break;
+
+                case 'Q':
+                    Response = MachineResponse.HomingIsNotAllowed;
                     break;
 
                 case 'D':

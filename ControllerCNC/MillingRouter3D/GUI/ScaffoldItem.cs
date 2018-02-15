@@ -1,4 +1,5 @@
-﻿using ControllerCNC.Primitives;
+﻿using ControllerCNC.Planning;
+using ControllerCNC.Primitives;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,7 +10,8 @@ using System.Windows.Media;
 
 namespace MillingRouter3D.GUI
 {
-    class ScaffoldItem : MillingWorkspaceItem
+    [Serializable]
+    class ScaffoldItem : PermanentMillingWorkspaceItem
     {
         private Pen _scaffoldPen = new Pen();
 

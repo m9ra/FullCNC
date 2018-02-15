@@ -299,6 +299,7 @@ void waitForAuthentication() {
 			Serial.print("a");
 		}
 	}
+	Serial.print("Y");
 }
 
 void pciSetup(byte pin)

@@ -30,7 +30,7 @@ namespace ControllerCNC
             _cnc.SEND(builder.Build());
 
             //position setting is blocking for now
-            while (_cnc.IncompletePlanCount > 0)
+            while (_cnc.IncompleteInstructionCount > 0)
                 System.Threading.Thread.Sleep(1);
 
             _currentPosition = newPosition;

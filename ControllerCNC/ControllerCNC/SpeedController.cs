@@ -51,7 +51,7 @@ namespace ControllerCNC
                 if (!_stop)
                 {
 
-                    while (_cnc.IncompletePlanCount < _plannedTimes.Count)
+                    while (_cnc.IncompleteInstructionCount < _plannedTimes.Count)
                     {
                         _plannedTimeTotal -= _plannedTimes.Dequeue();
                     }

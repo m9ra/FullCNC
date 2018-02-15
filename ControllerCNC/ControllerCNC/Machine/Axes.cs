@@ -28,6 +28,9 @@ namespace ControllerCNC.Machine
         /// </summary>
         internal readonly StepInstrution InstructionV;
 
+        /// </inheritdoc>
+        internal override bool IsEmpty => new[] { InstructionX, InstructionY, InstructionU, InstructionV }.All(i => i == null || i.IsEmpty);
+
         private Axes(StepInstrution x, StepInstrution y, StepInstrution u, StepInstrution v)
         {
             InstructionX = x;

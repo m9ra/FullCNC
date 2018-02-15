@@ -232,11 +232,11 @@ namespace MillingRouter3D.GUI
 
         internal void SaveTo(string filename)
         {
-            var itemsToSave = new List<MillingItem>();
+            var itemsToSave = new List<PermanentMillingWorkspaceItem>();
             foreach (var child in Children)
             {
-                if (child is MillingItem)
-                    itemsToSave.Add(child as MillingItem);
+                if (child is PermanentMillingWorkspaceItem)
+                    itemsToSave.Add(child as PermanentMillingWorkspaceItem);
             }
             var formatter = new BinaryFormatter();
             var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -245,7 +245,7 @@ namespace MillingRouter3D.GUI
             configuration.Add("CuttingSpeed", CuttingSpeedMm);
             configuration.Add("CuttingKerf", CuttingKerf);
             configuration.Add("WireLength", WireLength);
-            var workspaceRepresentation = Tuple.Create<List<MillingItem>, List<MillingJoin>, Dictionary<string, object>>(itemsToSave, _itemJoins, configuration);
+            var workspaceRepresentation = Tuple.Create<List<PermanentMillingWorkspaceItem>, List<MillingJoin>, Dictionary<string, object>>(itemsToSave, _itemJoins, configuration);
             formatter.Serialize(stream, workspaceRepresentation);
             stream.Close();
         }
@@ -256,7 +256,7 @@ namespace MillingRouter3D.GUI
 
             using (var stream = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.Read))
             {
-                var workspaceRepresentation = (Tuple<List<MillingItem>, List<MillingJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
+                var workspaceRepresentation = (Tuple<List<PermanentMillingWorkspaceItem>, List<MillingJoin>, Dictionary<string, object>>)formatter.Deserialize(stream);
 
                 Children.Clear();
                 Children.Add(_positionInfo);

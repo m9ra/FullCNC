@@ -122,7 +122,7 @@ namespace ControllerCNC.Planning
             }
         }
 
-        public void StreamInstructions(DriverCNC driver)
+        public void StreamInstructions(DriverCNC2 driver)
         {
             var streamThread = new Thread(() =>
               {
@@ -133,7 +133,7 @@ namespace ControllerCNC.Planning
             streamThread.Start();
         }
 
-        private void _stream(DriverCNC driver)
+        private void _stream(DriverCNC2 driver)
         {
             var planStream = new PlanStream3D(_plan.ToArray());
             var preloadTime = 0.05;
@@ -168,10 +168,10 @@ namespace ControllerCNC.Planning
                 var timeElapsed = (currentTime - lastTimeMeasure).TotalSeconds;
                 lastTimeMeasure = currentTime;
 
-                if (driver.IncompletePlanCount >= 2)
+                if (driver.IncompleteInstructionCount >= 3)
                 {
                     //wait some time so we are not spinning like crazy
-                    Thread.Sleep(10);
+                    Thread.Sleep(5);
                     continue;
                 }
 
@@ -189,13 +189,15 @@ namespace ControllerCNC.Planning
                     nextInstructions = planStream.NextRampInstructions();
                 }
 
+                driver.SEND(nextInstructions);
+
                 var duration = nextInstructions.Select(i => i.CalculateTotalTime());
-                var timeToQueue=duration.Sum(d => (float)d) / Configuration.TimerFrequency;
+                var timeToQueue = duration.Sum(d => (float)d) / Configuration.TimerFrequency;
                 currentlyQueuedTime += timeToQueue;
                 timeQueue.Enqueue(currentlyQueuedTime);
-
-                driver.SEND(nextInstructions);
             }
+            while (driver.IncompleteInstructionCount > 0)
+                Thread.Sleep(10);
 
             StreamingIsComplete?.Invoke();
         }
@@ -246,7 +248,8 @@ namespace ControllerCNC.Planning
         {
             _currentLevel = target.Z;
 
-            _plan.Add(new PlanPart3D(_currentPoint, target, accelerationRamp, speedLimit));
+            if (_currentPoint.DistanceSquaredTo(target) > 0.0)
+                _plan.Add(new PlanPart3D(_currentPoint, target, accelerationRamp, speedLimit));
 
             _currentPoint = target;
         }

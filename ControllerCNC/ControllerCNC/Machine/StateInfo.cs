@@ -37,7 +37,7 @@ namespace ControllerCNC.Machine
         /// Determine whether home is calibrated.
         /// </summary>
         public bool IsHomeCalibrated { get; private set; }
-        
+
         internal void SetState(byte[] dataBuffer)
         {
             IsHomeCalibrated = getStateDataBool(dataBuffer, 0);
@@ -55,7 +55,7 @@ namespace ControllerCNC.Machine
             return stepCount;
         }
 
-        internal void Completed(InstructionCNC instruction)
+        internal void Accept(InstructionCNC instruction)
         {
             var homing = instruction as HomingInstruction;
             if (homing != null)
@@ -96,7 +96,11 @@ namespace ControllerCNC.Machine
             if (!IsHomeCalibrated)
             {
                 //if calibration is missing it is allowed to move only towards the home switches
-                return U <= 0 && V <= 0 && X <= 0 && Y <= 0;
+                return
+                    checkHomeBoundary(U, Configuration.DirU, Configuration.MaxStepsU) &&
+                    checkHomeBoundary(V, Configuration.DirV, Configuration.MaxStepsV) &&
+                    checkHomeBoundary(X, Configuration.DirX, Configuration.MaxStepsX) &&
+                    checkHomeBoundary(Y, Configuration.DirY, Configuration.MaxStepsY);
             }
 
             if (U < 0 || V < 0 || X < 0 || Y < 0)
@@ -108,10 +112,31 @@ namespace ControllerCNC.Machine
             return true;
         }
 
+        private bool checkHomeBoundary(int position, InstructionOrientation orientation, int maxStepCount)
+        {
+            switch (orientation)
+            {
+                case InstructionOrientation.Normal:
+                    return position <= 0;
+
+                case InstructionOrientation.Reversed:
+                    return position >= maxStepCount;
+
+                default:
+                    return true;
+            }
+        }
+
         internal StateInfo Copy()
         {
             //structure will copy - if changed to class, this must be reimplemented!!!
             return this;
+        }
+
+        internal void Initialize()
+        {
+            calibrateHome();
+            IsHomeCalibrated = false;
         }
 
         private void calibrateHome()
@@ -124,6 +149,7 @@ namespace ControllerCNC.Machine
             TickCount = 0;
             IsHomeCalibrated = true;
         }
+
 
         private bool getStateDataBool(byte[] buffer, int position)
         {

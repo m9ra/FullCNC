@@ -35,6 +35,9 @@ namespace ControllerCNC.Machine
         /// </summary>
         internal abstract ulong GetInstructionDuration();
 
+        /// </inheritdoc>
+        internal override bool IsEmpty => StepCount == 0;
+
         /// <summary>
         /// Reorganizes instruction according to given orientation if needed.
         /// Internal orientation info is kept, therefore, applying same orientation more than once won't change anything.

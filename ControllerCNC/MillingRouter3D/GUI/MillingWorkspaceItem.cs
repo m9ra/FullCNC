@@ -12,6 +12,17 @@ using System.Windows.Media.Effects;
 
 namespace MillingRouter3D.GUI
 {
+    abstract class PermanentMillingWorkspaceItem : MillingWorkspaceItem
+    {
+        internal PermanentMillingWorkspaceItem(ReadableIdentifier name) : base(name)
+        {
+        }
+
+        internal PermanentMillingWorkspaceItem(SerializationInfo info, StreamingContext context) : base(info, context)
+        {
+        }
+    }
+
     abstract class MillingWorkspaceItem : UserControl, ISerializable
     {
         private bool _isHighlighted;
@@ -179,7 +190,7 @@ namespace MillingRouter3D.GUI
             _mmToVisualFactorC1 = size.Width / workspace.RangeX;
             _mmToVisualFactorC2 = size.Height / workspace.RangeY;
         }
-        
+
         /// <summary>
         /// Creates figure by joining the given points.
         /// </summary>

@@ -45,8 +45,9 @@ namespace MillingRouter3D.GUI
             var xPosition = PositionX;
             var yPosition = PositionY;
 
+            var workspace = Parent as MillingWorkspacePanel;
             var infoTextX = string.Format("X: {0:0.0}mm", xPosition);
-            var infoTextY = string.Format("Y: {0:0.0}mm", yPosition);
+            var infoTextY = string.Format("Y: {0:0.0}mm", workspace.RangeY - yPosition);
 
             _xInfo.Text = infoTextX;
             _yInfo.Text = infoTextY;
