@@ -107,6 +107,21 @@ namespace ControllerCNC.Machine
         private DateTime _lastInstructionStartTime;
 
         /// <summary>
+        /// Delay between finish and next instruction fetch.
+        /// </summary>
+        private readonly double _startDelay = 0.001;
+
+        /// <summary>
+        /// Ration between machine and real clock.
+        /// </summary>
+        private readonly double _clockRatio = 1.0 / 1.004;
+
+        /// <summary>
+        /// How many ticks were made during estimation.
+        /// </summary>
+        private ulong _tickEstimation;
+
+        /// <summary>
         /// Determine whether machine is connected.
         /// </summary>
         public bool IsConnected
@@ -193,7 +208,7 @@ namespace ControllerCNC.Machine
             _currentState.Initialize();
             _plannedState = _currentState.Copy();
 
-            _positionEstimator = new Thread(runCncSimulator);
+            _positionEstimator = new Thread(runPositionEstimation);
             _positionEstimator.IsBackground = true;
             _positionEstimator.Priority = ThreadPriority.Lowest;
 
@@ -424,6 +439,10 @@ namespace ControllerCNC.Machine
                         confirmationReceived();
                         break;
 
+                    case MachineResponse.FullInstructionBuffer:
+                        fullBuffer();
+                        break;
+
                     case MachineResponse.InstructionFinished:
                         instructionCompleted();
                         break;
@@ -557,7 +576,19 @@ namespace ControllerCNC.Machine
                 Monitor.Pulse(_L_instructionQueue);
             }
         }
-        
+
+
+        private void fullBuffer()
+        {
+            System.Diagnostics.Debug.WriteLine("fullBuffer");
+            lock (_L_send)
+            {
+                _resendIsNeeded = true;
+                _expectsConfirmation = false;
+                Monitor.Pulse(_L_send);
+            }
+        }
+
         private void badDataReceived()
         {
             lock (_L_send)
@@ -596,11 +627,104 @@ namespace ControllerCNC.Machine
 
         #endregion
 
+        #region Position estimation utilities
+
+        private void runPositionEstimation()
+        {
+            var uEstimator = new PositionEstimator();
+            var vEstimator = new PositionEstimator();
+            var xEstimator = new PositionEstimator();
+            var yEstimator = new PositionEstimator();
+
+            while (true)
+            {
+                Thread.Sleep(20);
+                Axes currentInstruction;
+                lock (_L_instructionQueue)
+                {
+                    if (_bufferedInstructions.Count == 0)
+                        continue;
+
+                    currentInstruction = _bufferedInstructions.Peek() as Axes;
+                }
+                if (currentInstruction == null)
+                    continue;
+
+                uEstimator.RegisterInstruction(currentInstruction.InstructionU);
+                vEstimator.RegisterInstruction(currentInstruction.InstructionV);
+                xEstimator.RegisterInstruction(currentInstruction.InstructionX);
+                yEstimator.RegisterInstruction(currentInstruction.InstructionY);
+
+                var realTargetTime = (DateTime.Now - _lastInstructionStartTime).TotalSeconds;
+                var targetTime = realTargetTime * _clockRatio + _startDelay;
+                var targetTicks = (long)Math.Round(targetTime * Configuration.TimerFrequency);
+
+                var uSteps = uEstimator.GetSteps(targetTicks);
+                var vSteps = vEstimator.GetSteps(targetTicks);
+                var xSteps = xEstimator.GetSteps(targetTicks);
+                var ySteps = yEstimator.GetSteps(targetTicks);
+
+                lock (_L_instructionQueue)
+                {
+                    if (_bufferedInstructions.Count == 0 || _bufferedInstructions.Peek() != currentInstruction)
+                        //we missed the instruction
+                        continue;
+
+                    _uEstimation += uSteps;
+                    _vEstimation += vSteps;
+                    _xEstimation += xSteps;
+                    _yEstimation += ySteps;
+                    if (targetTicks > 0)
+                        _tickEstimation = (ulong)targetTicks;
+                }
+            }
+        }
+
+        #endregion
+
         #region Simulator
 
         private void runCncSimulator()
         {
-            //throw new NotImplementedException();
+            IsConnected = true;
+            _plannedState.Accept(new HomingInstruction());
+            _currentState.Accept(new HomingInstruction());
+
+            var simulationDelay = 10;
+            while (true)
+            {
+                Thread.Sleep(simulationDelay);
+
+                if (_bufferedInstructions.Count > 0)
+                {
+                    InstructionCNC instruction;
+                    lock (_L_instructionQueue)
+                    {
+                        _lastInstructionStartTime = DateTime.Now;
+                        instruction = _bufferedInstructions.Peek();
+                    }
+
+                    var tickCount = instruction.CalculateTotalTime();
+                    var time = 1000.0 * tickCount / Configuration.TimerFrequency;
+
+                    if (SIMULATE_REAL_DELAY)
+                    {
+                        Thread.Sleep((int)Math.Max(0, (long)time - (long)simulationDelay));
+                    }
+                    else
+                    {
+                        Thread.Sleep(200);
+                    }
+
+                    lock (_L_instructionQueue)
+                    {
+                        instructionCompleted();
+
+                        if (_bufferedInstructions.Count == 0 && OnInstructionQueueIsComplete != null)
+                            OnInstructionQueueIsComplete();
+                    }
+                }
+            }
         }
 
         #endregion
