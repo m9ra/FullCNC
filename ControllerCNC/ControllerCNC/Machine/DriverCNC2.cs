@@ -577,10 +577,8 @@ namespace ControllerCNC.Machine
             }
         }
 
-
         private void fullBuffer()
         {
-            System.Diagnostics.Debug.WriteLine("fullBuffer");
             lock (_L_send)
             {
                 _resendIsNeeded = true;

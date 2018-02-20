@@ -29,6 +29,21 @@ namespace ControllerCNC.Loading
             register<ImageLoader>("bmp", "png", "jpg");
         }
 
+        public double[,] LoadRelief(string path, out ReadableIdentifier identifier)
+        {
+            var imageLoader = new ImageLoader();
+            var map = imageLoader.LoadRelief(path);
+
+            var extension = Path.GetExtension(path).ToLowerInvariant();
+            var name = Path.GetFileNameWithoutExtension(path);
+            identifier = new ReadableIdentifier(name);
+
+            if (_panel != null)
+                identifier = _panel.UnusedVersion(identifier);
+
+            return map;
+        }
+
         public IEnumerable<Point2Dmm[]> Load(string path, out ReadableIdentifier identifier)
         {
             var extension = Path.GetExtension(path).ToLowerInvariant();
@@ -54,7 +69,6 @@ namespace ControllerCNC.Loading
                 return null;
             }
         }
-      
 
         internal static IEnumerable<Point2Dmm> Centered(IEnumerable<Point2Dmm> points)
         {

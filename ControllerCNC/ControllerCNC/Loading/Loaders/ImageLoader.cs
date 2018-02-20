@@ -34,5 +34,15 @@ namespace ControllerCNC.Loading.Loaders
 
             return points;
         }
+
+        internal double[,] LoadRelief(string path)
+        {
+            Message("Image processing, please wait.");
+            var loader= new HeightmapLoader(path);
+            var points = loader.GetPoints();
+            HideMessage();
+
+            return points;
+        }
     }
 }

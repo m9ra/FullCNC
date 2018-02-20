@@ -12,6 +12,8 @@ namespace ControllerCNC.Planning
     {
         private readonly PlanPart3D[] _plan;
 
+        private readonly Dictionary<PlanPart3D, double> _rampTimeCache = new Dictionary<PlanPart3D, double>();
+
         private int _currentIndex = 0;
 
         private double _currentInstructionOffset = 0;
@@ -19,6 +21,10 @@ namespace ControllerCNC.Planning
         internal readonly double TotalRampTime;
 
         internal readonly double TotalConstantDistance;
+
+        private double _currentConstantDistance = 0.0;
+
+        private double _currentRampTime = 0.0;
 
         public bool IsComplete { get { return _currentIndex >= _plan.Length; } }
 
@@ -66,17 +72,12 @@ namespace ControllerCNC.Planning
 
         internal double GetRemainingConstantDistance()
         {
-            var currentPart = _plan[_currentIndex];
-            var currentDistance = currentPart.StartPoint.DistanceTo(currentPart.EndPoint) - _currentInstructionOffset;
-            if (currentPart.AccelerationRamp != null)
-                currentDistance = 0;
-
-            return calculateConstantDistance(_plan.Skip(_currentIndex + 1)) + currentDistance;
+            return TotalConstantDistance - _currentConstantDistance;
         }
 
         internal double GetRemainingRampTime()
         {
-            return calculateRampTime(_plan.Skip(_currentIndex));
+            return TotalRampTime - _currentRampTime;
         }
 
         internal IEnumerable<InstructionCNC> NextRampInstructions()
@@ -91,10 +92,12 @@ namespace ControllerCNC.Planning
             if (part.AccelerationRamp == null)
             {
                 builder.AddConstantSpeedTransitionUVXY(diff.U, diff.V, part.SpeedLimit, diff.X, diff.Y, part.SpeedLimit);
+                _currentConstantDistance += part.StartPoint.DistanceTo(part.EndPoint);
             }
             else
             {
                 builder.AddRampedLineUVXY(diff.U, diff.V, diff.X, diff.Y, part.AccelerationRamp, part.SpeedLimit);
+                _currentRampTime += getRampTime(part);
             }
 
             var plan = builder.Build();
@@ -126,25 +129,40 @@ namespace ControllerCNC.Planning
 
         private double calculateRampTime(IEnumerable<PlanPart3D> plan)
         {
-            var builder = new PlanBuilder();
+            var accumulator = 0.0;
             foreach (var part in plan)
             {
                 if (part.AccelerationRamp == null)
                     continue;
 
-                var diff = PlanBuilder3D.GetStepDiff(part.StartPoint, part.EndPoint);
-                builder.AddRampedLineUVXY(diff.U, diff.V, diff.X, diff.Y, part.AccelerationRamp, part.SpeedLimit);
-            }
-
-            var accumulator = 0.0;
-            var planInstructions = builder.Build();
-            foreach (var instruction in planInstructions)
-            {
-                var instructionTime = 1.0 * instruction.CalculateTotalTime() / Configuration.TimerFrequency;
-                accumulator += instructionTime;
+                accumulator += getRampTime(part);
             }
 
             return accumulator;
+        }
+
+        private double getRampTime(PlanPart3D part)
+        {
+            if (!_rampTimeCache.TryGetValue(part, out var time))
+            {
+                var builder = new PlanBuilder();
+                var diff = PlanBuilder3D.GetStepDiff(part.StartPoint, part.EndPoint);
+                builder.AddRampedLineUVXY(diff.U, diff.V, diff.X, diff.Y, part.AccelerationRamp, part.SpeedLimit);
+                var instructions = builder.Build();
+
+                var accumulator = 0.0;
+                foreach(var instruction in instructions)
+                {
+                    var axes = instruction as Axes;
+                    if (axes == null)
+                        continue;
+
+                    accumulator += axes.CalculateTotalTime() * 1.0 / Configuration.TimerFrequency;
+                }
+                _rampTimeCache[part] = time = accumulator;
+            }
+
+            return time;
         }
     }
 }

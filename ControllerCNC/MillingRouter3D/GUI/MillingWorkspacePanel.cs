@@ -47,6 +47,8 @@ namespace MillingRouter3D.GUI
         /// </summary>        
         internal readonly double RangeZ;
 
+        internal readonly double MaxLayerCut = 2.0;
+
         /// <summary>
         /// Entry point of the plan.
         /// </summary>

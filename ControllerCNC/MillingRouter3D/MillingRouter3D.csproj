@@ -66,6 +66,7 @@
     <Compile Include="GUI\EntryPoint.cs" />
     <Compile Include="GUI\HeadCnc.cs" />
     <Compile Include="GUI\MillingItem.cs" />
+    <Compile Include="GUI\MillingShapeItemRelief.cs" />
     <Compile Include="GUI\MillingShapeItem2D.cs" />
     <Compile Include="GUI\MillingWorkspacePanel.cs" />
     <Compile Include="GUI\MillingWorkspaceItem.cs" />

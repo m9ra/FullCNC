@@ -46,59 +46,9 @@ namespace MillingRouter3D.GUI
         private Size _shapeMetricSize;
 
         /// <summary>
-        /// Determine whether explicit kerf will be used for cutting.
-        /// </summary>
-        private bool _useExplicitKerf;
-
-        /// <summary>
-        /// Sets kerf for XY facet.
-        /// </summary>
-        private double _kerfXY;
-
-        /// <summary>
         /// Depth of the milling process.
         /// </summary>
         private double _millingDepth = 0.0;
-
-        /// <summary>
-        /// Determine whether <see cref="KerfUV"/> and <see cref="KerfXY"/> will be used.
-        /// </summary>
-        internal bool UseExplicitKerf
-        {
-            get
-            {
-                return _useExplicitKerf;
-            }
-
-            set
-            {
-                if (value == _useExplicitKerf)
-                    return;
-
-                _useExplicitKerf = value;
-                fireOnSettingsChanged();
-            }
-        }
-
-        /// <summary>
-        /// Explicit kerf for XY.
-        /// </summary>
-        internal double KerfXY
-        {
-            get
-            {
-                return UseExplicitKerf ? _kerfXY : 0;
-            }
-
-            set
-            {
-                if (value == _kerfXY || !UseExplicitKerf)
-                    return;
-
-                _kerfXY = value;
-                fireOnSettingsChanged();
-            }
-        }
 
         internal double MetricWidth
         {
@@ -149,23 +99,6 @@ namespace MillingRouter3D.GUI
             }
         }
 
-        internal bool UseClockwiseCut
-        {
-            get
-            {
-                return _useClockwiseCut;
-            }
-
-            set
-            {
-                if (value == _useClockwiseCut)
-                    return;
-
-                _useClockwiseCut = value;
-                fireOnSettingsChanged();
-            }
-        }
-
         /// <summary>
         /// Brush for the item fill.
         /// </summary>
@@ -180,12 +113,6 @@ namespace MillingRouter3D.GUI
         /// Pen for the cut
         /// </summary>
         private Pen _cutPen = new Pen();
-
-        /// <inheritdoc/>
-        internal IEnumerable<Point2Dmm[]> CutPoints
-        {
-            get { return TransformedShapeDefinitionWithKerf.Select(s => translateToWorkspace(s).ToArray()); }
-        }
 
         internal IEnumerable<Point2Dmm[]> ShapeDefinition
         {
@@ -203,34 +130,26 @@ namespace MillingRouter3D.GUI
             }
         }
 
-        internal IEnumerable<Point2Dmm[]> TransformedShapeDefinitionWithKerf
-        {
-            get
-            {
-                return TransformedShapeDefinition.Select(s => addKerf(s).ToArray());
-            }
-        }
-
         internal MillingShapeItem2D(ReadableIdentifier name, IEnumerable<Point2Dmm[]> shapeDefinition)
             : base(name)
         {
             if (shapeDefinition == null)
                 throw new ArgumentNullException("shapeDefinition");
 
-            _shapeDefinition = shapeDefinition.ToArray();
+            _shapeDefinition = preparePoints(shapeDefinition);
             _useClockwiseCut = true;
             _millingDepth = 1.0;
 
             constructionInitialization();
         }
 
+
         internal MillingShapeItem2D(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
             _shapeDefinition = (Point2Dmm[][])info.GetValue("_shapeDefinition", typeof(Point2Dmm[][]));
-            _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));            
-            _useExplicitKerf = info.GetBoolean("_useExplicitKerf");
-            _kerfXY = info.GetDouble("_kerfXY");
+            _shapeDefinition = preparePoints(_shapeDefinition);
+            _shapeMetricSize = (Size)info.GetValue("_shapeMetricSize", typeof(Size));
             _useClockwiseCut = info.GetBoolean("_useClockwiseCut");
             _millingDepth = info.GetDouble("_millingDepth");
 
@@ -243,8 +162,6 @@ namespace MillingRouter3D.GUI
             base.GetObjectData(info, context);
             info.AddValue("_shapeDefinition", _shapeDefinition);
             info.AddValue("_shapeMetricSize", _shapeMetricSize);
-            info.AddValue("_useExplicitKerf", _useExplicitKerf);
-            info.AddValue("_kerfXY", _kerfXY);
             info.AddValue("_useClockwiseCut", _useClockwiseCut);
             info.AddValue("_millingDepth", _millingDepth);
         }
@@ -262,14 +179,66 @@ namespace MillingRouter3D.GUI
                 MetricHeight = c2Diff;
         }
 
-
-        /// <inheritdoc/>
-        protected IEnumerable<Point2Dmm> translateToWorkspace(IEnumerable<Point2Dmm> points)
+        private Point2Dmm[][] preparePoints(IEnumerable<Point2Dmm[]> points)
         {
-            foreach (var point in points)
+            /*points = new Point2Dmm[][] {
+                new Point2Dmm[]
+                {
+                    new Point2Dmm(0,10),
+                    new Point2Dmm(50,5),
+                    new Point2Dmm(100,10),
+                    new Point2Dmm(100,5),
+                    new Point2Dmm(60,0),
+                    new Point2Dmm(40,0),
+                    new Point2Dmm(0,10),
+                }
+            };
+*/
+            /*/
+            points = new Point2Dmm[][]
             {
-                yield return new Point2Dmm(point.C1 + PositionX, point.C2 + PositionY);
+                new Point2Dmm[]
+                {
+                    new Point2Dmm(0,90),
+                    new Point2Dmm(40,100),
+                    new Point2Dmm(30,102),
+                    new Point2Dmm(70,102),
+                    new Point2Dmm(60,100),
+                    new Point2Dmm(100,100),
+                    new Point2Dmm(90,0),
+                    new Point2Dmm(0,0),
+                }
+            };/**/
+
+            /*/
+            points = new Point2Dmm[][]
+            {
+                new Point2Dmm[]
+                {
+                    new Point2Dmm(0,100),
+                    new Point2Dmm(40,100),
+                    new Point2Dmm(40,15),
+                    new Point2Dmm(60,15),
+                    new Point2Dmm(60,100),
+                    new Point2Dmm(100,100),
+                    new Point2Dmm(100,0),
+                    new Point2Dmm(0,0),
+                }
+            };/**/
+
+            points = points.Select(p => p.Distinct().Concat(new[] { p.First() }).ToArray()).ToArray();
+
+            var result = new List<Point2Dmm[]>();
+            foreach (var cluster in points)
+            {
+                if (arePointsClockwise(cluster))
+                    result.Add(cluster);
+                else
+                    result.Add(cluster.Reverse().ToArray());
+
             }
+
+            return result.ToArray();
         }
 
         private bool arePointsClockwise(IEnumerable<Point2Dmm> definition)
@@ -313,7 +282,8 @@ namespace MillingRouter3D.GUI
 
                     var x = (point.C1 - minC1) / ratioC1 * _shapeMetricSize.Width;
                     var y = (point.C2 - minC2) / ratioC2 * _shapeMetricSize.Height;
-                    point = new Point2Dmm(x, y);
+                    point = new Point2Dmm(x + PositionX, y + PositionY);
+                    //point = new Point2Dmm(x, y);
                     result.Add(point);
                 }
 
@@ -347,14 +317,14 @@ namespace MillingRouter3D.GUI
             BorderThickness = new Thickness(0);
             Padding = new Thickness(0);
             Background = null;
-                        
+
             initialize();
 
             _itemBrush = new SolidColorBrush(Colors.LightGray);
             _itemBrush.Opacity = 0.4;
 
             _cutPen = new Pen(Brushes.Blue, 2.0);
-            _cutPen.DashStyle = DashStyles.Dot;
+            //_cutPen.DashStyle = DashStyles.Dot;
 
             _itemPen = new Pen(Brushes.Black, 1.0);
         }
@@ -362,22 +332,33 @@ namespace MillingRouter3D.GUI
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
-            var workspace = Parent as MillingWorkspacePanel;
-            if (workspace != null && workspace.CuttingKerf != 0.0)
-            {
-                throw new NotImplementedException();
-            }
+            var itemPoints = TransformedShapeDefinition.ToArray();
 
-            var itemPoints = TransformedShapeDefinition.Select(s => translateToWorkspace(s).ToArray()).ToArray();
             var geometry = CreatePathFigure(itemPoints);
             drawingContext.DrawGeometry(_itemBrush, _itemPen, geometry);
 
+            var offsetClusters = new List<Point2Dmm[]>();
+            /**/
+            for (var i = 0; i < 10; ++i)
+            {
+                foreach (var cluster in itemPoints)
+                {
+                    var offsetCalculator = new OffsetCalculator(cluster);
+                    var offsetPoints = offsetCalculator.WithOffset(1.0 + 1 * i);
+                    offsetClusters.AddRange(offsetPoints);
+                }
+            }
+
+            var offsetGeometry = CreatePathFigure(offsetClusters);
+            drawingContext.DrawGeometry(null, _cutPen, offsetGeometry);
+
+            /*/
             for (var i = 0; i < itemPoints.Length && itemPoints.Length > 1; ++i)
             {
                 var shape1EndPoint = itemPoints[i].Last();
                 var shape2EntryPoint = itemPoints[(i + 1) % itemPoints.Length].First();
                 drawingContext.DrawLine(_cutPen, ConvertToVisual(shape1EndPoint), ConvertToVisual(shape2EntryPoint));
-            }
+            }/**/
         }
 
         /// <summary>
@@ -398,95 +379,6 @@ namespace MillingRouter3D.GUI
                 );
         }
 
-
-        protected Vector calculateKerfShift(Point2Dmm p1, Point2Dmm p2, Point2Dmm p3, double kerf)
-        {
-            var v1 = diffVector(p1, p2);
-            var v2 = diffVector(p2, p3);
-
-            var nV1 = new Vector(v1.Y, -v1.X);
-            var nV2 = new Vector(v2.Y, -v2.X);
-
-            if (nV1.Length == 0)
-                nV1 = nV2;
-
-            if (nV2.Length == 0)
-                nV2 = nV1;
-
-            nV1.Normalize();
-            nV2.Normalize();
-
-            var shift = (nV1 + nV2) * kerf / 2;
-            return shift;
-        }
-
-        protected Vector diffVector(Point2Dmm p1, Point2Dmm p2)
-        {
-            var diff12_C1 = p2.C1 - p1.C1;
-            var diff12_C2 = p2.C2 - p1.C2;
-
-            return new Vector(diff12_C1, diff12_C2);
-        }
-
-        protected IEnumerable<Point2Dmm> addKerf(IEnumerable<Point2Dmm> points)
-        {
-            var workspace = Parent as MillingWorkspacePanel;
-            if (workspace == null || (workspace.CuttingKerf == 0.0 && !this.UseExplicitKerf))
-                //there is no change
-                return points;
-
-
-            var result = applyKerf(points, workspace);
-            return result;
-        }
-
-        protected Point2Dmm[] applyKerf(IEnumerable<Point2Dmm> points, MillingWorkspacePanel workspace)
-        {
-            var pointsArr = points.ToArray();
-
-            var result = new List<Point2Dmm>();
-            for (var i = 0; i < pointsArr.Length; ++i)
-            {
-                var prevPoint = getNextDifferent(pointsArr, i, -1);
-                var point = pointsArr[i];
-                var nextPoint = getNextDifferent(pointsArr, i, 1);
-
-                result.Add(applyKerf(prevPoint, point, nextPoint, workspace));
-            }
-
-            return result.ToArray();
-        }
-
-        protected Point2Dmm applyKerf(Point2Dmm p1, Point2Dmm p2, Point2Dmm p3, MillingWorkspacePanel workspace)
-        {
-            var kerf = reCalculateKerf(workspace.CuttingKerf);
-            var shift = calculateKerfShift(p1, p2, p3, kerf);
-            return new Point2Dmm(p2.C1 + shift.X, p2.C2 + shift.Y);
-        }
-
-        private Point2Dmm getNextDifferent(Point2Dmm[] points, int startIndex, int increment)
-        {
-            var startPointXY = points[startIndex];
-
-            //find XY next
-            var i = (startIndex + increment + points.Length) % points.Length;
-            while (points[i].Equals(startPointXY))
-            {
-                i = (i + increment + points.Length) % points.Length;
-            }
-            var endPointXY = points[i];
-
-            return endPointXY;
-        }
-
-        protected double reCalculateKerf(double kerf)
-        {
-            if (!_useClockwiseCut)
-                kerf *= -1;
-
-            return kerf;
-        }
-
         internal MillingShapeItem2D Clone(ReadableIdentifier cloneName)
         {
             var shapeItem = new MillingShapeItem2D(cloneName, ShapeDefinition);
@@ -494,13 +386,12 @@ namespace MillingRouter3D.GUI
             shapeItem.RotationAngle = RotationAngle;
             shapeItem.MetricHeight = MetricHeight;
             shapeItem.MillingDepth = MillingDepth;
-            shapeItem.UseClockwiseCut = UseClockwiseCut;
             return shapeItem;
         }
 
         internal override void BuildPlan(PlanBuilder3D builder, MillingWorkspacePanel workspace)
         {
-            foreach (var cluster in CutPoints)
+            foreach (var cluster in TransformedShapeDefinition)
             {
                 builder.GotoTransitionLevel();
                 builder.AddRampedLine(cluster[0]);
@@ -508,7 +399,7 @@ namespace MillingRouter3D.GUI
                 var currentDepth = 0.0;
                 while (currentDepth < MillingDepth)
                 {
-                    var depthIncrement = Math.Min(2.0, MillingDepth - currentDepth);
+                    var depthIncrement = Math.Min(workspace.MaxLayerCut, MillingDepth - currentDepth);
                     currentDepth += depthIncrement;
                     builder.GotoZ(currentDepth);
                     foreach (var point in cluster)
@@ -524,7 +415,7 @@ namespace MillingRouter3D.GUI
 
         protected override Point2Dmm getEntryPoint()
         {
-            return CutPoints.First()[0];
+            return TransformedShapeDefinition.First()[0];
         }
     }
 }

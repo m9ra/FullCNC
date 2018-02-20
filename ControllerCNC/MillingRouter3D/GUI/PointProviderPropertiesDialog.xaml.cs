@@ -74,7 +74,6 @@ namespace MillingRouter3D.GUI
             writeNumber(ShapeHeight, millingItem.MetricHeight);
             writeNumber(MillingDepth, millingItem.MillingDepth);
             writeNumber(AngleNum, millingItem.RotationAngle);
-            ClockwiseCut.IsChecked = millingItem.UseClockwiseCut;
 
             ShapeRotation.Value = millingItem.RotationAngle;
         }
@@ -163,15 +162,6 @@ namespace MillingRouter3D.GUI
             var millingItem = _item as MillingShapeItem2D;
             millingItem.RotationAngle = ShapeRotation.Value;
 
-            refreshWindow();
-        }
-
-        private void ClockwiseCut_Changed(object sender, RoutedEventArgs e)
-        {
-            var millingItem = _item as MillingShapeItem2D;
-            var value = ClockwiseCut.IsChecked.Value;
-
-            millingItem.UseClockwiseCut = value;
             refreshWindow();
         }
 

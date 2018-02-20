@@ -232,6 +232,11 @@ namespace MillingRouter3D.GUI
             return visualPoint;
         }
 
+        protected Point ConvertToVisual(Point3Dmm point)
+        {
+            return ConvertToVisual(new Point2Dmm(point.X, point.Y));
+        }
+
         /// <summary>
         /// Initializes content of the item.
         /// </summary>

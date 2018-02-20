@@ -86,6 +86,7 @@
     <Compile Include="Loading\Loaders\Cor4dLoader.cs" />
     <Compile Include="Loading\Loaders\CorLoader.cs" />
     <Compile Include="Loading\Loaders\DatLoader.cs" />
+    <Compile Include="Loading\Loaders\HeightmapLoader.cs" />
     <Compile Include="Loading\Loaders\ImageLoader.cs" />
     <Compile Include="Loading\Loaders\LinePathLoader.cs" />
     <Compile Include="Loading\Loaders\LoaderBase3D.cs" />
@@ -104,7 +105,9 @@
     <Compile Include="Machine\StepInstrution.cs" />
     <Compile Include="Planning\BitmapMash.cs" />
     <Compile Include="Planning\CoordController.cs" />
+    <Compile Include="Planning\GeometryUtils.cs" />
     <Compile Include="Planning\ImageInterpolator.cs" />
+    <Compile Include="Planning\OffsetCalculator.cs" />
     <Compile Include="Planning\PlanStream3D.cs" />
     <Compile Include="Planning\PlanBuilder3D.cs" />
     <Compile Include="Planning\PlanPart3D.cs" />

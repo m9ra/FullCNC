@@ -832,15 +832,29 @@ namespace MillingRouter3D
             var dlg = new Microsoft.Win32.OpenFileDialog();
             dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor;|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor;";
 
+            var useHeightmap = false;
             if (dlg.ShowDialog().Value)
             {
                 var filename = dlg.FileName;
-                var flatShape = _factory.Load(filename, out var name);
-                if (flatShape != null)
+                if (useHeightmap)
                 {
-                    var shapeItem = new MillingShapeItem2D(name, flatShape);
-                    shapeItem.MetricHeight = 100;
-                    Workspace.Children.Add(shapeItem);
+                    var reliefShape = _factory.LoadRelief(filename, out var name);
+                    if (reliefShape != null)
+                    {
+                        var reliefShapeItem = new MillingShapeItemRelief(name, reliefShape);
+                        reliefShapeItem.MetricHeight = 100;
+                        Workspace.Children.Add(reliefShapeItem);
+                    }
+                }
+                else
+                {
+                    var flatShape = _factory.Load(filename, out var name);
+                    if (flatShape != null)
+                    {
+                        var shapeItem = new MillingShapeItem2D(name, flatShape);
+                        shapeItem.MetricHeight = 100;
+                        Workspace.Children.Add(shapeItem);
+                    }
                 }
             }
         }

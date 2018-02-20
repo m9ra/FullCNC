@@ -99,6 +99,12 @@ namespace ControllerCNC.Planning
             moveTo(target, null, CuttingSpeed);
         }
 
+        public void AddCuttingSpeedTransition(Point2Dmm target, double zLevel)
+        {
+            var zTarget = new Point3Dmm(target.C1, target.C2, zLevel + _zeroLevel);
+            moveTo(zTarget, null, CuttingSpeed);
+        }
+
         public void GotoTransitionLevel()
         {
             GotoZ(_transitionLevel - _zeroLevel);

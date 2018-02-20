@@ -45,14 +45,7 @@
                             <TextBox Style="{StaticResource ValueInput}" Name="MillingDepth">1.0</TextBox>
                         </StackPanel>
 
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ValueLabel}" Text="Use clockwise cut:"/>
-                            <CheckBox Name="ClockwiseCut"  IsChecked="False" Margin="55 0" Checked="ClockwiseCut_Changed" Unchecked="ClockwiseCut_Changed">
-                                <CheckBox.LayoutTransform>
-                                    <ScaleTransform ScaleX="2" ScaleY="2" />
-                                </CheckBox.LayoutTransform>
-                            </CheckBox>
-                        </StackPanel>
+                        <StackPanel Orientation="Horizontal"/>
 
                         <StackPanel Orientation="Horizontal" Margin="0 20 0 0">
                             <TextBlock  TextAlignment="Center" Margin="0 10 0 0" Style="{StaticResource ValueLabel}">Angle [deg.]</TextBlock>
