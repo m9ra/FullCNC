@@ -59,7 +59,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Queue of instructions that are in progress on machine (from send to completition confirmation - after that steps from the instruction still can be executed).
         /// </summary>
-        private readonly Queue<InstructionCNC> _bufferedInstructions = new Queue<InstructionCNC>();
+        private readonly Queue<InstructionCNC> _queuedInstructions = new Queue<InstructionCNC>();
 
         /// <summary>
         /// Parse for the incomming communication stream.
@@ -75,6 +75,11 @@ namespace ControllerCNC.Machine
         /// State which will be achieved after completing all planned instructions.
         /// </summary>
         private StateInfo _plannedState;
+
+        /// <summary>
+        /// How many instructions is buffered by the machine.
+        /// </summary>
+        private int _bufferedInstructionCount = 0;
 
         /// <summary>
         /// Determine connection status.
@@ -163,7 +168,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// How many instructions sent is not processed yet.
         /// </summary>
-        public int IncompleteInstructionCount { get { lock (_L_instructionQueue) return _bufferedInstructions.Count; } }
+        public int IncompleteInstructionCount { get { lock (_L_instructionQueue) return _queuedInstructions.Count; } }
 
         /// <summary>
         /// State which was already completed by the machine.
@@ -338,13 +343,13 @@ namespace ControllerCNC.Machine
                 byte[] data;
                 lock (_L_instructionQueue)
                 {
-                    while (_sendQueue.Count == 0)
+                    while (_sendQueue.Count == 0 || _bufferedInstructionCount >= Configuration.InstructionBufferLimit)
                     {
                         // wait until some work arrives
                         Monitor.Wait(_L_instructionQueue);
                     }
 
-                    //System.Diagnostics.Debug.WriteLine(_bufferedInstructions.Peek());
+                    _bufferedInstructionCount += 1;
                     data = _sendQueue.Dequeue();
                 }
 
@@ -489,7 +494,7 @@ namespace ControllerCNC.Machine
 
             lock (_L_instructionQueue)
             {
-                _bufferedInstructions.Enqueue(instruction);
+                _queuedInstructions.Enqueue(instruction);
                 _sendQueue.Enqueue(dataBuffer);
                 Monitor.Pulse(_L_instructionQueue);
             }
@@ -521,8 +526,9 @@ namespace ControllerCNC.Machine
                 _expectsConfirmation = false;
                 _resendIsNeeded = false;
 
+                _bufferedInstructionCount = 0;
                 _sendQueue.Clear();
-                _bufferedInstructions.Clear();
+                _queuedInstructions.Clear();
                 _communicationWorker.Abort();
 
                 Monitor.Pulse(_L_instructionQueue);
@@ -560,17 +566,18 @@ namespace ControllerCNC.Machine
             InstructionCNC instruction;
             lock (_L_instructionQueue)
             {
-                if (_bufferedInstructions.Count == 0)
+                if (_queuedInstructions.Count == 0)
                     //probably garbage from buffer
                     return;
 
-                instruction = _bufferedInstructions.Dequeue();
+                --_bufferedInstructionCount;
+                instruction = _queuedInstructions.Dequeue();
                 _lastInstructionStartTime = DateTime.Now;
                 _uEstimation = _vEstimation = _xEstimation = _yEstimation = 0;
 
                 _currentState.Accept(instruction);
 
-                if (_bufferedInstructions.Count == 0)
+                if (_queuedInstructions.Count == 0)
                     OnInstructionQueueIsComplete?.Invoke();
 
                 Monitor.Pulse(_L_instructionQueue);
@@ -640,10 +647,10 @@ namespace ControllerCNC.Machine
                 Axes currentInstruction;
                 lock (_L_instructionQueue)
                 {
-                    if (_bufferedInstructions.Count == 0)
+                    if (_queuedInstructions.Count == 0)
                         continue;
 
-                    currentInstruction = _bufferedInstructions.Peek() as Axes;
+                    currentInstruction = _queuedInstructions.Peek() as Axes;
                 }
                 if (currentInstruction == null)
                     continue;
@@ -664,7 +671,7 @@ namespace ControllerCNC.Machine
 
                 lock (_L_instructionQueue)
                 {
-                    if (_bufferedInstructions.Count == 0 || _bufferedInstructions.Peek() != currentInstruction)
+                    if (_queuedInstructions.Count == 0 || _queuedInstructions.Peek() != currentInstruction)
                         //we missed the instruction
                         continue;
 
@@ -693,13 +700,13 @@ namespace ControllerCNC.Machine
             {
                 Thread.Sleep(simulationDelay);
 
-                if (_bufferedInstructions.Count > 0)
+                if (_queuedInstructions.Count > 0)
                 {
                     InstructionCNC instruction;
                     lock (_L_instructionQueue)
                     {
                         _lastInstructionStartTime = DateTime.Now;
-                        instruction = _bufferedInstructions.Peek();
+                        instruction = _queuedInstructions.Peek();
                     }
 
                     var tickCount = instruction.CalculateTotalTime();
@@ -718,7 +725,7 @@ namespace ControllerCNC.Machine
                     {
                         instructionCompleted();
 
-                        if (_bufferedInstructions.Count == 0 && OnInstructionQueueIsComplete != null)
+                        if (_queuedInstructions.Count == 0 && OnInstructionQueueIsComplete != null)
                             OnInstructionQueueIsComplete();
                     }
                 }
