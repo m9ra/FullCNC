@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ControllerCNC.Primitives;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,6 +20,27 @@ namespace ControllerCNC.Planning
         public static bool IsZero(double value)
         {
             return Math.Abs(value) < Epsilon;
+        }
+
+        public static double NormalizedAngleBetween(Vector v1, Vector v2)
+        {
+            return (Vector.AngleBetween(v1, v2) + 360) % (360 );
+        }
+
+        public static bool ArePointsClockwise(IEnumerable<Point2Dmm> definition)
+        {
+            var points = definition.ToArray();
+
+            var wSum = 0.0;
+            for (var i = 1; i < points.Length; ++i)
+            {
+                var x1 = points[i - 1];
+                var x2 = points[i];
+
+                wSum += (x2.C1 - x1.C1) * (x2.C2 + x1.C2);
+            }
+            var isClockwise = wSum < 0;
+            return isClockwise;
         }
 
         /// <summary>

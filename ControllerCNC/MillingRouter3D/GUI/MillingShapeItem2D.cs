@@ -231,7 +231,7 @@ namespace MillingRouter3D.GUI
             var result = new List<Point2Dmm[]>();
             foreach (var cluster in points)
             {
-                if (arePointsClockwise(cluster))
+                if (GeometryUtils.ArePointsClockwise(cluster))
                     result.Add(cluster);
                 else
                     result.Add(cluster.Reverse().ToArray());
@@ -239,22 +239,6 @@ namespace MillingRouter3D.GUI
             }
 
             return result.ToArray();
-        }
-
-        private bool arePointsClockwise(IEnumerable<Point2Dmm> definition)
-        {
-            var points = definition.ToArray();
-
-            var wSum = 0.0;
-            for (var i = 1; i < points.Length; ++i)
-            {
-                var x1 = points[i - 1];
-                var x2 = points[i];
-
-                wSum += (x2.C1 - x1.C1) * (x2.C2 + x1.C2);
-            }
-            var isClockwise = wSum < 0;
-            return isClockwise;
         }
 
         protected IEnumerable<Point2Dmm[]> definitionTransformation(IEnumerable<Point2Dmm[]> pointClusters)
@@ -270,7 +254,7 @@ namespace MillingRouter3D.GUI
             foreach (var pointCluster in pointClusters)
             {
                 var points = pointCluster;
-                var isClockwise = arePointsClockwise(pointCluster);
+                var isClockwise = GeometryUtils.ArePointsClockwise(pointCluster);
 
                 if (_useClockwiseCut != isClockwise)
                     points = points.Reverse().ToArray();
@@ -329,6 +313,26 @@ namespace MillingRouter3D.GUI
             _itemPen = new Pen(Brushes.Black, 1.0);
         }
 
+        private IEnumerable<Point2Dmm[]> getOffsetLines(IEnumerable<Point2Dmm[]> itemPoints)
+        {
+            var offsetClusters = new List<Point2Dmm[]>();
+            var remainingClusters = new HashSet<Point2Dmm[]>(itemPoints);
+            for (var i = 0; i < 100; ++i)
+            {
+                if (remainingClusters.Count == 0)
+                    break;
+
+                foreach (var cluster in remainingClusters)
+                {
+                    var offsetCalculator = new OffsetCalculator(cluster);
+                    var offsetPoints = offsetCalculator.WithOffset(1.0 + 1 * i);
+                    offsetClusters.AddRange(offsetPoints);
+                }
+            }
+
+            return offsetClusters;
+        }
+
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
@@ -337,18 +341,7 @@ namespace MillingRouter3D.GUI
             var geometry = CreatePathFigure(itemPoints);
             drawingContext.DrawGeometry(_itemBrush, _itemPen, geometry);
 
-            var offsetClusters = new List<Point2Dmm[]>();
-            /**/
-            for (var i = 0; i < 10; ++i)
-            {
-                foreach (var cluster in itemPoints)
-                {
-                    var offsetCalculator = new OffsetCalculator(cluster);
-                    var offsetPoints = offsetCalculator.WithOffset(1.0 + 1 * i);
-                    offsetClusters.AddRange(offsetPoints);
-                }
-            }
-
+            var offsetClusters = getOffsetLines(itemPoints);
             var offsetGeometry = CreatePathFigure(offsetClusters);
             drawingContext.DrawGeometry(null, _cutPen, offsetGeometry);
 
@@ -391,7 +384,9 @@ namespace MillingRouter3D.GUI
 
         internal override void BuildPlan(PlanBuilder3D builder, MillingWorkspacePanel workspace)
         {
-            foreach (var cluster in TransformedShapeDefinition)
+            var offsetLines = getOffsetLines(TransformedShapeDefinition);
+
+            foreach (var cluster in offsetLines)
             {
                 builder.GotoTransitionLevel();
                 builder.AddRampedLine(cluster[0]);

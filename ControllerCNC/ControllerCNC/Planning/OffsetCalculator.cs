@@ -1,6 +1,7 @@
 ﻿using ControllerCNC.Primitives;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -100,7 +101,57 @@ namespace ControllerCNC.Planning
             _updateSnapshots.Add(result.ToArray());
         }
 
-        private void logVisualSnapshot(Point center, double offset, List<Point> points, List<Point> bisectors, bool isBasicUpdate)
+        private void logInvalidPoint(Point[] line, List<Point> points, Point invalidPoint)
+        {
+            if (!canDebug())
+                return;
+
+            var events = new List<DrawEvent>();
+            events.AddRange(createPolyLineLog(points, _originalPen));
+            events.AddRange(createPolyLineLog(line.ToList(), _redPen));
+            events.Add(new CircleEvent(invalidPoint, 5, _bodyPen));
+
+            _updateSnapshots.Add(events.ToArray());
+        }
+
+        private void logIntefereSelfIntersections(List<Point> points, List<Point> bisectors, IEnumerable<Intersection> intersections)
+        {
+            var events = createVisualSnapshot(points, bisectors);
+            foreach (var intersection in intersections)
+            {
+                var sPoint1 = getPoint(intersection.S, bisectors);
+                var sPoint2 = getPoint(intersection.S + 1, bisectors);
+                var ePoint1 = getPoint(intersection.E, bisectors);
+                var ePoint2 = getPoint(intersection.E + 1, bisectors);
+
+                var intersectionPoint = sPoint1 + (sPoint2 - sPoint1) * intersection.RatioS;
+                events.Add(new LineEvent(sPoint1, sPoint2, _aboveLineHighlightPen));
+                events.Add(new LineEvent(ePoint1, ePoint2, _aboveLineHighlightPen));
+                events.Add(new CircleEvent(intersectionPoint, 5, _redPen));
+                events.Add(new CircleEvent(intersectionPoint, 8, _redPen));
+            }
+            _updateSnapshots.Add(events.ToArray());
+        }
+
+        private void logSelfIntersections(List<Point> points, List<Point> bisectors, IEnumerable<Intersection> intersections)
+        {
+            var events = createVisualSnapshot(points, bisectors);
+            foreach (var intersection in intersections)
+            {
+                var sPoint1 = getPoint(intersection.S, bisectors);
+                var sPoint2 = getPoint(intersection.S + 1, bisectors);
+                var ePoint1 = getPoint(intersection.E, bisectors);
+                var ePoint2 = getPoint(intersection.E + 1, bisectors);
+
+                var intersectionPoint = sPoint1 + (sPoint2 - sPoint1) * intersection.RatioS;
+                events.Add(new LineEvent(sPoint1, sPoint2, _aboveLineHighlightPen));
+                events.Add(new LineEvent(ePoint1, ePoint2, _aboveLineHighlightPen));
+                events.Add(new CircleEvent(intersectionPoint, 5, _redPen));
+            }
+            _updateSnapshots.Add(events.ToArray());
+        }
+
+        private void logUpdateRule(Point center, double offset, List<Point> points, List<Point> bisectors, bool isBasicUpdate)
         {
             if (!canDebug())
                 return;
@@ -196,6 +247,8 @@ namespace ControllerCNC.Planning
         {
             var result = new List<Point[]>();
             var intersections = getSelfIntersections(bisectors);
+            logSelfIntersections(points, bisectors, intersections);
+
             if (!intersections.Any())
             {
                 //the whole shape is valid or invalid
@@ -205,13 +258,26 @@ namespace ControllerCNC.Planning
                 return result;
             }
 
+            var interferentialIntersections = new HashSet<Intersection>();
             foreach (var i1 in intersections)
             {
                 foreach (var i2 in intersections)
                 {
-                    if (i1.Infere(i2))
-                        throw new NotImplementedException();
+                    if (i1.Interfere(i2))
+                    {
+                        interferentialIntersections.Add(i1);
+                        interferentialIntersections.Add(i2);
+                    }
                 }
+            }
+
+            if (interferentialIntersections.Count > 0)
+            {
+                logSelfIntersections(points, bisectors, intersections);
+                var inteferentialGroups = getGroups(interferentialIntersections);
+                logIntefereSelfIntersections(points, bisectors, interferentialIntersections);
+                //TODO remove carefuly
+                return result;
             }
 
             var orderedIntersections = intersections.OrderBy(i => i.SValue).ToArray();
@@ -238,14 +304,47 @@ namespace ControllerCNC.Planning
             return result;
         }
 
+        private IEnumerable<Intersection[]> getGroups(HashSet<Intersection> interferentialIntersections)
+        {
+            var remainingIntersections = interferentialIntersections.ToList();
+            var result = new List<Intersection[]>();
+            while (remainingIntersections.Count > 0)
+            {
+                var group = new List<Intersection>();
+
+                for (var i = 0; i < remainingIntersections.Count; ++i)
+                {
+                    var intersection = remainingIntersections[i];
+
+                    if (group.Count == 0 || group.Any(gint => gint.Interfere(intersection) || intersection.Interfere(gint)))
+                    {
+                        group.Add(intersection);
+                        remainingIntersections.RemoveAt(i);
+                        i = -1;
+                    }
+                }
+
+                result.Add(group.ToArray());
+            }
+
+            return result;
+        }
+
         private bool isLineValid(Point[] line, List<Point> points, double offset)
         {
+            /**/
             foreach (var point in line)
             {
                 if (!isPointValid(point, points, offset))
+                {
+                    logInvalidPoint(line, points, point);
                     return false;
+                }
             }
             return true;
+            /*/
+            return GeometryUtils.ArePointsClockwise(line.Select(asPoint2D));
+            /**/
         }
 
         private IEnumerable<Point[]> collectLines(Intersection[] intersections, List<Point> bisectors)
@@ -255,11 +354,67 @@ namespace ControllerCNC.Planning
 
             rootNode.BuildTree(intersections);
 
-            System.Diagnostics.Debug.WriteLine("START");
-            collectLines(rootNode, 0, bisectors, result);
-            System.Diagnostics.Debug.WriteLine("END");
+            Debug.WriteLine("START");
+            collectLines2(rootNode, 0, bisectors, result);
+            Debug.WriteLine("END");
+            foreach (var intersection in intersections)
+            {
+                Debug.WriteLine(intersection);
+            }
 
             return result;
+        }
+
+        private void collectLines2(Intersection node, int depth, List<Point> bisectors, List<Point[]> result)
+        {
+            var layerIntersections = new List<Intersection>();
+            layerIntersections.Add(node);
+            layerIntersections.AddRange(node.Children);
+            layerIntersections.Add(node);
+
+            var layerPoints = new List<Point>();
+            for (var k = 0; k < layerIntersections.Count - 1; ++k)
+            {
+                var isFirst = k == 0;
+                var isLast = k == layerIntersections.Count - 2;
+                var intersection = layerIntersections[k];
+                var SIk = getIntersectionPoint(intersection, bisectors);
+
+                int startIndex, endIndex;
+                if (isFirst)
+                {
+                    startIndex = layerIntersections[k].S;
+                }
+                else
+                {
+                    startIndex = layerIntersections[k].E;
+                }
+
+                if (isLast)
+                {
+                    endIndex = layerIntersections[k + 1].E;
+                }
+                else
+                {
+                    endIndex = layerIntersections[k + 1].S;
+                }
+
+                layerPoints.Add(SIk);
+                for (var i = startIndex + 1; i <= endIndex; ++i)
+                {
+                    layerPoints.Add(bisectors[i]);
+                }
+            }
+
+            layerPoints.Add(layerPoints.First());
+
+            if (depth % 2 == 0)
+                result.Add(layerPoints.ToArray());
+
+            foreach (var child in node.Children)
+            {
+                collectLines2(child, depth + 1, bisectors, result);
+            }
         }
 
         private void collectLines(Intersection node, int depth, List<Point> bisectors, List<Point[]> result)
@@ -267,50 +422,46 @@ namespace ControllerCNC.Planning
             System.Diagnostics.Debug.WriteLine(depth + " " + node);
 
             var children = node.Children;
-            if (depth % 2 == 0)
+            if (children.Any())
             {
-                if (children.Any())
+                //points to all children
+                foreach (var child in children)
                 {
-                    //points to all children
-                    foreach (var child in children)
-                    {
-                        var points = new List<Point>();
-
-                        //currentNode is supposed to be parent of current child (duty of caller)
-                        if (!node.Contains(child))
-                            throw new NotSupportedException("invalid operator");
-
-
-                        points.Add(getIntersectionPoint(node, bisectors));
-
-                        for (var i = node.S + 1; i <= child.S; ++i)
-                        {
-                            points.Add(bisectors[i]);
-                        }
-
-                        points.Add(getIntersectionPoint(child, bisectors));
-
-                        for (var i = child.E + 1; i <= node.E; ++i)
-                        {
-                            points.Add(bisectors[i]);
-                        }
-                        points.Add(points.First());
-                        result.Add(points.ToArray());
-                    }
-                }
-                else
-                {
-                    // no children case
                     var points = new List<Point>();
+
+                    //currentNode is supposed to be parent of current child (duty of caller)
+                    if (!node.Contains(child))
+                        throw new NotSupportedException("invalid operator");
+
+
                     points.Add(getIntersectionPoint(node, bisectors));
-                    for (var i = node.S + 1; i <= node.E; ++i)
+
+                    for (var i = node.S + 1; i <= child.S; ++i)
+                    {
+                        points.Add(bisectors[i]);
+                    }
+
+                    points.Add(getIntersectionPoint(child, bisectors));
+
+                    for (var i = child.E + 1; i <= node.E; ++i)
                     {
                         points.Add(bisectors[i]);
                     }
                     points.Add(points.First());
                     result.Add(points.ToArray());
                 }
-
+            }
+            else
+            {
+                // no children case
+                var points = new List<Point>();
+                points.Add(getIntersectionPoint(node, bisectors));
+                for (var i = node.S + 1; i <= node.E; ++i)
+                {
+                    points.Add(bisectors[i]);
+                }
+                points.Add(points.First());
+                result.Add(points.ToArray());
             }
 
             foreach (var child in children)
@@ -461,7 +612,8 @@ namespace ControllerCNC.Planning
                 var p2 = points[i + 1];
 
                 var segmentDistance = FindDistanceToSegment(testedPoint, p1, p2, out _);
-                if (segmentDistance + 1e-2  < offset)
+                //TODO for some reason there is a big numerical error
+                if (segmentDistance + 1e-1 < offset)
                     return false;
             }
             return PointInPolygon(testedPoint, points.ToArray());
@@ -518,7 +670,7 @@ namespace ControllerCNC.Planning
                 if (center.HasValue)
                 {
                     //basic update rule
-                    logVisualSnapshot(center.Value, offset, points, bisectors, true);
+                    logUpdateRule(center.Value, offset, points, bisectors, true);
                     var pc = getPc(center.Value, pk_m1, pk, pk_1, pk_2, offset);
                     basicUpdateRule(k, pc, pk_m1, pk, pk_1, pk_2, offset, points, bisectors);
                     k -= 2;
@@ -538,17 +690,12 @@ namespace ControllerCNC.Planning
         {
             var v1 = pk - pk_m1;
             var v2 = pk - pk_1;
-            var angle1 = Vector.AngleBetween(v1, v2) + 180;
+            var angle1 = GeometryUtils.NormalizedAngleBetween(v1, v2);
 
             var v3 = pk_1 - pk;
             var v4 = pk_1 - pk_2;
-            var angle2 = Vector.AngleBetween(v3, v4) + 180;
+            var angle2 = GeometryUtils.NormalizedAngleBetween(v3, v4);
 
-            if (angle1 < 0 || angle1 > 360)
-                throw new NotImplementedException();
-
-            if (angle2 < 0 || angle2 > 360)
-                throw new NotImplementedException();
             if (softSE(angle1, 180) && softGE(angle1, 0))
             {
                 var pc = getAppendPc(pk_m1, pk, pk_1, offset, points, bisectors);
@@ -572,6 +719,13 @@ namespace ControllerCNC.Planning
 
         private void basicUpdateRule(int k, Point pc, Point pk_m1, Point pk, Point pk_1, Point pk_2, double offset, List<Point> points, List<Point> bisectors)
         {
+            outputGeogebraPoints(new Point[]
+            {
+                pk_m1,
+                pk,
+                pk_1,
+                pk_2
+            });
             setPoint(points, k, pc);
             var pe = getPoint(k + 1, points);
             remove(k + 1, points, bisectors);
@@ -594,54 +748,106 @@ namespace ControllerCNC.Planning
             updateBisectors(k, bisectors, points, offset);
         }
 
+        private void outputGeogebraPoints(IEnumerable<Point> points)
+        {
+            System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)System.Threading.Thread.CurrentThread.CurrentCulture.Clone();
+            customCulture.NumberFormat.NumberDecimalSeparator = ".";
+
+            System.Threading.Thread.CurrentThread.CurrentCulture = customCulture;
+            Debug.WriteLine("");
+            Debug.WriteLine("");
+            var counter = 1;
+            foreach (var point in points)
+            {
+                Debug.WriteLine($"P{counter}=({point.X:0.000},{point.Y:0.000})");
+                ++counter;
+            }
+            Debug.WriteLine("");
+        }
+
         private bool isAbovePolyline(Point p, Point[] polyline)
         {
-            var shortestDistance = double.PositiveInfinity;
+            outputGeogebraPoints(polyline);
+            var shortestSegmentDistance = double.PositiveInfinity;
+            var shortestPointDistance = double.PositiveInfinity;
             var nearestSegmentId = 0;
+            var nearestPointId = 0;
             for (var i = 0; i < polyline.Length - 1; ++i)
             {
                 var p1 = polyline[i];
                 var p2 = polyline[i + 1];
 
-                var distance = FindDistanceToSegment(p, p1, p2, out _);
-                if (distance < shortestDistance)
+                var pointDistance = (p - p1).Length;
+                var segmentDistance = FindDistanceToSegment(p, p1, p2, out _);
+                if (segmentDistance < shortestSegmentDistance)
                 {
                     nearestSegmentId = i;
-                    shortestDistance = distance;
+                    shortestSegmentDistance = segmentDistance;
                 }
-                else if (softEquals(distance, shortestDistance))
+
+                if (pointDistance < shortestPointDistance)
                 {
-                    if (i != nearestSegmentId + 1)
-                        throw new NotImplementedException();
-
-                    var segment1V = p2 - p1;
-                    var segment2V = polyline[i - 1] - p1;
-                    segment1V.Normalize();
-                    segment2V.Normalize();
-
-                    var segment1p = p1 - segment1V;
-                    var segment2p = p1 - segment2V;
-
-                    if ((p - segment1p).Length < (p - segment2p).Length)
-                    {
-                        nearestSegmentId = i;
-                        shortestDistance = distance;
-                    }
+                    nearestPointId = i;
+                    shortestPointDistance = pointDistance;
                 }
             }
 
             var bp1 = polyline[nearestSegmentId];
             var bp2 = polyline[nearestSegmentId + 1];
-
-            var v1 = bp2 - bp2;
-            var nv1 = new Vector(v1.Y, -v1.X);
-            var v2 = bp2 - p;
-            var angle = Vector.AngleBetween(v1, v2);
-            var dotProduct = Vector.Multiply(nv1, v2);
-
             logAboveLine(p, polyline, bp1, bp2);
-            // return dotProduct > 0;
-            return angle < 0;
+
+            if (shortestPointDistance - shortestSegmentDistance <= 1e-3)
+                //when polyline vertex is closer to the point, segment calculation is imprecise
+                return isAbovePolylineVertex(p, polyline, nearestPointId);
+
+            var v1 = bp2 - bp1;
+            var nv1 = new Vector(v1.Y, -v1.X);
+            var v2 = p - bp1;
+            //var angle = GeometryUtils.NormalizedAngleBetween(v1, v2);
+            var dotProduct = Vector.Multiply(nv1, v2);
+            return dotProduct < 0;
+        }
+
+        private bool isAbovePolylineVertex(Point p, Point[] polyline, int nearestPointId)
+        {
+            var p0 = polyline[0];
+            var p1 = polyline[1];
+            var preP0 = p0 - (p1 - p0);
+
+            var pN = polyline[polyline.Length - 1];
+            var pNm1 = polyline[polyline.Length - 2];
+            var postN = pN - (pNm1 - pN);
+
+            var extendedPolyline = new List<Point>();
+            extendedPolyline.Add(preP0);
+            extendedPolyline.AddRange(polyline);
+            extendedPolyline.Add(postN);
+
+            //due to extension, the nearestPointId is shifted with +1
+            var em1 = extendedPolyline[nearestPointId];
+            var e = extendedPolyline[nearestPointId + 1];
+            var e1 = extendedPolyline[nearestPointId + 2];
+
+            var v1 = em1 - e;
+            var v2 = e - e1;
+            var vp1 = p - e;
+            var vp2 = p - e1;
+
+            var nv1 = new Vector(v1.Y, -v1.X);
+            var nv2 = new Vector(v2.Y, -v2.X);
+
+            var isPlane1Ok = Vector.Multiply(nv1, vp1) < 0;
+            var isPlane2Ok = Vector.Multiply(nv2, vp2) < 0;
+
+            var polylineAngle = Vector.Multiply(em1 - e, e1 - e);
+            if (polylineAngle >= 0)
+            {
+                return isPlane1Ok && isPlane2Ok;
+            }
+            else
+            {
+                return isPlane1Ok || isPlane2Ok;
+            }
         }
 
         private Point getAppendPc(Point l0, Point l1, Point l2, double offset, List<Point> points, List<Point> bisectors)
@@ -657,7 +863,7 @@ namespace ControllerCNC.Planning
 
             FindIntersection(touchPoint, touchPoint + nv1, l1, l2, out var _1, out var _2, out var pc, out var _3, out var _4);
 
-            logVisualSnapshot(circleCenter, offset, points, bisectors, false);
+            logUpdateRule(circleCenter, offset, points, bisectors, false);
             return pc;
         }
 
@@ -713,7 +919,7 @@ namespace ControllerCNC.Planning
             var candidate = stuckCandidates.First();
 
             var distance = FindDistanceToSegment(candidate, pk, pk_1, out var touchPoint);
-            if (distance <= offset - 1e-4)
+            if (distance <= offset + 1e-4)
                 //circle is not stucked
                 return null;
 
@@ -1046,7 +1252,7 @@ namespace ControllerCNC.Planning
             var crossProduct = Vector.CrossProduct(e1, e2);
             var dotProduct = Vector.Multiply(e1, e2);
 
-            if (crossProduct == 0 || double.IsNaN(crossProduct))
+            if (softEquals(crossProduct, 0) || double.IsNaN(crossProduct))
                 return false;
 
             if (double.IsNaN(e.X) || double.IsNaN(e.Y))
@@ -1387,11 +1593,15 @@ namespace ControllerCNC.Planning
             return _sValue >= o._sValue && _eValue < o._eValue;
         }
 
-        public bool Infere(Intersection o)
+        public bool Interfere(Intersection o)
         {
+            var s1 = _sValue;
+            var s2 = o._sValue;
+            var b1 = _eValue;
+            var b2 = o._eValue;
             return
-                (_sValue < o._sValue && o._sValue < _eValue && o._eValue > _eValue) ||
-                (o._sValue < _eValue && _eValue < o._eValue && _sValue < o._sValue);
+                (s1 < s2 && s2 < b1 && b2 > b1) ||
+                (s2 < b1 && b1 < b2 && s1 < s2);
         }
 
         internal void BuildTree(IEnumerable<Intersection> children)

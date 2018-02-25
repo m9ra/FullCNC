@@ -29,12 +29,12 @@ namespace MillingRouter3D
             InitializeComponent();
             var canvas = new DebugCanvas(SnapshotSelector);
             var transformation = new TransformGroup();
-            var scale = 0.5;
+            var scale = 2;
             transformation.Children.Add(new TranslateTransform(0, 0));
             transformation.Children.Add(new ScaleTransform(scale, scale));
             canvas.RenderTransform = transformation;
-            canvas.Width = 800 * scale;
-            canvas.Height = 800 * scale;
+            canvas.Width = 1000 * scale;
+            canvas.Height = 1000 * scale;
             _canvas = canvas;
             Viewer.Content = canvas;
         }
@@ -63,7 +63,7 @@ namespace MillingRouter3D
             if (_drawEvents == null)
             {
                 var loader = new ShapeFactory3D();
-                var points = loader.Load("./jaruska.png", out _).Skip(4).First().Reverse();
+                var points = loader.Load("./test_offset3.png", out _).First().Reverse();
                 /*/
                 points = new Point2Dmm[]
                 {
@@ -78,11 +78,26 @@ namespace MillingRouter3D
 
                       new Point2Dmm(0,0),
                 };/**/
+                /*/
+                points = new Point2Dmm[]
+                {
+                    new Point2Dmm(70,60),
+                    new Point2Dmm(40,20),
+                    new Point2Dmm(120,20),
+                    new Point2Dmm(100,60),
+                    new Point2Dmm(105,25),
+                    new Point2Dmm(60,25),
+                    new Point2Dmm(140,140),
+                    new Point2Dmm(70,140),
+
+                    new Point2Dmm(70,60),
+                };/**/
                 var offset = new OffsetCalculator(points, true);
 
-                offset.WithOffset(20);
+                offset.WithOffset(25);
                 _drawEvents = offset.GetUpdateSnapshots().ToArray();
                 _slider.Maximum = _drawEvents.Length - 1;
+                _slider.Value = _slider.Maximum;
             }
 
             var snapshotToDisplay = _drawEvents[(int)_slider.Value];
