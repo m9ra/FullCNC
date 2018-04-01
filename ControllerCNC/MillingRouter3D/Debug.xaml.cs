@@ -30,7 +30,7 @@ namespace MillingRouter3D
             var canvas = new DebugCanvas(SnapshotSelector);
             var transformation = new TransformGroup();
             var scale = 2;
-            transformation.Children.Add(new TranslateTransform(0, 0));
+            transformation.Children.Add(new TranslateTransform(2, 0));
             transformation.Children.Add(new ScaleTransform(scale, scale));
             canvas.RenderTransform = transformation;
             canvas.Width = 1000 * scale;
@@ -63,7 +63,8 @@ namespace MillingRouter3D
             if (_drawEvents == null)
             {
                 var loader = new ShapeFactory3D();
-                var points = loader.Load("./test_offset3.png", out _).First().Reverse();
+                //var points = loader.Load("./test_offset3.png", out _).First().Reverse();
+                var points = OffsetCalculator.Join(loader.Load("./test_islands.png", out _).Reverse()).First().ToArray();
                 /*/
                 points = new Point2Dmm[]
                 {

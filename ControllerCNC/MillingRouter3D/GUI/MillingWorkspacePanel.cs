@@ -47,8 +47,6 @@ namespace MillingRouter3D.GUI
         /// </summary>        
         internal readonly double RangeZ;
 
-        internal readonly double MaxLayerCut = 2.0;
-
         /// <summary>
         /// Entry point of the plan.
         /// </summary>
@@ -67,10 +65,24 @@ namespace MillingRouter3D.GUI
                     return;
 
                 _cuttingSpeed = value;
-
                 fireSettingsChangedForAllChildren();
             }
         }
+
+        internal double MaxLayerCut
+        {
+            get { return _maxLayerCut; }
+            set
+            {
+                if (_maxLayerCut == value)
+                    //nothing has changed
+                    return;
+
+                _maxLayerCut = value;
+                fireSettingsChangedForAllChildren();
+            }
+        }
+
 
         internal Speed CuttingSpeed => Speed.FromMilimetersPerSecond(CuttingSpeedMm);
 
@@ -130,6 +142,11 @@ namespace MillingRouter3D.GUI
         /// Speed that will be used for cutting.
         /// </summary>
         private double _cuttingSpeed;
+
+        /// <summary>
+        /// Maximum cut depth for a single layer.
+        /// </summary>
+        private double _maxLayerCut;
 
         /// <summary>
         /// Kerf for cutting.
@@ -206,6 +223,7 @@ namespace MillingRouter3D.GUI
             MouseEnter += (s, o) => _positionInfo.Show();
 
             CuttingSpeedMm = 1.0;
+            MaxLayerCut = 2.0;
             WireLength = Configuration.FullWireLength;
         }
 
@@ -244,6 +262,7 @@ namespace MillingRouter3D.GUI
             var stream = new FileStream(filename, FileMode.Create, FileAccess.Write, FileShare.None);
 
             var configuration = new Dictionary<string, object>();
+            configuration.Add("MaxLayerCut", MaxLayerCut);
             configuration.Add("CuttingSpeed", CuttingSpeedMm);
             configuration.Add("CuttingKerf", CuttingKerf);
             configuration.Add("WireLength", WireLength);
@@ -280,6 +299,9 @@ namespace MillingRouter3D.GUI
 
                 var configuration = workspaceRepresentation.Item3;
                 _cuttingSpeed = (double)configuration["CuttingSpeed"];
+
+                if (configuration.ContainsKey("MaxLayerCut"))
+                    _maxLayerCut = (double)configuration["MaxLayerCut"];
 
                 if (configuration.ContainsKey("CuttingKerf"))
                     _cuttingKerf = (double)configuration["CuttingKerf"];

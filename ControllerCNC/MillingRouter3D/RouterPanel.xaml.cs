@@ -215,6 +215,7 @@ namespace MillingRouter3D
             Workspace.OnWorkItemClicked += onItemClicked;
             Speed.Value = 1000 * Workspace.CuttingSpeedMm;
             CuttingKerf.Text = Workspace.CuttingKerf.ToString();
+            MaxLayerCut.Text = Workspace.MaxLayerCut.ToString();
 
             refreshItemList();
             onSettingsChanged();
@@ -257,6 +258,7 @@ namespace MillingRouter3D
 
             Speed.Value = 1000 * Workspace.CuttingSpeedMm;
             CuttingKerf.Text = Workspace.CuttingKerf.ToString();
+            MaxLayerCut.Text = Workspace.MaxLayerCut.ToString();
         }
 
         private void onItemClicked(MillingWorkspaceItem item)
@@ -958,6 +960,16 @@ namespace MillingRouter3D
             if (Workspace != null)
                 Workspace.CuttingKerf = kerf;
         }
+
+
+        private void MaxLayerCut_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            double layerCut;
+            double.TryParse(MaxLayerCut.Text, out layerCut);
+            if (Workspace != null)
+                Workspace.MaxLayerCut= layerCut;
+        }
+
 
         private void LoadPlan_Click(object sender, RoutedEventArgs e)
         {

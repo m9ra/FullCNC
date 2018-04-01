@@ -228,6 +228,12 @@
                                         <TextBox TextChanged="ToolKerf_TextChanged" Margin="0" Padding="0" BorderThickness="0" x:Name="CuttingKerf" Background="Transparent" FontSize="30" TextAlignment="Center" Text="0"/>
                                         <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
                                     </StackPanel>
+
+                                    <TextBlock FontSize="30" FontWeight="Bold" Text="Layer depth"/>
+                                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                        <TextBox TextChanged="MaxLayerCut_TextChanged" Margin="0" Padding="0" BorderThickness="0" x:Name="MaxLayerCut" Background="Transparent" FontSize="30" TextAlignment="Center" Text="0"/>
+                                        <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                                    </StackPanel>
                                 </StackPanel>
 
                             </Border>

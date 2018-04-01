@@ -20,36 +20,43 @@ namespace ControllerCNC.Planning
 
         private readonly List<DrawEvent[]> _updateSnapshots = new List<DrawEvent[]>();
 
-        private readonly Pen _redPen = new Pen(Brushes.Red, 2);
+        private readonly Pen _redPen = new Pen(Brushes.Red, 1);
 
-        private readonly Pen _aboveLinePen = new Pen(Brushes.DarkCyan, 2);
+        private readonly Pen _yellowPen = new Pen(Brushes.Yellow, 1);
 
-        private readonly Pen _aboveLineHighlightPen = new Pen(Brushes.Cyan, 2);
+        private readonly Pen _orangePen = new Pen(Brushes.Orange, 1);
 
-        private readonly Pen _originalPen = new Pen(Brushes.Black, 2);
+        private readonly Pen _aboveLinePen = new Pen(Brushes.DarkCyan, 1);
 
-        private readonly Pen _bodyPen = new Pen(Brushes.Gray, 2);
+        private readonly Pen _aboveLineHighlightPen = new Pen(Brushes.Cyan, 1);
 
-        private readonly Pen _resultPen = new Pen(Brushes.Blue, 2);
+        private readonly Pen _originalPen = new Pen(Brushes.Black, 1);
+
+        private readonly Pen _bodyPen = new Pen(Brushes.Gray, 1);
+
+        private readonly Pen _bluePen = new Pen(Brushes.Blue, 1);
 
         private readonly Pen _basicRulePen = new Pen(Brushes.Red, 1);
 
-        private readonly Pen _appendRulePen = new Pen(Brushes.Orange, 2);
+        private readonly Pen _appendRulePen = new Pen(Brushes.Orange, 1);
+
+        private int _removeCompensation;
 
         public OffsetCalculator(IEnumerable<Point2Dmm> points, bool createVisualLog = false)
         {
-            _points = points.Select(asPoint).ToArray();
+            _points = points.Select(AsPoint).ToArray();
             _isClosedShape = _points.First().Equals(_points.Last());
 
             if (!_isClosedShape)
                 throw new NotImplementedException();
 
-            _points = _points.Distinct().ToArray();
+            _points = _points.ToArray();
             _createVisualLog = createVisualLog;
         }
 
         public IEnumerable<Point2Dmm[]> WithOffset(double offset)
         {
+            _removeCompensation = 0;
             var points = new List<Point>(_points);
             var bisectors = new List<Point>(_points);
 
@@ -69,11 +76,94 @@ namespace ControllerCNC.Planning
             {
                 var lines = getValidOffsetLines(points, bisectors, offset);
                 logVisualSnapshot(lines);
-                result.AddRange(lines.Select(l => l.Select(asPoint2D).ToArray()));
+                result.AddRange(lines.Select(l => l.Select(AsPoint2D).ToArray()));
             }
             /**/
 
 
+            return result;
+        }
+
+        public static IEnumerable<Point2Dmm[]> Join(IEnumerable<Point2Dmm[]> clusters)
+        {
+            var shapeTree = ShapeNode.From(clusters.Select(AsClockwisePoints));
+
+            var resultPoints = new List<List<Point>>();
+            foreach (var tree in shapeTree)
+            {
+                collectPoints(tree, 0, resultPoints);
+            }
+
+            var result = resultPoints.Select(c => c.Select(AsPoint2D).ToArray()).ToArray();
+            return result;
+        }
+
+        private static Point[] AsClockwisePoints(IEnumerable<Point2Dmm> points)
+        {
+            if (!GeometryUtils.ArePointsClockwise(points))
+                points = points.Reverse();
+
+            return points.Select(AsPoint).ToArray();
+        }
+
+        private static void collectPoints(ShapeNode tree, int depth, List<List<Point>> result)
+        {
+            var points = tree.Points;
+            if (depth % 2 == 1)
+            {
+                points = reorderToClosest(tree, tree.Parent);
+                points = points.Reverse().ToArray();
+                var active = result.Last();
+                active.AddRange(points);
+                foreach (var child in tree.OrderedChildren)
+                {
+                    collectPoints(child, depth + 1, result);
+                }
+                return;
+            }
+            var current = new List<Point>();
+            result.Add(current);
+
+
+            var lastPoint = 0;
+            foreach (var child in tree.OrderedChildren)
+            {
+                var preChildPoints = points.Skip(lastPoint).Take(child.ParentJoinId - lastPoint).ToArray();
+                lastPoint = child.ParentJoinId;
+                current.AddRange(preChildPoints);
+                current.Add(points[lastPoint]);
+                collectPoints(child, depth + 1, result);
+
+                current.Add(points[lastPoint]);
+            }
+            current.AddRange(points.Skip(lastPoint));
+        }
+
+        private static Point[] reorderToClosest(ShapeNode child, ShapeNode tree)
+        {
+            var points = child.Points;
+            if (points.First() != points.Last())
+                throw new NotImplementedException();
+
+            /* var shortestDistance = double.PositiveInfinity;
+             var shiftIndex = 0;
+             var parentPoint = tree.Points.First(); //todo better algorithm
+             for (var i = 0; i < points.Length; ++i)
+             {
+                 var distance = (parentPoint - points[i]).LengthSquared;
+                 if (distance < shortestDistance)
+                 {
+                     shortestDistance = distance;
+                     shiftIndex = i;
+                 }
+             }
+             */
+            var shiftIndex = child.StartId;
+            var openShape = points.Take(points.Length - 1);
+
+            var reoderedResult = openShape.Skip(shiftIndex).Concat(openShape.Take(shiftIndex));
+            reoderedResult = reoderedResult.Concat(new[] { reoderedResult.First() });
+            var result = reoderedResult.ToArray();
             return result;
         }
 
@@ -133,9 +223,27 @@ namespace ControllerCNC.Planning
             _updateSnapshots.Add(events.ToArray());
         }
 
-        private void logSelfIntersections(List<Point> points, List<Point> bisectors, IEnumerable<Intersection> intersections)
+        private void logSelfIntersections(List<Point> points, List<Point> bisectors, IEnumerable<Intersection> shapeIntersections, IEnumerable<Intersection> intersections)
         {
             var events = createVisualSnapshot(points, bisectors);
+            if (shapeIntersections != null)
+            {
+                foreach (var intersection in shapeIntersections)
+                {
+                    var sPoint1 = getPoint(intersection.S, points);
+                    var sPoint2 = getPoint(intersection.S + 1, points);
+                    var ePoint1 = getPoint(intersection.E, points);
+                    var ePoint2 = getPoint(intersection.E + 1, points);
+
+                    var intersectionPoint = sPoint1 + (sPoint2 - sPoint1) * intersection.RatioS;
+                    events.Add(new LineEvent(sPoint1, sPoint2, _aboveLineHighlightPen));
+                    events.Add(new LineEvent(ePoint1, ePoint2, _aboveLineHighlightPen));
+                    events.Add(new CircleEvent(intersectionPoint, 5, _redPen));
+                }
+                _updateSnapshots.Add(events.ToArray());
+            }
+
+            events = createVisualSnapshot(points, bisectors);
             foreach (var intersection in intersections)
             {
                 var sPoint1 = getPoint(intersection.S, bisectors);
@@ -151,7 +259,7 @@ namespace ControllerCNC.Planning
             _updateSnapshots.Add(events.ToArray());
         }
 
-        private void logUpdateRule(Point center, double offset, List<Point> points, List<Point> bisectors, bool isBasicUpdate)
+        private void logUpdateRule(Point center, double offset, List<Point> points, List<Point> bisectors, Point[] testedPoints, bool isBasicUpdate)
         {
             if (!canDebug())
                 return;
@@ -159,6 +267,15 @@ namespace ControllerCNC.Planning
             var events = createVisualSnapshot(points, bisectors);
             var pen = isBasicUpdate ? _basicRulePen : _appendRulePen;
             events.Add(new CircleEvent(center, offset, pen));
+
+
+            var isFirst = true;
+            foreach (var point in testedPoints)
+            {
+                var pointPen = isFirst ? _yellowPen : _orangePen;
+                events.Add(createPointLog(point, pointPen));
+                isFirst = false;
+            }
 
             _updateSnapshots.Add(events.ToArray());
         }
@@ -170,6 +287,7 @@ namespace ControllerCNC.Planning
 
             var result = new List<DrawEvent>(_updateSnapshots.Last());
 
+            result.Add(createPointLog(aboveLine[0], _bluePen));
             result.AddRange(createPolyLineLog(aboveLine.ToList(), _aboveLinePen));
             result.Add(createPointLog(testedPoint, _redPen));
             result.Add(new LineEvent(p1, p2, _aboveLineHighlightPen));
@@ -197,7 +315,7 @@ namespace ControllerCNC.Planning
 
             if (bisectors != null)
             {
-                result.AddRange(createPolyLineLog(bisectors, _resultPen));
+                result.AddRange(createPolyLineLog(bisectors, _bluePen));
                 for (var i = 0; i < points.Count; ++i)
                 {
                     var point = points[i];
@@ -213,11 +331,14 @@ namespace ControllerCNC.Planning
         {
             var result = new List<DrawEvent>();
 
-            for (var i = 0; i < points.Count - 1; ++i)
+            for (var i = 0; i < points.Count; ++i)
             {
-                result.Add(new LineEvent(points[i], points[i + 1], pen));
+                result.Add(new LineEvent(points[i], points[(i + 1) % points.Count], pen));
             }
-
+            if (points.Count > 0)
+            {
+                //result.Add(new CircleEvent(points.First(), 3, pen));
+            }
             return result;
         }
 
@@ -246,8 +367,9 @@ namespace ControllerCNC.Planning
         private IEnumerable<Point[]> getValidOffsetLines(List<Point> points, List<Point> bisectors, double offset)
         {
             var result = new List<Point[]>();
+            var shapeIntersections = getSelfIntersections(points);
             var intersections = getSelfIntersections(bisectors);
-            logSelfIntersections(points, bisectors, intersections);
+            logSelfIntersections(points, bisectors, shapeIntersections, intersections);
 
             if (!intersections.Any())
             {
@@ -273,11 +395,10 @@ namespace ControllerCNC.Planning
 
             if (interferentialIntersections.Count > 0)
             {
-                logSelfIntersections(points, bisectors, intersections);
-                var inteferentialGroups = getGroups(interferentialIntersections);
+                logSelfIntersections(points, bisectors, null, intersections);
+                var interferentialGroups = getGroups(interferentialIntersections);
                 logIntefereSelfIntersections(points, bisectors, interferentialIntersections);
-                //TODO remove carefuly
-                return result;
+                intersections = removeInterferential(intersections, interferentialGroups);
             }
 
             var orderedIntersections = intersections.OrderBy(i => i.SValue).ToArray();
@@ -304,23 +425,59 @@ namespace ControllerCNC.Planning
             return result;
         }
 
+        private IEnumerable<Intersection> removeInterferential(IEnumerable<Intersection> intersections, IEnumerable<Intersection[]> interferentialGroups)
+        {
+            var toRemove = new HashSet<Intersection>();
+            foreach (var group in interferentialGroups)
+            {
+                if (group.Length == 1)
+                    //intersection remained alone
+                    continue;
+
+                if (group.Length != 3)
+                    ;
+                //throw new NotImplementedException();
+
+                var i1 = group[0];
+                var i2 = group[1];
+                var i3 = group[2];
+
+                if (i1.Interfere(i2) && i2.Interfere(i3) && i3.Interfere(i1))
+                {
+                    //all interefere together
+                    toRemove.UnionWith(group);
+                    continue;
+                }
+
+                if (!i1.Interfere(i2) || !i1.Interfere(i3))
+                    throw new NotImplementedException("Expecting head to be the first");
+
+                toRemove.Add(i2);
+                toRemove.Add(i3);
+            }
+
+            return intersections.Where(i => !toRemove.Contains(i)).ToArray();
+        }
+
         private IEnumerable<Intersection[]> getGroups(HashSet<Intersection> interferentialIntersections)
         {
-            var remainingIntersections = interferentialIntersections.ToList();
+            var remainingIntersections = interferentialIntersections.OrderBy(i => i.SValue).ToList();
             var result = new List<Intersection[]>();
             while (remainingIntersections.Count > 0)
             {
                 var group = new List<Intersection>();
 
+                var headIntersection = remainingIntersections[0];
+                group.Add(headIntersection);
+                remainingIntersections.RemoveAt(0);
                 for (var i = 0; i < remainingIntersections.Count; ++i)
                 {
                     var intersection = remainingIntersections[i];
-
-                    if (group.Count == 0 || group.Any(gint => gint.Interfere(intersection) || intersection.Interfere(gint)))
+                    if (headIntersection.Interfere(intersection) || intersection.Interfere(headIntersection))
                     {
                         group.Add(intersection);
                         remainingIntersections.RemoveAt(i);
-                        i = -1;
+                        --i;
                     }
                 }
 
@@ -587,14 +744,14 @@ namespace ControllerCNC.Planning
                     var e2 = getPoint(j + 1, bisectors);
 
                     //FindIntersection(s1, s2, e1, e2, out _, out var hasIntersection, out var iP, out _, out _);
-                    var hasIntersection = GeometryUtils.LineSegementsIntersect(s1, s2, e1, e2, out var iP, considerCollinearOverlapAsIntersect: true);
+                    var hasIntersection = GeometryUtils.LineSegementsIntersect(s1, s2, e1, e2, out var iP, considerCollinearOverlapAsIntersect: false);
 
                     if (hasIntersection)
                     {
                         var ratioS = (s1 - iP).Length / (s1 - s2).Length;
                         var ratioE = (e1 - iP).Length / (e1 - e2).Length;
                         var intersection = new Intersection(i, ratioS, j, ratioE);
-                        if (!GeometryUtils.IsZero(ratioS))
+                        if (!GeometryUtils.IsZero(ratioS) && !GeometryUtils.IsZero(ratioE) && !GeometryUtils.IsZero(ratioS - 1.0) && !GeometryUtils.IsZero(ratioE - 1.0))
                             //previous line was touched
                             result.Add(intersection);
                     }
@@ -654,6 +811,7 @@ namespace ControllerCNC.Planning
         {
             for (var k = 0; k < points.Count && points.Count > 3; ++k)
             {
+                _removeCompensation = 0;
                 var pk_m1 = getPoint(k - 1, points);
                 var pk = getPoint(k, points);
                 var ok = getPoint(k, bisectors);
@@ -670,7 +828,7 @@ namespace ControllerCNC.Planning
                 if (center.HasValue)
                 {
                     //basic update rule
-                    logUpdateRule(center.Value, offset, points, bisectors, true);
+                    logUpdateRule(center.Value, offset, points, bisectors, new[] { pk_m1, pk, pk_1, pk_2 }, true);
                     var pc = getPc(center.Value, pk_m1, pk, pk_1, pk_2, offset);
                     basicUpdateRule(k, pc, pk_m1, pk, pk_1, pk_2, offset, points, bisectors);
                     k -= 2;
@@ -728,15 +886,18 @@ namespace ControllerCNC.Planning
             });
             setPoint(points, k, pc);
             var pe = getPoint(k + 1, points);
+            logVisualSnapshot(points, bisectors);
             remove(k + 1, points, bisectors);
+            updateBisectors(k, bisectors, points, offset);
+            logVisualSnapshot(points, bisectors);
 
             var extensionVector = pk_m1 - getPoint(k + 1, points);
             var ps = pk_m1 + extensionVector;
 
+            var borderPolyline = new[] { ps, getPoint(k - 1, points), getPoint(k, points), getPoint(k + 1, points), pe };
             while (points.Count > 3)
             {
-                var needsRemoving = isAbovePolyline(getPoint(k + 2, points),
-                    new[] { ps, getPoint(k - 1, points), getPoint(k, points), getPoint(k + 1, points), pe });
+                var needsRemoving = isAbovePolyline(getPoint(k + 2, points), borderPolyline);
 
                 if (!needsRemoving)
                     break;
@@ -750,6 +911,9 @@ namespace ControllerCNC.Planning
 
         private void outputGeogebraPoints(IEnumerable<Point> points)
         {
+            if (!canDebug())
+                return;
+
             System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)System.Threading.Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
 
@@ -805,7 +969,7 @@ namespace ControllerCNC.Planning
             var v2 = p - bp1;
             //var angle = GeometryUtils.NormalizedAngleBetween(v1, v2);
             var dotProduct = Vector.Multiply(nv1, v2);
-            return dotProduct < 0;
+            return dotProduct > 0;
         }
 
         private bool isAbovePolylineVertex(Point p, Point[] polyline, int nearestPointId)
@@ -863,20 +1027,9 @@ namespace ControllerCNC.Planning
 
             FindIntersection(touchPoint, touchPoint + nv1, l1, l2, out var _1, out var _2, out var pc, out var _3, out var _4);
 
-            logUpdateRule(circleCenter, offset, points, bisectors, false);
+            logUpdateRule(circleCenter, offset, points, bisectors, new[] { l0, l1, l2 }, false);
             return pc;
         }
-
-        private void remove(int k, List<Point> bisectors, List<Point> points)
-        {
-            while (k < 0)
-                k += points.Count;
-            k = k % points.Count;
-
-            bisectors.RemoveAt(k);
-            points.RemoveAt(k);
-        }
-
 
         private Point getPc(Point stuckCircleCenter, Point pk_m1, Point pk, Point pk_1, Point pk_2, double offset)
         {
@@ -932,7 +1085,7 @@ namespace ControllerCNC.Planning
             return center.HasValue;
         }
 
-        public bool PointInPolygon(Point p, Point[] points)
+        public static bool PointInPolygon(Point p, Point[] points)
         {
             // Get the angle between the point and the
             // first and last vertices.
@@ -1194,17 +1347,25 @@ namespace ControllerCNC.Planning
             return false;
         }
 
-        private Point getPoint(Point[] points, int index)
+        private void remove(int k, List<Point> bisectors, List<Point> points)
         {
-            while (index < 0)
-                index += points.Length;
+            var needsRemoveCompensation = k >= points.Count;
 
-            index = index % points.Length;
-            return points[index];
+            k -= _removeCompensation;
+            while (k < 0)
+                k += points.Count;
+            k = k % points.Count;
+
+            bisectors.RemoveAt(k);
+            points.RemoveAt(k);
+
+            if (needsRemoveCompensation)
+                _removeCompensation += 1;
         }
 
         private int getIndex(int index, List<Point> points)
         {
+            index -= _removeCompensation;
             while (index < 0)
                 index += points.Count;
 
@@ -1219,7 +1380,7 @@ namespace ControllerCNC.Planning
         }
 
 
-        private bool setPoint(List<Point> points, int index, Point newValue)
+        private bool setPoint(List<Point> points, int oindex, Point newValue)
         {
             if (double.IsNaN(newValue.X) || double.IsNaN(newValue.Y))
                 throw new NotImplementedException();
@@ -1227,10 +1388,7 @@ namespace ControllerCNC.Planning
             if (double.IsInfinity(newValue.X) || double.IsInfinity(newValue.Y))
                 throw new NotImplementedException();
 
-            while (index < 0)
-                index += points.Count;
-
-            index = index % points.Count;
+            var index = getIndex(oindex, points);
             var oldValue = points[index];
             if (Math.Abs((oldValue - newValue).LengthSquared) < 1e-4)
                 return false;
@@ -1290,12 +1448,12 @@ namespace ControllerCNC.Planning
         }
 
 
-        private Point asPoint(Point2Dmm p)
+        internal static Point AsPoint(Point2Dmm p)
         {
             return new Point(p.C1, p.C2);
         }
 
-        private Point2Dmm asPoint2D(Point p)
+        internal static Point2Dmm AsPoint2D(Point p)
         {
             return new Point2Dmm(p.X, p.Y);
         }
@@ -1690,6 +1848,132 @@ namespace ControllerCNC.Planning
         public override void Draw(DrawingContext dc)
         {
             dc.DrawLine(_pen, _p1, _p2);
+        }
+    }
+
+    class ShapeNode
+    {
+        private HashSet<ShapeNode> _descendants = new HashSet<ShapeNode>();
+
+        private ShapeNode _parent;
+
+        internal readonly Point[] Points;
+
+        internal int ParentJoinId { get; private set; }
+
+        internal int StartId { get; private set; }
+
+        internal IEnumerable<ShapeNode> OrderedChildren { get; private set; }
+
+        internal bool HasParent => _parent != null;
+
+        internal ShapeNode Parent => _parent;
+
+        private ShapeNode(Point[] points)
+        {
+            Points = points;
+            if (!points.First().Equals(points.Last()))
+                points = points.Concat(new[] { points.First() }).ToArray();
+        }
+
+        internal static IEnumerable<ShapeNode> From(IEnumerable<Point[]> clusters)
+        {
+            var nodes = new List<ShapeNode>();
+            foreach (var cluster in clusters)
+            {
+                var node = new ShapeNode(cluster);
+                nodes.Add(node);
+            }
+
+            for (var i = 0; i < nodes.Count; ++i)
+            {
+                var node1 = nodes[i];
+                for (var j = i + 1; j < nodes.Count; ++j)
+                {
+                    var node2 = nodes[j];
+                    node1.registerDescendant(node2);
+                    node2.registerDescendant(node1);
+                }
+            }
+
+            foreach (var node in nodes)
+            {
+                node.FindDirectChildren();
+            }
+
+            var rootNodes = new List<ShapeNode>();
+            for (var i = 0; i < nodes.Count; ++i)
+            {
+                var node = nodes[i];
+                if (!node.HasParent)
+                    rootNodes.Add(node);
+            }
+
+            return rootNodes;
+        }
+
+        private void FindDirectChildren()
+        {
+            var children = new HashSet<ShapeNode>(_descendants);
+            foreach (var desc in _descendants)
+            {
+                children.ExceptWith(desc._descendants);
+            }
+            foreach (var child in children)
+            {
+                setJoinId(child);
+            }
+
+            OrderedChildren = children.OrderBy(c => c.ParentJoinId).ToArray();
+            foreach (var child in OrderedChildren)
+                child._parent = this;
+        }
+
+        private void setJoinId(ShapeNode child)
+        {
+            var bestDistanceSquared = double.PositiveInfinity;
+            var bestI = 0;
+            var bestJ = 0;
+            for (var i = 0; i < child.Points.Length; ++i)
+            {
+                var pi = child.Points[i];
+                for (var j = 0; j < Points.Length; ++j)
+                {
+                    var pj = Points[j];
+                    var distanceSquared = (pi - pj).LengthSquared;
+                    if (distanceSquared < bestDistanceSquared)
+                    {
+                        bestI = i;
+                        bestJ = j;
+                        bestDistanceSquared = distanceSquared;
+                    }
+                }
+            }
+
+            child.ParentJoinId = bestJ;
+            child.StartId = bestI;
+        }
+
+        private void registerDescendant(ShapeNode possibleDescendant)
+        {
+            var isDescendant = OffsetCalculator.PointInPolygon(possibleDescendant.Points[0], Points);
+            if (isDescendant)
+                _descendants.Add(possibleDescendant);
+        }
+
+        internal double SquaredDistanceTo(Point testedPoint)
+        {
+            var shortestDistance = double.PositiveInfinity;
+            foreach (var point in Points)
+            {
+                var xDiff = testedPoint.X - point.X;
+                var yDiff = testedPoint.Y - point.Y;
+                var distance = xDiff * xDiff + yDiff * yDiff;
+                if (distance < shortestDistance)
+                    shortestDistance = distance;
+            }
+
+            return shortestDistance;
         }
     }
 }
