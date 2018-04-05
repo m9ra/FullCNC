@@ -95,7 +95,7 @@ namespace MillingRouter3D
                 };/**/
                 var offset = new OffsetCalculator(points, true);
 
-                offset.WithOffset(25);
+                offset.WithOffset(40);
                 _drawEvents = offset.GetUpdateSnapshots().ToArray();
                 _slider.Maximum = _drawEvents.Length - 1;
                 _slider.Value = _slider.Maximum;

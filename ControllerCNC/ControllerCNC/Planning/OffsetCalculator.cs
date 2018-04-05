@@ -251,7 +251,9 @@ namespace ControllerCNC.Planning
                 var ePoint1 = getPoint(intersection.E, bisectors);
                 var ePoint2 = getPoint(intersection.E + 1, bisectors);
 
-                var intersectionPoint = sPoint1 + (sPoint2 - sPoint1) * intersection.RatioS;
+                //var intersectionPoint = sPoint1 + (sPoint2 - sPoint1) * intersection.RatioS;
+                var intersectionPoint = getIntersectionPoint(intersection, bisectors);
+
                 events.Add(new LineEvent(sPoint1, sPoint2, _aboveLineHighlightPen));
                 events.Add(new LineEvent(ePoint1, ePoint2, _aboveLineHighlightPen));
                 events.Add(new CircleEvent(intersectionPoint, 5, _redPen));
@@ -374,7 +376,7 @@ namespace ControllerCNC.Planning
             if (!intersections.Any())
             {
                 //the whole shape is valid or invalid
-                if (isPointValid(bisectors.First(), points, offset))
+                if (isPointValid(bisectors.First(), _points.ToList(), offset))
                     result.Add(bisectors.ToArray());
 
                 return result;
@@ -406,10 +408,29 @@ namespace ControllerCNC.Planning
             if (validIndex < 0)
                 return result;
 
+            if (points.Count != bisectors.Count)
+                throw new InvalidOperationException();
+
+           /* var intersectionPoints = new HashSet<Point>();
+            foreach(var intersection in orderedIntersections)
+            {
+                intersectionPoints.Add(getPoint(intersection.S, bisectors));
+                intersectionPoints.Add(getPoint(intersection.E, bisectors));
+            }
+
             rearange(orderedIntersections, validIndex, points);
             points = rearange(points, validIndex);
             bisectors = rearange(bisectors, validIndex);
+            logSelfIntersections(points, bisectors, null, intersections);
 
+            foreach (var intersection in orderedIntersections)
+            {
+                if (!intersectionPoints.Contains(getPoint(intersection.S, bisectors)))
+                    throw new InvalidOperationException();
+                if (!intersectionPoints.Contains(getPoint(intersection.E, bisectors)))
+                    throw new InvalidOperationException();
+            }
+            */
             var lines = collectLines(orderedIntersections, bisectors);
 
             /*/
@@ -565,7 +586,7 @@ namespace ControllerCNC.Planning
 
             layerPoints.Add(layerPoints.First());
 
-            if (depth % 2 == 0)
+            //if (depth % 2 == 0)  //TODO shape validation is done outside of this
                 result.Add(layerPoints.ToArray());
 
             foreach (var child in node.Children)
