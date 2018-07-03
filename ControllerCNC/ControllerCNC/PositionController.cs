@@ -10,11 +10,11 @@ namespace ControllerCNC
 {
     class PositionController
     {
-        private DriverCNC _cnc;
+        private DriverCNC2 _cnc;
 
         private int _currentPosition;
 
-        public PositionController(DriverCNC driver)
+        public PositionController(DriverCNC2 driver)
         {
             _cnc = driver;
         }

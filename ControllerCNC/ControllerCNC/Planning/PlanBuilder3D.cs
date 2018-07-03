@@ -43,6 +43,16 @@ namespace ControllerCNC.Planning
         private double _totalSeconds;
 
         /// <summary>
+        /// Determine whether streaming should be stopped.
+        /// </summary>
+        private volatile bool _stop;
+
+        /// <summary>
+        /// Determine whether builder is currently streaming instructions. (not in paused mode)
+        /// </summary>
+        private volatile bool _isStreaming;
+
+        /// <summary>
         /// Level where material cutting starts.
         /// </summary>
         private readonly double _zeroLevel;
@@ -69,6 +79,8 @@ namespace ControllerCNC.Planning
         public Point3Dmm CurrentPoint => _currentPoint;
 
         public double TotalSeconds => _totalSeconds;
+
+        public bool IsStreaming => _isStreaming;
 
         public PlanBuilder3D(double transitionLevel, double zeroLevel, Speed cuttingSpeed, Speed transitionSpeed, Acceleration planeAcceleration)
         {
@@ -152,6 +164,14 @@ namespace ControllerCNC.Planning
             var timeQueue = new Queue<double>();
             while (!planStream.IsComplete)
             {
+                while (_stop)
+                {
+                    _isStreaming = false;
+                    Thread.Sleep(10);
+                }
+
+                _isStreaming = true;
+
                 var currentCuttingSpeed = _stream_cuttingSpeed;
                 var currentTime = DateTime.Now;
 
@@ -316,6 +336,28 @@ namespace ControllerCNC.Planning
             var diffY = ToStep(targetSteps.Y - startSteps.Y);
 
             return new Point4Dstep(diffU, diffV, diffX, diffY);
+        }
+
+        public void Stop()
+        {
+            if (!_isStreaming)
+                return;
+
+            _stop = true;
+            while (_isStreaming)
+                //spin lock, respose should be very fast
+                Thread.Sleep(1);
+        }
+
+        public void Continue()
+        {
+            if (_isStreaming)
+                return;
+
+            _stop = false;
+            while (!_isStreaming)
+                //spin lock, respose should be very fast
+                Thread.Sleep(1);
         }
 
         #endregion

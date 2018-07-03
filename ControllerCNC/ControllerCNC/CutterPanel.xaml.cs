@@ -48,7 +48,7 @@ namespace ControllerCNC
 
         internal WorkspacePanel Workspace;
 
-        internal readonly DriverCNC Cnc;
+        internal readonly DriverCNC2 Cnc;
 
         private static string _autosaveFile = "workspace_autosave.cwspc";
 
@@ -93,6 +93,7 @@ namespace ControllerCNC
             System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
             Thread.CurrentThread.CurrentCulture = customCulture;
+            SystemUtilities.PreventSleepMode();
 
             InitializeComponent();
             MessageBox.Visibility = Visibility.Hidden;
@@ -103,7 +104,7 @@ namespace ControllerCNC
             _motionCommands.Add(StartPlan);
             _motionCommands.Add(CuttingDeltaT);
 
-            Cnc = new DriverCNC();
+            Cnc = new DriverCNC2();
             Cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
             Cnc.OnHomeCalibrated += () => Dispatcher.Invoke(enableMotionCommands);
 
@@ -488,7 +489,7 @@ namespace ControllerCNC
 
             if (_isPlanRunning)
             {
-                var remainingTicks = Cnc.PlannedState.TickCount - Cnc.EstimationTicks;
+                var remainingTicks = Cnc.RemainingPlanTickEstimation;
                 var remainingSeconds = (int)(remainingTicks / Configuration.TimerFrequency);
                 if (_lastRemainingSeconds > remainingSeconds || Math.Abs(_lastRemainingSeconds - remainingSeconds) > 2)
                 {

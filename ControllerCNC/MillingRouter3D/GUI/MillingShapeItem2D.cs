@@ -196,6 +196,27 @@ namespace MillingRouter3D.GUI
 
         private void refreshOfffsetLines()
         {
+            _currentOffsetLines = scaledOnlyDefinitionTransformation(_shapeDefinition);
+            /*/   var offsetClusters = new List<Point2Dmm[]>();
+               var remainingClusters = new HashSet<Point2Dmm[]>(_currentOffsetLines);
+               foreach (var cluster in remainingClusters.ToArray())
+               {
+                   var offsetCalculator = new OffsetCalculator(cluster.Reverse());
+                   var offsetPoints = offsetCalculator.WithOffset(-1.0);
+                   if (offsetPoints.Any())
+                   {
+                       offsetClusters.AddRange(offsetPoints);
+                   }
+                   else
+                   {
+                       remainingClusters.Remove(cluster);
+                   }
+               }
+
+               _currentOffsetLines = offsetClusters.OrderByDescending(c => c.Select(p => p.C2).Min()).ToArray();/**/
+
+            /**/
+
             var itemPoints = scaledOnlyDefinitionTransformation(_shapeDefinition);
             itemPoints = OffsetCalculator.Join(itemPoints);
             var offsetClusters = new List<Point2Dmm[]>();
@@ -220,7 +241,16 @@ namespace MillingRouter3D.GUI
                 }
             }
 
-            _currentOffsetLines = offsetClusters.OrderByDescending(c => c.Select(p => p.C2).Min()).ToArray();
+            _currentOffsetLines = offsetClusters.ToArray();
+            //_currentOffsetLines = itemPoints.ToArray();
+            //_currentOffsetLines = offsetClusters.OrderByDescending(c => c.Select(p => p.C2).Min()).ToArray();
+            /*/
+            var itemPoints = scaledOnlyDefinitionTransformation(_shapeDefinition);
+            var calculator = new StrokeOffsetCalculator(itemPoints);
+            //var offsetClusters = calculator.WithOffset(0.7);
+            var offsetClusters = ImageInterpolator.FlattenStokes(itemPoints);
+            offsetClusters = itemPoints;
+            _currentOffsetLines = offsetClusters.OrderByDescending(c => c.Select(p => p.C2).Min()).ToArray();/**/
         }
 
         private Point2Dmm[][] preparePoints(IEnumerable<Point2Dmm[]> points)
@@ -375,6 +405,9 @@ namespace MillingRouter3D.GUI
         private IEnumerable<Point2Dmm[]> afterScaleTransformation(IEnumerable<Point2Dmm[]> definition)
         {
             var result = new List<Point2Dmm[]>();
+            if (!definition.Any())
+                return result;
+
             var minC1 = definition.SelectMany(c => c).Min(p => p.C1);
             var maxC1 = definition.SelectMany(c => c).Max(p => p.C1);
 

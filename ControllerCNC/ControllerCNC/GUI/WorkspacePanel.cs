@@ -676,7 +676,8 @@ namespace ControllerCNC.GUI
 
         private Point getJoinPointProjectedUV(PointProviderItem item, int pointIndex)
         {
-            var point4D = item.CutPoints.Skip(pointIndex).First();
+            var cutPoints = item.CutPoints.ToArray();
+            var point4D = cutPoints.Skip(Math.Min(pointIndex , cutPoints.Length- 1)).First();
 
             var coordU = ActualWidth * point4D.U / StepCountU;
             var coordV = ActualHeight * point4D.V / StepCountV;
@@ -686,7 +687,8 @@ namespace ControllerCNC.GUI
 
         private Point getJoinPointProjectedXY(PointProviderItem item, int pointIndex)
         {
-            var point4D = item.CutPoints.Skip(pointIndex).First();
+            var cutPoints = item.CutPoints.ToArray();
+            var point4D = cutPoints.Skip(Math.Min(pointIndex, cutPoints.Length - 1)).First();
 
             var coordX = ActualWidth * point4D.X / StepCountX;
             var coordY = ActualHeight * point4D.Y / StepCountY;

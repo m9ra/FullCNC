@@ -18,7 +18,7 @@ namespace ControllerCNC.Planning
     {
         private BitmapMash _mash;
 
-        internal readonly double ShrinkThreshold = 0.85;
+        internal readonly double ShrinkThreshold = 0.75;
 
         public ImageInterpolator(string filename)
         {
@@ -53,6 +53,142 @@ namespace ControllerCNC.Planning
             var shrinkedShapes = parts.Select(p => shrinkLines(p.Concat(new[] { p.First() })).ToArray());
             return shrinkedShapes;
         }
+
+        public static IEnumerable<Point2Dmm[]> FlattenStokes(IEnumerable<Point2Dmm[]> parts)
+        {
+            var flatteningTolerance = 1.0;
+            var partsArr = parts.Select(filter).ToArray();
+            var updates = new List<Tuple<int, int, int, int>>();
+            for (var i = 0; i < partsArr.Length; ++i)
+            {
+                for (var j = 0; j < partsArr[i].Length - 1; ++j)
+                {
+                    var n = getNearestWithOpositeSpin(i, j, partsArr);
+                    if (n == null)
+                        continue;
+
+                    var distance = getDistance(i, j, n.Item1, n.Item2, partsArr);
+
+                    if (distance < flatteningTolerance)
+                    {
+                        var update = Tuple.Create(i, j, n.Item1, n.Item2);
+                        updates.Add(update);
+                    }
+                }
+            }
+
+            foreach (var update in updates)
+            {
+                var p1 = partsArr[update.Item1][update.Item2];
+                var p2 = partsArr[update.Item3][update.Item4];
+                var v = p2 - p1;
+                var np = p1 + v / 2;
+
+                var c1 = partsArr[update.Item1];
+                var c2 = partsArr[update.Item3];
+                c1[update.Item2] = np;
+                c2[update.Item4] = np;
+                if (update.Item2 == 0)
+                {
+                    c1[c1.Length - 1] = np;
+                }
+
+                if (update.Item4 == 0)
+                {
+                    c2[c2.Length - 1] = np;
+                }
+            }
+
+            var result = partsArr.Select(c => filter(c).ToArray()).Select(c => c.Select(OffsetCalculator.AsPoint2D).ToArray());
+            return result;
+        }
+
+        private static System.Windows.Point[] filter(Point2Dmm[] arg)
+        {
+            var result = new List<System.Windows.Point>();
+            foreach (var point in arg)
+            {
+                var p = OffsetCalculator.AsPoint(point);
+                if (result.Count > 0 && (result.Last() - p).Length < 0.1)
+                    continue;
+
+                result.Add(p);
+            }
+
+            return result.ToArray();
+        }
+
+        private static System.Windows.Point[] filter(System.Windows.Point[] arg)
+        {
+            var result = new List<System.Windows.Point>();
+            foreach (var p in arg)
+            {
+                if (result.Count > 0 && (result.Last() - p).Length < 0.1)
+                    continue;
+
+                result.Add(p);
+            }
+
+            return result.ToArray();
+        }
+
+        private static double getDistance(int i1, int j1, int i2, int j2, System.Windows.Point[][] partsArr)
+        {
+            var p1 = partsArr[i1][j1];
+            var p2 = partsArr[i2][j2];
+
+            return (p2 - p1).Length;
+        }
+
+        private static Tuple<int, int> getNearestWithOpositeSpin(int i, int j, System.Windows.Point[][] partsArr)
+        {
+            var clusterStart = j + 1;
+            var bestDistance = double.PositiveInfinity;
+            Tuple<int, int> bestOpositeSpine = null;
+            var spin1 = getSpin(i, j, partsArr);
+            for (var i2 = i; i2 < partsArr.Length; ++i2)
+            {
+                for (var j2 = clusterStart; j2 < partsArr[i2].Length - 1; ++j2)
+                {
+                    var distance = getDistance(i, j, i2, j2, partsArr);
+
+                    var spin2 = getSpin(i2, j2, partsArr);
+                    if (isOposite(spin1, spin2) == (i != i2))
+                        continue;
+
+                    if (distance < bestDistance)
+                    {
+                        bestDistance = distance;
+                        bestOpositeSpine = Tuple.Create(i2, j2);
+                    }
+                }
+
+                clusterStart = 0;
+            }
+
+            return bestOpositeSpine;
+        }
+
+        private static bool isOposite(System.Windows.Vector spin1, System.Windows.Vector spin2)
+        {
+            var angle = (System.Windows.Vector.AngleBetween(spin1, spin2));
+
+            if (Math.Abs(angle) > 180)
+                throw new NotImplementedException();
+
+            return Math.Abs(angle) > 170;
+        }
+
+        private static System.Windows.Vector getSpin(int i, int j, System.Windows.Point[][] partsArr)
+        {
+            var clLen = partsArr[i].Length;
+            var previousPoint = partsArr[i][(j - 1 + clLen) % clLen];
+            var nextPoint = partsArr[i][(j + 1) % clLen];
+
+            return nextPoint - previousPoint;
+        }
+
+
 
         private IEnumerable<Point2Dmm> joinParts(IEnumerable<Point2Dmm[]> parts)
         {

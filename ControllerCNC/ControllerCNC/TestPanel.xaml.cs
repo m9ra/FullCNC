@@ -32,7 +32,7 @@ namespace ControllerCNC
     /// </summary>
     public partial class TestPanel : Window
     {
-        DriverCNC _cnc;
+        DriverCNC2 _cnc;
         DispatcherTimer _positionTimer = new DispatcherTimer();
         DispatcherTimer _statusTimer = new DispatcherTimer();
         SpeedController _speedController;
@@ -45,7 +45,7 @@ namespace ControllerCNC
 
             Output.ScrollToEnd();
 
-            _cnc = new DriverCNC();
+            _cnc = new DriverCNC2();
             _cnc.OnDataReceived += _driver_OnDataReceived;
             _cnc.Initialize();
 

@@ -80,9 +80,9 @@ namespace ControllerCNC.Machine
         /// </inheritdoc>
         internal override ulong GetInstructionDuration()
         {
-            var result = (ulong)Math.Abs(StepCount) * (ulong)BaseDeltaT;
+            var result = ((ulong)Math.Abs(StepCount)) * ((ulong)Math.Abs(BaseDeltaT));
             if (PeriodDenominator > 0)
-                result += (ulong)(PeriodNumerator / PeriodDenominator);
+                result += PeriodNumerator * (ulong)Math.Abs(StepCount) / PeriodDenominator;
 
             return result;
         }

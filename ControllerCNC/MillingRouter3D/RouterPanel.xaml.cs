@@ -86,7 +86,7 @@ namespace MillingRouter3D
         /// <summary>
         /// Plan builder that currently streams instructions to cnc.
         /// </summary>
-        private PlanBuilder3D _streamingBuilder;
+        private PlanBuilder3D _planStreamer;
 
         public RouterPanel()
         {
@@ -95,6 +95,7 @@ namespace MillingRouter3D
             System.Globalization.CultureInfo customCulture = (System.Globalization.CultureInfo)Thread.CurrentThread.CurrentCulture.Clone();
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
             Thread.CurrentThread.CurrentCulture = customCulture;
+            SystemUtilities.PreventSleepMode();
 
             InitializeComponent();
             MessageBox.Visibility = Visibility.Hidden;
@@ -568,10 +569,10 @@ namespace MillingRouter3D
 
             Workspace.HeadXYZ.Position = position;
 
-            if (_streamingBuilder != null)
+            if (_planStreamer != null)
             {
                 var elapsedSeconds = (int)Math.Round((DateTime.Now - _planStart).TotalSeconds);
-                var totalSeconds = (int)Math.Round(_streamingBuilder.TotalSeconds);
+                var totalSeconds = (int)Math.Round(_planStreamer.TotalSeconds);
 
                 _lastRemainingSeconds = totalSeconds - elapsedSeconds;
                 var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);
@@ -606,6 +607,32 @@ namespace MillingRouter3D
 
         #region Plan execution
 
+        private void pausePlan()
+        {
+            if (_planStreamer == null)
+                return;
+
+            if (_planStreamer.IsStreaming)
+            {
+                _planStreamer.Stop();
+                setPauseControl(isPaused: true);
+            }
+            else
+            {
+                _planStreamer.Continue();
+                setPauseControl(isPaused: false);
+            }
+        }
+
+        private void stopPlan()
+        {
+            if (_planStreamer == null)
+                return;
+
+            _planStreamer.Stop();
+            planCompleted();
+        }
+
         private void executePlan()
         {
             if (!Cnc.IsHomeCalibrated)
@@ -616,6 +643,7 @@ namespace MillingRouter3D
 
             disableMotionCommands();
             Workspace.DisableChanges();
+            activateExecutionControls();
 
             var state = Cnc.PlannedState;
             var currentPosition = PlanBuilder3D.GetPosition(state);
@@ -658,7 +686,7 @@ namespace MillingRouter3D
                 builder.StreamingIsComplete += planCompleted;/*/
                 Cnc.SEND(plan);
                 Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
-                _streamingBuilder = builder;
+                _planStreamer = builder;
                 _planStart = DateTime.Now;
                 builder.StreamInstructions(Cnc);
                 this.Focus();
@@ -667,16 +695,53 @@ namespace MillingRouter3D
 
         private void planCompleted()
         {
-            _streamingBuilder = null;
+            _planStreamer = null;
             _lastRemainingSeconds = 0;
             Cnc.OnInstructionQueueIsComplete -= planCompleted;
             Workspace.EnableChanges();
             enableMotionCommands();
+            deactiveExecutionControls();
         }
+
 
         #endregion
 
         #region Controls implementation
+
+        private void setPauseControl(bool isPaused)
+        {
+            if (isPaused)
+            {
+                PausePlan.Content = "Continue";
+            }
+            else
+            {
+                PausePlan.Content = "Pause";
+            }
+        }
+
+        private void activateExecutionControls()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                StartPlan.IsEnabled = false;
+                StopPlan.IsEnabled = true;
+                PausePlan.IsEnabled = true;
+                setPauseControl(isPaused: false);
+            });
+        }
+
+        private void deactiveExecutionControls()
+        {
+            Dispatcher.Invoke(() =>
+            {
+                StartPlan.IsEnabled = true;
+                StopPlan.IsEnabled = false;
+                PausePlan.IsEnabled = false;
+                setPauseControl(isPaused: false);
+            });
+        }
+
 
         private void enableMotionCommands()
         {
@@ -719,6 +784,8 @@ namespace MillingRouter3D
             MoveByCuttingSpeed.Checked += (s, e) => refreshTransitionSpeed();
             MoveByCuttingSpeed.Unchecked += (s, e) => refreshTransitionSpeed();
             refreshTransitionSpeed();
+
+            deactiveExecutionControls();
         }
 
         private void initializeTransitionHandlers(ToggleButton button, int dirX, int dirY, int dirZ)
@@ -764,13 +831,13 @@ namespace MillingRouter3D
             if (CoordController == null)
                 return;
 
-            if (_streamingBuilder != null)
+            if (_planStreamer != null)
                 Speed.IsEnabled = _allowCommands;
 
             var speed = getTransitionSpeed().ToMetric();
             var speeds = PlanBuilder3D.GetPositionRev(_tr_dirX * speed, _tr_dirY * speed, _tr_dirZ * speed);
             CoordController.SetDesiredSpeeds(speeds.U, speeds.V, speeds.X, speeds.Y);
-            var builder = _streamingBuilder;
+            var builder = _planStreamer;
             if (builder != null)
                 builder.SetStreamingCuttingSpeed(getCuttingSpeed());
         }
@@ -827,6 +894,16 @@ namespace MillingRouter3D
         private void StartPlan_Click(object sender, RoutedEventArgs e)
         {
             executePlan();
+        }
+
+        private void StopPlan_Click(object sender, RoutedEventArgs e)
+        {
+            stopPlan();
+        }
+
+        private void PausePlan_Click(object sender, RoutedEventArgs e)
+        {
+            pausePlan();
         }
 
         private void AddShape_Click(object sender, RoutedEventArgs e)
@@ -967,7 +1044,7 @@ namespace MillingRouter3D
             double layerCut;
             double.TryParse(MaxLayerCut.Text, out layerCut);
             if (Workspace != null)
-                Workspace.MaxLayerCut= layerCut;
+                Workspace.MaxLayerCut = layerCut;
         }
 
 
@@ -993,7 +1070,7 @@ namespace MillingRouter3D
             }
         }
 
-        private void Tet_Click(object sender, RoutedEventArgs e)
+        private void Test_Click(object sender, RoutedEventArgs e)
         {
             var stepI = new ConstantInstruction((short)4, 25000, 0);
             var waitI = new ConstantInstruction((short)0, 1000000, 0);

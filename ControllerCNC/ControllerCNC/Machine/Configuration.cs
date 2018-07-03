@@ -186,7 +186,7 @@ namespace ControllerCNC.Machine
         public static void EnableRouterMode()
         {
             MaxStepsY = 200 * StepsPerRevolution * 100 / 125;
-            MaxStepsV = 245 * StepsPerRevolution * 100 / 125;
+            MaxStepsV = 285 * StepsPerRevolution * 100 / 125;
 
             MaxStepsU = MaxStepsV; //artificial limitation
             MaxStepsX = MaxStepsV;//artificial limitation

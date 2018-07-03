@@ -48,6 +48,7 @@ namespace ControllerCNC.GUI
             ShapeLeft.TextChanged += ShapeLeft_TextChanged;
             ShapeWidth.TextChanged += ShapeWidth_TextChanged;
             ShapeHeight.TextChanged += ShapeHeight_TextChanged;
+            SizeRatio.TextChanged += SizeRatio_TextChanged;
             FinishCutTop.TextChanged += FinishCutTop_TextChanged;
             BlockThickness.TextChanged += BlockThickness_TextChanged;
             ShapeRotation.ValueChanged += ShapeRotation_ValueChanged;
@@ -68,7 +69,7 @@ namespace ControllerCNC.GUI
             if (shapeItem == null)
             {
                 ShapeProperties.Visibility = Visibility.Collapsed;
-                setLayout(300, 450, 100);
+                setLayout(300, 470, 100);
                 return;
             }
 
@@ -76,11 +77,12 @@ namespace ControllerCNC.GUI
             if (shapeItem4D == null)
             {
                 BlockProperties.Visibility = Visibility.Collapsed;
-                setLayout(300, 345, 250);
+                setLayout(300, 365, 250);
             }
 
             writeNumber(ShapeWidth, shapeItem.MetricWidth);
             writeNumber(ShapeHeight, shapeItem.MetricHeight);
+            writeNumber(SizeRatio, shapeItem.SizeRatio * 100);
             ClockwiseCut.IsChecked = shapeItem.UseClockwiseCut;
 
             if (shapeItem4D != null)
@@ -176,6 +178,17 @@ namespace ControllerCNC.GUI
             double value;
             if (double.TryParse(ShapeHeight.Text, out value))
                 shapeItem.MetricHeight = value;
+
+            refreshWindow();
+        }
+
+        private void SizeRatio_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            var shapeItem = _item as ShapeItem;
+
+            double value;
+            if (double.TryParse(SizeRatio.Text, out value))
+                shapeItem.SizeRatio = value / 100;
 
             refreshWindow();
         }

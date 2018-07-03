@@ -81,6 +81,7 @@
     <Compile Include="GUI\CenterCutPanelDialog.xaml.cs">
       <DependentUpon>CenterCutPanelDialog.xaml</DependentUpon>
     </Compile>
+    <Compile Include="GUI\SystemUtilities.cs" />
     <Compile Include="GUI\WorkspaceItem.cs" />
     <Compile Include="GUI\WorkspacePanel.cs" />
     <Compile Include="Loading\Loaders\Cor4dLoader.cs" />
@@ -111,12 +112,14 @@
     <Compile Include="Planning\PlanStream3D.cs" />
     <Compile Include="Planning\PlanBuilder3D.cs" />
     <Compile Include="Planning\PlanPart3D.cs" />
+    <Compile Include="Planning\SamplingOffsetCalculator.cs" />
     <Compile Include="Planning\StraightLinePlanner4D.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />
     <Compile Include="Planning\AccelerationBuilder.cs" />
     <Compile Include="Planning\PathTracer2D.cs" />
     <Compile Include="Planning\PlaneProjector.cs" />
     <Compile Include="Planning\PointTracer4D.cs" />
+    <Compile Include="Planning\StrokeOffsetCalculator.cs" />
     <Compile Include="Planning\TraceProfiles\ProfileBase.cs" />
     <Compile Include="Planning\TraceProfiles\TargetPlaneSpeedOptimizer.cs" />
     <Compile Include="Planning\StraightLinePlanner2D.cs" />

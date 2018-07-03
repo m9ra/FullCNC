@@ -210,6 +210,29 @@ namespace ControllerCNC.GUI
             }
         }
 
+        internal double SizeRatio
+        {
+            get
+            {
+                var diffC1 = _shapeMaxC1 - _shapeMinC1;
+                var diffC2 = _shapeMaxC2 - _shapeMinC2;
+                var originalDiff = Math.Max(diffC1, diffC2);
+                var currentSize = diffC1 > diffC2 ? _shapeMetricSize.Width : _shapeMetricSize.Height;
+
+                return currentSize / originalDiff;
+            }
+
+            set
+            {
+                if (value == SizeRatio)
+                    return;
+
+                _shapeMetricSize = new Size(value * (_shapeMaxC1 - _shapeMinC1), value * (_shapeMaxC2 - _shapeMinC2));
+                fireOnSettingsChanged();
+            }
+        }
+
+
         internal double MetricWidth
         {
             get
@@ -518,7 +541,7 @@ namespace ControllerCNC.GUI
         protected IEnumerable<Point4Dmm> addKerf(IEnumerable<Point4Dmm> points)
         {
             var workspace = Parent as WorkspacePanel;
-            if (workspace == null || (workspace.CuttingKerf == 0.0 && !this.UseExplicitKerf))
+            if (workspace == null || (workspace.CuttingKerf == 0.0 && !UseExplicitKerf))
                 //there is no change
                 return points;
 
@@ -529,6 +552,15 @@ namespace ControllerCNC.GUI
 
         protected Point4Dmm[] applyKerf(IEnumerable<Point4Dmm> points, WorkspacePanel workspace)
         {
+           /* var pointsUV = points.ToUV();
+
+            var offsetCalculator = new OffsetCalculator(pointsUV.Reverse());
+            var offsetPoints = offsetCalculator.WithOffset(workspace.CuttingKerf / 2).First();
+
+            return offsetPoints.DuplicateTo4Dmm().ToArray();
+
+            throw new NotImplementedException();*/
+
             var pointsArr = points.ToArray();
 
             var result = new List<Point4Dmm>();

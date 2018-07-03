@@ -127,6 +127,11 @@ namespace ControllerCNC.Machine
         private ulong _tickEstimation;
 
         /// <summary>
+        /// How many ticks were made during estimation.
+        /// </summary>
+        public ulong RemainingPlanTickEstimation { get; private set; }
+
+        /// <summary>
         /// Determine whether machine is connected.
         /// </summary>
         public bool IsConnected
@@ -417,6 +422,7 @@ namespace ControllerCNC.Machine
                 {
                     case MachineResponse.IsOnline:
                         //there is nothing to do
+                        IsConnected = true;
                         break;
 
                     case MachineResponse.RequiresAuthentication:
@@ -680,7 +686,10 @@ namespace ControllerCNC.Machine
                     _xEstimation += xSteps;
                     _yEstimation += ySteps;
                     if (targetTicks > 0)
+                    {
                         _tickEstimation = (ulong)targetTicks;
+                        RemainingPlanTickEstimation = PlannedState.TickCount - CurrentState.TickCount - _tickEstimation;
+                    }
                 }
             }
         }

@@ -12,7 +12,7 @@ namespace ControllerCNC
 {
     class SpeedController
     {
-        private readonly DriverCNC _cnc;
+        private readonly DriverCNC2 _cnc;
 
         private readonly Thread _speedWorker;
 
@@ -32,7 +32,7 @@ namespace ControllerCNC
         public volatile bool Direction;
 
 
-        internal SpeedController(DriverCNC cnc)
+        internal SpeedController(DriverCNC2 cnc)
         {
             _cnc = cnc;
             _desiredDeltaT = Configuration.StartDeltaT;

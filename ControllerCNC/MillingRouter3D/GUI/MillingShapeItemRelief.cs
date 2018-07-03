@@ -102,17 +102,11 @@ namespace MillingRouter3D.GUI
         /// </summary>
         private Pen _cutPen = new Pen();
 
+        private HeightMapShape _shapeMap;
+
         private int _width;
 
         private int _height;
-
-        internal Point3Dmm[,] TransformedShapeDefinition
-        {
-            get
-            {
-                return definitionTransformation(_reliefDefinition);
-            }
-        }
 
         internal MillingShapeItemRelief(ReadableIdentifier name, double[,] reliefDefinition)
             : base(name)
@@ -156,28 +150,6 @@ namespace MillingRouter3D.GUI
                 MetricHeight = _height;
         }
 
-        protected Point3Dmm[,] definitionTransformation(double[,] relief)
-        {
-            var result = new Point3Dmm[_width, _height];
-            for (var xi = 0; xi < _width; ++xi)
-            {
-                for (var yi = 0; yi < _height; ++yi)
-                {
-                    var x = 1.0 * xi / _width;
-                    var y = 1.0 * yi / _height;
-                    var z = relief[xi, yi];
-
-                    var definitionPoint = new Point3Dmm(x, y, z);
-                    var point = rotate(definitionPoint);
-
-                    point = new Point3Dmm(point.X * _shapeMetricSize.Width + PositionX, point.Y * _shapeMetricSize.Height + PositionY, point.Z);
-                    result[xi, yi] = point;
-                }
-            }
-
-            return result;
-        }
-
         /// <inheritdoc/>
         protected override object createContent()
         {
@@ -195,6 +167,10 @@ namespace MillingRouter3D.GUI
         {
             _width = _reliefDefinition.GetLength(0);
             _height = _reliefDefinition.GetLength(1);
+            _width = 50;
+            _height = 50;
+            _millingDepth = 3;
+            SetOriginalSize();
 
             BorderThickness = new Thickness(0);
             Padding = new Thickness(0);
@@ -209,32 +185,41 @@ namespace MillingRouter3D.GUI
             _cutPen.DashStyle = DashStyles.Dot;
 
             _itemPen = new Pen(Brushes.Black, 1.0);
+            _shapeMap = new HeightMapShape(_reliefDefinition);
             refreshVisualization();
         }
 
+
         private void refreshVisualization()
         {
-            var points = TransformedShapeDefinition;
             visualization = new WriteableBitmap(_width, _height, _width, _height, PixelFormats.Gray8, null);
             var pixels = new byte[visualization.PixelHeight * visualization.PixelWidth * visualization.Format.BitsPerPixel / 8];
 
-            for (var yi = 0; yi < _height; yi += 1)
+            var resolutionX = _width;
+            var resolutionY = _height;
+            for (var xi = 0; xi < resolutionX; ++xi)
             {
-                for (var xi = 0; xi < _width; xi += 1)
+                for (var yi = 0; yi < resolutionY; ++yi)
                 {
-                    var point = points[xi, yi];
-                    var visualPoint = ConvertToVisual(point);
-                    var colorIntensity = (byte)Math.Round(255 * point.Z / _millingDepth);
+                    var xRatio = 1.0 * xi / resolutionX;
+                    var yRatio = 1.0 * yi / resolutionY;
+
+                    var depth = _shapeMap.GetHeight(xRatio, yRatio);
+                    var visualX = _shapeMetricSize.Width * _mmToVisualFactorC1 * xRatio;
+                    var visualY = _shapeMetricSize.Height * _mmToVisualFactorC2 * yRatio;
+                    var visualPoint = new Point(visualX, visualY);
+
+                    var colorIntensity = (byte)Math.Round(255 * depth);
                     var index = (yi * visualization.PixelWidth + xi) * visualization.Format.BitsPerPixel / 8;
                     pixels[index] = colorIntensity;
                 }
             }
 
             visualization.WritePixels(
-                new Int32Rect(0, 0, visualization.PixelWidth, visualization.PixelHeight),
-                pixels,
-                visualization.PixelWidth * visualization.Format.BitsPerPixel / 8,
-                0);
+                    new Int32Rect(0, 0, visualization.PixelWidth, visualization.PixelHeight),
+                    pixels,
+                    visualization.PixelWidth * visualization.Format.BitsPerPixel / 8,
+                    0);
 
             visualization.Freeze();
         }
@@ -278,20 +263,27 @@ namespace MillingRouter3D.GUI
 
         internal override void BuildPlan(PlanBuilder3D builder, MillingWorkspacePanel workspace)
         {
-            var reliefPoints = TransformedShapeDefinition;
             builder.GotoZeroLevel();
 
             var maxDepth = _millingDepth;
             var upDown = true;
-            for (var x = 0; x < _width; ++x)
+            var stepLength = 1.0;
+            var resolutionX = _shapeMetricSize.Width / stepLength;
+            var resolutionY = _shapeMetricSize.Height / stepLength;
+            for (var xi = 0.0; xi < resolutionX; xi += stepLength)
             {
-                for (var i = 0; i < _height; ++i)
+                for (var yi = 0.0; yi < resolutionY; yi += stepLength)
                 {
-                    var y = upDown ? i : _height - i - 1;
-                    var point = reliefPoints[x, y];
-                    if (point.Z > maxDepth)
-                        point = new Point3Dmm(point.X, point.Y, maxDepth);
+                    var xRatio = 1.0 * xi / resolutionX;
+                    var yRatio = 1.0 * yi / resolutionY;
 
+                    var depth = _shapeMap.GetHeight(xRatio, yRatio) * _millingDepth;
+                    var x = _shapeMetricSize.Width * xRatio;
+                    var y = _shapeMetricSize.Height * yRatio;
+                    if (!upDown)
+                        y = _shapeMetricSize.Height - y;
+
+                    var point = new Point3Dmm(PositionX + x, PositionY + y, depth);
                     builder.AddCuttingSpeedTransition(new Point2Dmm(point.X, point.Y), point.Z);
                 }
                 upDown = !upDown;

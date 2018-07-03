@@ -10,7 +10,7 @@ namespace ControllerCNC.Planning
 {
     public static class GeometryUtils
     {
-        public static readonly double Epsilon = 1e-4;
+        public static readonly double Epsilon = 1e-2;
 
         public static bool IsZero(this Vector vector)
         {
@@ -24,7 +24,7 @@ namespace ControllerCNC.Planning
 
         public static double NormalizedAngleBetween(Vector v1, Vector v2)
         {
-            return (Vector.AngleBetween(v1, v2) + 360) % (360 );
+            return (Vector.AngleBetween(v1, v2) + 360) % (360);
         }
 
         public static bool ArePointsClockwise(IEnumerable<Point2Dmm> definition)
@@ -104,6 +104,31 @@ namespace ControllerCNC.Planning
 
             // 5. Otherwise, the two line segments are not parallel but do not intersect.
             return false;
+        }
+
+        public static bool IsPointInPolygon(Point point, Point[] polygon)
+        {
+            int polygonLength = polygon.Length, i = 0;
+            bool inside = false;
+            // x, y for tested point.
+            var pointX = point.X;
+            var pointY = point.Y;
+            // start / end point for the current polygon segment.
+            double startX, startY, endX, endY;
+            var endPoint = polygon[polygonLength - 1];
+            endX = endPoint.X;
+            endY = endPoint.Y;
+            while (i < polygonLength)
+            {
+                startX = endX; startY = endY;
+                endPoint = polygon[i++];
+                endX = endPoint.X; endY = endPoint.Y;
+                //
+                inside ^= (endY > pointY ^ startY > pointY) /* ? pointY inside [startY;endY] segment ? */
+                          && /* if so, test if it is under the segment */
+                          ((pointX - endX) < (pointY - endY) * (startX - endX) / (startY - endY));
+            }
+            return inside;
         }
     }
 }

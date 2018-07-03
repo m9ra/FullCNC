@@ -14,7 +14,7 @@ namespace ControllerCNC
 {
     public class Coord2DController
     {
-        private readonly DriverCNC _cnc;
+        private readonly DriverCNC2 _cnc;
 
         private readonly Thread _movementWorker;
 
@@ -34,7 +34,7 @@ namespace ControllerCNC
 
         private volatile bool _moveUV = true;
 
-        public Coord2DController(DriverCNC cnc)
+        public Coord2DController(DriverCNC2 cnc)
         {
             _cnc = cnc;
 

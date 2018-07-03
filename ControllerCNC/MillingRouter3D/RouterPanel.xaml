@@ -123,8 +123,8 @@
                     <Border DockPanel.Dock="Left" BorderBrush="Black" BorderThickness="1">
                         <StackPanel Orientation="Horizontal">
                             <StackPanel Margin="10 30 20 0" Width="200">
-                                <Button Name="ResetXY" Style="{StaticResource CommandButton}" Click="ResetXYCoordinates_Click">Reset XY</Button>                                                                
-                                <Button Name="GoToZerosXY" Style="{StaticResource CommandButton}" Click="GoToZerosXY_Click">Go to XY zero</Button>                                
+                                <Button Name="ResetXY" Style="{StaticResource CommandButton}" Click="ResetXYCoordinates_Click">Reset XY</Button>
+                                <Button Name="GoToZerosXY" Style="{StaticResource CommandButton}" Click="GoToZerosXY_Click">Go to XY zero</Button>
                             </StackPanel>
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal"/>
@@ -154,20 +154,33 @@
                     </Border>
 
                     <DockPanel DockPanel.Dock="Right" Margin="0 0 20 0" LastChildFill="True">
-                        <StackPanel DockPanel.Dock="Right" Width="400" Orientation="Horizontal">
-                            <StackPanel Width="200">
-                                <Button Name="AddShape" Style="{StaticResource CommandButton}" Click="AddShape_Click">Add shape</Button>
-                                <ToggleButton Name="ModeSwitch" Style="{StaticResource CommandToggleButton}" Checked="ModeSwitch_Checked" Unchecked="ModeSwitch_Unchecked" >Join mode</ToggleButton>
-                                <Button Name="RefreshJoins" Style="{StaticResource CommandButton}" Click="RefreshJoins_Click" >Refresh joins</Button>                                
-                            </StackPanel>
-                            <StackPanel Width="200">
-                                <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click">START!</Button>
-                                <Button Name="SavePlan" Style="{StaticResource CommandButton}" Click="SavePlan_Click">Save as</Button>
-                                <Button Name="LoadPlan" Style="{StaticResource CommandButton}" Click="LoadPlan_Click">Load</Button>
-                                <Button Name="NewPlan" Style="{StaticResource CommandButton}" Click="NewPlan_Click">New</Button>
+                        <StackPanel  DockPanel.Dock="Right" Orientation="Vertical">
+                            <TextBlock FontSize="30" FontWeight="Bold" TextAlignment="Center">Workspace</TextBlock>
+                            <StackPanel Width="400" Orientation="Horizontal">
+                                <StackPanel Width="200">
+                                    <Button Name="AddShape" Style="{StaticResource CommandButton}" Click="AddShape_Click">Add shape</Button>
+                                    <ToggleButton Name="ModeSwitch" Style="{StaticResource CommandToggleButton}" Checked="ModeSwitch_Checked" Unchecked="ModeSwitch_Unchecked" >Join mode</ToggleButton>
+                                    <Button Name="RefreshJoins" Style="{StaticResource CommandButton}" Click="RefreshJoins_Click" >Refresh joins</Button>
+                                </StackPanel>
+                                <StackPanel Width="200">
+                                    <Button Name="SavePlan" Style="{StaticResource CommandButton}" Click="SavePlan_Click">Save as</Button>
+                                    <Button Name="LoadPlan" Style="{StaticResource CommandButton}" Click="LoadPlan_Click">Load</Button>
+                                    <Button Name="NewPlan" Style="{StaticResource CommandButton}" Click="NewPlan_Click">New</Button>
+                                </StackPanel>
                             </StackPanel>
                         </StackPanel>
-                        <g:ListBoxOverride x:Name="WorkItemList" SelectionMode="Multiple" DockPanel.Dock="Left" FontSize="30"  BorderBrush="Gray"/>
+                        <DockPanel LastChildFill="True">
+                            <Border Width="400" DockPanel.Dock="Right" BorderThickness="5" Margin="10 0">
+                                <StackPanel>
+                                    <TextBlock FontSize="30" FontWeight="Bold" TextAlignment="Center">Plan Execution</TextBlock>
+                                    <Button Name="PausePlan"  Style="{StaticResource CommandButton}" Click="PausePlan_Click" DockPanel.Dock="Bottom">Pause</Button>
+                                    <Button Name="StartPlan" Background="GreenYellow" Style="{StaticResource CommandButton}" Click="StartPlan_Click" DockPanel.Dock="Bottom">START!</Button>
+                                    <Button Name="StopPlan" Background="OrangeRed" Style="{StaticResource CommandButton}" Click="StopPlan_Click" DockPanel.Dock="Bottom">STOP!</Button>
+                                </StackPanel>
+
+                            </Border>
+                            <g:ListBoxOverride x:Name="WorkItemList" SelectionMode="Multiple" DockPanel.Dock="Left" FontSize="30"  BorderBrush="Gray"/>
+                        </DockPanel>
                     </DockPanel>
                 </DockPanel>
                 <StackPanel Background="LightCyan" DockPanel.Dock="Left" Width="210">
@@ -211,7 +224,7 @@
                                 <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomB" DockPanel.Dock="Bottom" Content="B"/>
                                 <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomRightB" DockPanel.Dock="Bottom" Content="BR"/>
                             </StackPanel>
-                          
+
 
                             <Border Margin="0 10">
                                 <StackPanel>
@@ -239,7 +252,7 @@
                             </Border>
                         </StackPanel>
                     </Border>
-                    <Border BorderBrush="Black" Margin="0 50 0 0" BorderThickness="1">
+                    <Border BorderBrush="Black" Margin="0 20 0 0" BorderThickness="1">
                         <StackPanel>
                             <Button Name="Calibration" Style="{StaticResource CommandButton}" Click="CalibrationButton_Click">Calibrate</Button>
                             <Button Name="ExitButton" Style="{StaticResource CommandButton}" Click="ExitButton_Click">Exit</Button>
