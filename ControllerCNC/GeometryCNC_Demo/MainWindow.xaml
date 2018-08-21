@@ -1,0 +1,36 @@
+﻿<Window x:Class="GeometryCNC_Demo.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:e1="clr-namespace:GeometryCNC.Render;assembly=GeometryCNC"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="350" Width="525">
+    <Grid>
+        <DockPanel Name="OutputContainer" LastChildFill="True">
+            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top">
+                <Button Name="PointInsideDemo" Click="pointInsideDemo">Point Inside Demo</Button>
+                <Button Name="DistanceDemo" Click="distanceDemo">Distance Demo</Button>
+                <Button Name="HeightmapDemo" Click="heightmapDemo" >Heightmap Demo</Button>
+                <Button Name="GCodeDemo" Click="gCodeDemo" >GCode Demo</Button>
+            </StackPanel>
+            <Slider Name="Slider" ValueChanged="sliderValueChange" IsSnapToTickEnabled="True" DockPanel.Dock="Bottom"></Slider>
+            <Canvas Name="Output2D" Background="White" DockPanel.Dock="Bottom">
+
+            </Canvas>
+            <e1:TrackballDecorator x:Name="Output3D" >
+                <Viewport3D Name="View3D" IsHitTestVisible="False" ClipToBounds="False" RenderOptions.EdgeMode="Aliased">
+                    <Viewport3D.Camera>
+                        <PerspectiveCamera x:Name="camMain" Position="0 0 250" LookDirection="0 0 -10">
+                        </PerspectiveCamera>
+                    </Viewport3D.Camera>
+                    <ModelVisual3D>
+                        <ModelVisual3D.Content>
+                            <DirectionalLight x:Name="dirLightMain" Direction="0,0,-500"/>
+                        </ModelVisual3D.Content>
+                    </ModelVisual3D>
+                </Viewport3D>
+            </e1:TrackballDecorator>
+        </DockPanel>
+    </Grid>
+</Window>
