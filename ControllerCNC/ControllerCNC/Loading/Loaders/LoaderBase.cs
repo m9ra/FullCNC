@@ -9,7 +9,7 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC.Loading.Loaders
 {
-    abstract class LoaderBase
+    public abstract class LoaderBase
     {
         private ILoadProvider _provider;
 

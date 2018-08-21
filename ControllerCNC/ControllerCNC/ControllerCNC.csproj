@@ -90,10 +90,9 @@
     <Compile Include="Loading\Loaders\HeightmapLoader.cs" />
     <Compile Include="Loading\Loaders\ImageLoader.cs" />
     <Compile Include="Loading\Loaders\LinePathLoader.cs" />
-    <Compile Include="Loading\Loaders\LoaderBase3D.cs" />
     <Compile Include="Loading\Loaders\LoaderBase.cs" />
-    <Compile Include="Loading\Loaders\SliceCutLoader.cs" />
     <Compile Include="Loading\ShapeFactory3D.cs" />
+    <Compile Include="Loading\Loaders\SliceCutLoader.cs" />
     <Compile Include="Loading\ShapeFactory.cs" />
     <Compile Include="Machine\Axes.cs" />
     <Compile Include="Machine\CommunicationParser.cs" />

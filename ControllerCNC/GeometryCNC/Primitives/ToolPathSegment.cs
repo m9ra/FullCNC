@@ -7,6 +7,7 @@ using System.Windows.Media.Media3D;
 
 namespace GeometryCNC.Primitives
 {
+    [Serializable]
     public class ToolPathSegment
     {
         public readonly Point3D Point;

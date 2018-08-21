@@ -14,7 +14,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// If set to true, simulation mode is used instead of the real device.
         /// </summary>
-        private readonly bool FAKE_ONLINE_MODE = false;
+        private readonly bool FAKE_ONLINE_MODE = true;
 
         /// <summary>
         /// Determine whether simulator should use real speeds.

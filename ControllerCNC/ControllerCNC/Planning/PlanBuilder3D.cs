@@ -82,6 +82,8 @@ namespace ControllerCNC.Planning
 
         public bool IsStreaming => _isStreaming;
 
+        public double ZeroLevel => _zeroLevel;
+
         public PlanBuilder3D(double transitionLevel, double zeroLevel, Speed cuttingSpeed, Speed transitionSpeed, Acceleration planeAcceleration)
         {
             CuttingSpeed = cuttingSpeed;

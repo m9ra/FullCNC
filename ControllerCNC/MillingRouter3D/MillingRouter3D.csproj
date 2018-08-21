@@ -70,6 +70,7 @@
     <Compile Include="GUI\HeadCnc.cs" />
     <Compile Include="GUI\HeightMapShape.cs" />
     <Compile Include="GUI\MillingItem.cs" />
+    <Compile Include="GUI\MillingShapeItemGCode.cs" />
     <Compile Include="GUI\MillingShapeItemRelief.cs" />
     <Compile Include="GUI\MillingShapeItem2D.cs" />
     <Compile Include="GUI\MillingWorkspacePanel.cs" />
@@ -79,6 +80,7 @@
       <DependentUpon>PointProviderPropertiesDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="GUI\ScaffoldItem.cs" />
+    <Compile Include="MillingShapeFactory.cs" />
     <Compile Include="Primitives\MillingJoin.cs" />
     <Compile Include="RouterPanel.xaml.cs">
       <DependentUpon>RouterPanel.xaml</DependentUpon>
@@ -133,6 +135,10 @@
       <Project>{bdf528a3-cd7a-49f5-8ca7-f3e49eb9fd90}</Project>
       <Name>ControllerCNC</Name>
       <EmbedInteropTypes>False</EmbedInteropTypes>
+    </ProjectReference>
+    <ProjectReference Include="..\GeometryCNC\GeometryCNC.csproj">
+      <Project>{3797e233-15fe-453f-a2d0-4f29eb0acddc}</Project>
+      <Name>GeometryCNC</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

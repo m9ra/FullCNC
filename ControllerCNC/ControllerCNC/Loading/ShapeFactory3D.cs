@@ -14,6 +14,11 @@ using ControllerCNC.Loading.Loaders;
 
 namespace ControllerCNC.Loading
 {
+    abstract class LoaderBase3D : LoaderBase
+    {
+        internal abstract IEnumerable<Point2Dmm[]> LoadPoints(string path);
+    }
+
     public class ShapeFactory3D
     {
         private readonly ILoadProvider _panel;

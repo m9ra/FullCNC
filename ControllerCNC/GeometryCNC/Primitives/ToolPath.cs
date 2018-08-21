@@ -8,6 +8,7 @@ using System.Windows.Media.Media3D;
 
 namespace GeometryCNC.Primitives
 {
+    [Serializable]
     public class ToolPath
     {
         private readonly List<ToolPathSegment> _segments = new List<ToolPathSegment>();

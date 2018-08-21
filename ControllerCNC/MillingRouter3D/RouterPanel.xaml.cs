@@ -51,7 +51,7 @@ namespace MillingRouter3D
 
         private int _tr_dirX, _tr_dirY, _tr_dirZ;
 
-        private readonly ShapeFactory3D _factory;
+        private readonly MillingShapeFactory _factory;
 
         private readonly HashSet<Control> _motionCommands = new HashSet<Control>();
 
@@ -132,7 +132,7 @@ namespace MillingRouter3D
 
             initializeTransitionHandlers();
 
-            _factory = new ShapeFactory3D(this);
+            _factory = new MillingShapeFactory(this);
         }
 
         #region Panel service
@@ -231,30 +231,34 @@ namespace MillingRouter3D
             {
                 Workspace.LoadFrom(_workspaceFile);
             }
-            catch (Exception ex) when (
-                    ex is System.Reflection.TargetInvocationException ||
-                    ex is System.Runtime.Serialization.SerializationException ||
-                    ex is InvalidCastException
-                )
+            /*   catch (Exception ex) when (
+                       ex is System.Reflection.TargetInvocationException ||
+                       ex is System.Runtime.Serialization.SerializationException ||
+                       ex is InvalidCastException
+                   )
+               {
+                   ShowError("Saved workspace cannot be load (it's an old version).");
+                   if (_workspaceFile != _autosaveFile)
+                   {
+                       _workspaceFile = _autosaveFile;
+                       reloadWorkspace();
+                   }
+                   else
+                   {
+                       var i = 0;
+                       var backupFile = _workspaceFile + ".bak";
+                       while (File.Exists(backupFile))
+                       {
+                           i += 1;
+                           backupFile = _workspaceFile + "." + i + ".bak";
+                       }
+                       //keep old autosave
+                       File.Move(_autosaveFile, backupFile);
+                   }
+               }*/
+            finally
             {
-                ShowError("Saved workspace cannot be load (it's an old version).");
-                if (_workspaceFile != _autosaveFile)
-                {
-                    _workspaceFile = _autosaveFile;
-                    reloadWorkspace();
-                }
-                else
-                {
-                    var i = 0;
-                    var backupFile = _workspaceFile + ".bak";
-                    while (File.Exists(backupFile))
-                    {
-                        i += 1;
-                        backupFile = _workspaceFile + "." + i + ".bak";
-                    }
-                    //keep old autosave
-                    File.Move(_autosaveFile, backupFile);
-                }
+
             }
 
             Speed.Value = 1000 * Workspace.CuttingSpeedMm;
@@ -909,31 +913,18 @@ namespace MillingRouter3D
         private void AddShape_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog();
-            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor;|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor;";
+            dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor;*.gcode;*.nc|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor;*.gcode;*.nc";
 
-            var useHeightmap = false;
+
+            
             if (dlg.ShowDialog().Value)
             {
                 var filename = dlg.FileName;
-                if (useHeightmap)
+                var shape= _factory.Load(filename);
+
+                if (shape != null)
                 {
-                    var reliefShape = _factory.LoadRelief(filename, out var name);
-                    if (reliefShape != null)
-                    {
-                        var reliefShapeItem = new MillingShapeItemRelief(name, reliefShape);
-                        reliefShapeItem.MetricHeight = 100;
-                        Workspace.Children.Add(reliefShapeItem);
-                    }
-                }
-                else
-                {
-                    var flatShape = _factory.Load(filename, out var name);
-                    if (flatShape != null)
-                    {
-                        var shapeItem = new MillingShapeItem2D(name, flatShape);
-                        shapeItem.MetricHeight = 100;
-                        Workspace.Children.Add(shapeItem);
-                    }
+                    Workspace.Children.Add(shape);
                 }
             }
         }
