@@ -650,9 +650,7 @@ namespace MillingRouter3D
                 return;
             }
 
-            disableMotionCommands();
-            Workspace.DisableChanges();
-            activateExecutionControls();
+            disableChanges();
 
             var state = Cnc.PlannedState;
             var currentPosition = PlanBuilder3D.GetPosition(state);
@@ -690,16 +688,27 @@ namespace MillingRouter3D
 
             CheckEngineDialog.WaitForConfirmation(() =>
             {
-                /**/
-                builder.SetStreamingCuttingSpeed(getCuttingSpeed());
-                builder.StreamingIsComplete += planCompleted;/*/
+                executePlan(builder);
+            });
+        }
+
+        private void disableChanges()
+        {
+            disableMotionCommands();
+            Workspace.DisableChanges();
+            activateExecutionControls();
+        }
+
+        private void executePlan(PlanBuilder3D builder)
+        {
+            builder.SetStreamingCuttingSpeed(getCuttingSpeed());
+            builder.StreamingIsComplete += planCompleted;/*/
                 Cnc.SEND(plan);
                 Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
-                _planStreamer = builder;
-                _planStart = DateTime.Now;
-                builder.StreamInstructions(Cnc);
-                this.Focus();
-            });
+            _planStreamer = builder;
+            _planStart = DateTime.Now;
+            builder.StreamInstructions(Cnc);
+            this.Focus();
         }
 
         private void planCompleted()
@@ -892,12 +901,21 @@ namespace MillingRouter3D
         {
             var position = getCurrentPosition();
             _positionOffsetX = position.X;
-            _positionOffsetY = position.Y;
+            _positionOffsetY = Workspace.RangeY - position.Y;
         }
 
         private void GoToZerosXY_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            disableChanges();
+
+
+            var position = getCurrentPosition();
+
+            var builder = new PlanBuilder3D(position.Z, position.Z, getCuttingSpeed(), Configuration.MaxPlaneSpeed, Configuration.MaxPlaneAcceleration);
+            builder.SetPosition(position);
+            builder.AddRampedLine(new Point2Dmm(_positionOffsetX, Workspace.RangeY - _positionOffsetY));
+
+            executePlan(builder);
         }
 
         private void StartPlan_Click(object sender, RoutedEventArgs e)

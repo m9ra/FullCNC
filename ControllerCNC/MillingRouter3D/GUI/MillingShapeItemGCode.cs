@@ -65,7 +65,7 @@ namespace MillingRouter3D.GUI
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
-            var itemPoints = _toolPath.Targets.Select(t => new Point2Dmm(t.Point.X + PositionX, -t.Point.Y + PositionY));
+            var itemPoints = new[] { new Point2Dmm(PositionX, PositionY) }.Concat(_toolPath.Targets.Select(t => new Point2Dmm(t.Point.X + PositionX, -t.Point.Y + PositionY)));
 
             var geometry = CreatePathFigure(new[] { itemPoints.ToArray() });
             drawingContext.DrawGeometry(null, new Pen(Brushes.Blue, 1.0), geometry);
