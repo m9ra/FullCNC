@@ -60,6 +60,7 @@ namespace ControllerCNC.Planning
             if (_currentInstructionOffset >= length)
             {
                 _currentInstructionOffset = 0;
+                _currentConstantDistance += length;
                 ++_currentIndex;
             }
 
@@ -72,7 +73,7 @@ namespace ControllerCNC.Planning
 
         internal double GetRemainingConstantDistance()
         {
-            return TotalConstantDistance - _currentConstantDistance;
+            return TotalConstantDistance - _currentConstantDistance - _currentInstructionOffset;
         }
 
         internal double GetRemainingRampTime()
@@ -151,7 +152,7 @@ namespace ControllerCNC.Planning
                 var instructions = builder.Build();
 
                 var accumulator = 0.0;
-                foreach(var instruction in instructions)
+                foreach (var instruction in instructions)
                 {
                     var axes = instruction as Axes;
                     if (axes == null)

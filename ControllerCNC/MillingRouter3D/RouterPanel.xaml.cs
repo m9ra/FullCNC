@@ -65,7 +65,7 @@ namespace MillingRouter3D
 
         private readonly int _messageShowDelay = 3000;
 
-        private int _lastRemainingSeconds = 0;
+        private double _lastRemainingSeconds = 0;
 
         private double _positionOffsetY = 0;
 
@@ -575,16 +575,15 @@ namespace MillingRouter3D
 
             if (_planStreamer != null)
             {
-                var elapsedSeconds = (int)Math.Round((DateTime.Now - _planStart).TotalSeconds);
-                var totalSeconds = (int)Math.Round(_planStreamer.TotalSeconds);
+                var elapsedSeconds = (DateTime.Now - _planStart).TotalSeconds;
+                _lastRemainingSeconds = _planStreamer.RemainingSeconds;
+                var plannedTime = 1.0 * Cnc.RemainingPlanTickEstimation / Configuration.TimerFrequency;
 
-                _lastRemainingSeconds = totalSeconds - elapsedSeconds;
-                var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);
-                var elapsedTime = new TimeSpan(0, 0, 0, elapsedSeconds);
-
-                if (remainingTime.TotalDays < 2)
+                var totalTime = new TimeSpan(0, 0, 0, (int)Math.Round(_lastRemainingSeconds + elapsedSeconds + plannedTime));
+                var elapsedTime = new TimeSpan(0, 0, 0, (int)Math.Round(elapsedSeconds));
+                if (totalTime.TotalDays < 2)
                 {
-                    ShowMessage(elapsedTime.ToString() + "/" + remainingTime.ToString());
+                    ShowMessage(elapsedTime.ToString() + "/" + totalTime.ToString());
                 }
             }
 
@@ -916,11 +915,11 @@ namespace MillingRouter3D
             dlg.Filter = "All supported files|*.jpeg;*.jpg;*.png;*.bmp;*.dat;*.cor;*.gcode;*.nc|Image files|*.jpeg;*.jpg;*.png;*.bmp|Coordinate files|*.dat;*.cor;*.gcode;*.nc";
 
 
-            
+
             if (dlg.ShowDialog().Value)
             {
                 var filename = dlg.FileName;
-                var shape= _factory.Load(filename);
+                var shape = _factory.Load(filename);
 
                 if (shape != null)
                 {
