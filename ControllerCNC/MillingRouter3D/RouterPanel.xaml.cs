@@ -181,7 +181,7 @@ namespace MillingRouter3D
             }
         }
 
-        void _messageTimer_Tick(object sender, EventArgs e)
+        private void _messageTimer_Tick(object sender, EventArgs e)
         {
             HideMessage();
         }
@@ -430,8 +430,11 @@ namespace MillingRouter3D
                     setKeyTransition(1, 0, 0, e);
                     break;
                 case Key.Add:
+                case Key.PageDown:
                     setKeyTransition(0, 0, 1, e);
                     break;
+
+                case Key.PageUp:
                 case Key.Subtract:
                     setKeyTransition(0, 0, -1, e);
                     break;
@@ -481,6 +484,7 @@ namespace MillingRouter3D
 
             switch (e.Key)
             {
+
                 case Key.Down:
                 case Key.Up:
                     resetKeyTransition(false, true, false, e);
@@ -489,6 +493,8 @@ namespace MillingRouter3D
                 case Key.Right:
                     resetKeyTransition(true, false, false, e);
                     break;
+                case Key.PageUp:
+                case Key.PageDown:
                 case Key.Add:
                 case Key.Subtract:
                     resetKeyTransition(false, false, true, e);
@@ -526,7 +532,7 @@ namespace MillingRouter3D
             refreshTransitionSpeed();
         }
 
-        void _autosaveTime_Tick(object sender, EventArgs e)
+        private void _autosaveTime_Tick(object sender, EventArgs e)
         {
             _autosaveTime.IsEnabled = false;
             Workspace.SaveTo(_workspaceFile);
@@ -563,7 +569,7 @@ namespace MillingRouter3D
             return position;
         }
 
-        void _statusTimer_Tick(object sender, EventArgs e)
+        private void _statusTimer_Tick(object sender, EventArgs e)
         {
             var position = getCurrentPosition();
             PositionX.Text = (position.X - _positionOffsetX).ToString("0.000");

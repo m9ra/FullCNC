@@ -18,7 +18,7 @@ using ControllerCNC.GUI;
 namespace MillingRouter3D.GUI
 {
     [Serializable]
-    class MillingShapeItem2D : MillingItem
+    internal class MillingShapeItem2D : MillingItem
     {
         /// <summary>
         /// Points defining the shape.
@@ -51,7 +51,7 @@ namespace MillingRouter3D.GUI
         /// <summary>
         /// Determine whether cut in a clockwise direction will be used.
         /// </summary>
-        private bool _useClockwiseCut;
+        private readonly bool _useClockwiseCut;
 
         /// <summary>
         /// Determine size of the shape in milimeters.
@@ -221,6 +221,7 @@ namespace MillingRouter3D.GUI
             itemPoints = OffsetCalculator.Join(itemPoints);
             var offsetClusters = new List<Point2Dmm[]>();
             var remainingClusters = new HashSet<Point2Dmm[]>(itemPoints);
+            var toolWidth = 4.0;
             for (var i = 0; i < 10; ++i)
             {
                 if (remainingClusters.Count == 0)
@@ -229,7 +230,7 @@ namespace MillingRouter3D.GUI
                 foreach (var cluster in remainingClusters.ToArray())
                 {
                     var offsetCalculator = new OffsetCalculator(cluster);
-                    var offsetPoints = offsetCalculator.WithOffset(1.0 + 1 * i);
+                    var offsetPoints = offsetCalculator.WithOffset(toolWidth / 2 * (i + 1));
                     if (offsetPoints.Any())
                     {
                         offsetClusters.AddRange(offsetPoints);
