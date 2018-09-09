@@ -159,7 +159,7 @@ namespace ControllerCNC.Planning
             var preloadTime = 0.05;
 
             var lastCuttingSpeed = Speed.Zero;
-            
+
             while (!planStream.IsComplete)
             {
                 while (_stop)
@@ -270,6 +270,11 @@ namespace ControllerCNC.Planning
         public static Point4Dmm GetPositionRev(double x, double y, double z)
         {
             return new Point4Dmm(y, x, y, z);
+        }
+
+        public static Axes Combine(StepInstrution x, StepInstrution y, StepInstrution z)
+        {
+            return Axes.UVXY(y, x, y, z);
         }
 
         public static Point4Dmm GetPositionRev(Point3Dmm point)

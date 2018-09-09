@@ -13,6 +13,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
@@ -22,7 +23,7 @@ using ControllerCNC.Loading;
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
-
+using GeometryCNC.Primitives;
 using MillingRouter3D.GUI;
 using MillingRouter3D.Primitives;
 
@@ -654,6 +655,23 @@ namespace MillingRouter3D
 
             var state = Cnc.PlannedState;
             var currentPosition = PlanBuilder3D.GetPosition(state);
+
+            var p = new Point3D(currentPosition.X, currentPosition.Y, currentPosition.Z);
+            var p2 = p + new Vector3D(100, 0, 0);
+            var p3 = p2 + new Vector3D(100, -10, 0);
+            var p4 = p3 + new Vector3D(0, 0, 100);
+            var segment1 = new ToolPathSegment(p, p2, MotionMode.IsLinear);
+            var segment2 = new ToolPathSegment(p2, p3, MotionMode.IsLinear);
+            var segment3 = new ToolPathSegment(p3, p4, MotionMode.IsLinear);
+
+            var planner = new AcceleratingPlanBuilder3D(Cnc);
+            planner.SetDesiredSpeed(55);
+            planner.Add(segment1);
+            planner.Add(segment2);
+            planner.Add(segment3);
+            return;
+
+            //TODO this is only for  acceleration testing.
 
             var startPoint = Workspace.EntryPoint;
             var start = new Point3Dmm(startPoint.PositionX, startPoint.PositionY, _zLevel);

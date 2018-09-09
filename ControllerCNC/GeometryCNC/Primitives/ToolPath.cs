@@ -15,9 +15,10 @@ namespace GeometryCNC.Primitives
 
         public IEnumerable<ToolPathSegment> Targets => _segments;
 
-        public void AddLine(Point3D start, MachineState state)
+        public void AddLine(Point3D end, MachineState state)
         {
-            _segments.Add(new ToolPathSegment(start,state.MotionMode));
+            var start = _segments.Count == 0 ? new Point3D(0, 0, 0) : _segments.Last().End;
+            _segments.Add(new ToolPathSegment(start, end, state.MotionMode));
         }
     }
 }
