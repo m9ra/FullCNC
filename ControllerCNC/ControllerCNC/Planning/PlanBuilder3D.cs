@@ -40,7 +40,7 @@ namespace ControllerCNC.Planning
         /// <summary>
         /// How much of time remains to the end of stream.
         /// </summary>
-        private double _totalSeconds;
+        private double _remainingSeconds;
 
         /// <summary>
         /// Determine whether streaming should be stopped.
@@ -78,7 +78,7 @@ namespace ControllerCNC.Planning
         /// </summary>
         public Point3Dmm CurrentPoint => _currentPoint;
 
-        public double TotalSeconds => _totalSeconds;
+        public double RemainingSeconds => _remainingSeconds;
 
         public bool IsStreaming => _isStreaming;
 
@@ -158,12 +158,8 @@ namespace ControllerCNC.Planning
             var planStream = new PlanStream3D(_plan.ToArray());
             var preloadTime = 0.05;
 
-            var startTime = DateTime.Now;
-            var lastTimeMeasure = startTime;
-            var lastTotalSecondsRefreshTime = startTime;
             var lastCuttingSpeed = Speed.Zero;
-            var currentlyQueuedTime = 0.0;
-            var timeQueue = new Queue<double>();
+
             while (!planStream.IsComplete)
             {
                 while (_stop)
@@ -175,26 +171,6 @@ namespace ControllerCNC.Planning
                 _isStreaming = true;
 
                 var currentCuttingSpeed = _stream_cuttingSpeed;
-                var currentTime = DateTime.Now;
-
-                if ((currentTime - lastTotalSecondsRefreshTime).TotalSeconds > 5.0)
-                    //force recalculation every few seconds
-                    lastCuttingSpeed = null;
-
-                if (lastCuttingSpeed != currentCuttingSpeed)
-                {
-                    //recalculate totalSeconds
-                    lastCuttingSpeed = currentCuttingSpeed;
-                    var cuttingDistance = planStream.GetRemainingConstantDistance();
-                    var rampTime = planStream.GetRemainingRampTime();
-                    var totalElapsedTime = (currentTime - startTime).TotalSeconds;
-                    _totalSeconds = totalElapsedTime + rampTime + cuttingDistance / currentCuttingSpeed.ToMetric() + currentlyQueuedTime;
-                    lastTotalSecondsRefreshTime = currentTime;
-                }
-
-
-                var timeElapsed = (currentTime - lastTimeMeasure).TotalSeconds;
-                lastTimeMeasure = currentTime;
 
                 if (driver.IncompleteInstructionCount >= 3)
                 {
@@ -202,9 +178,6 @@ namespace ControllerCNC.Planning
                     Thread.Sleep(5);
                     continue;
                 }
-
-                if (timeQueue.Count > 0)
-                    currentlyQueuedTime -= timeQueue.Dequeue();
 
                 IEnumerable<InstructionCNC> nextInstructions;
                 if (planStream.IsSpeedLimitedBy(Configuration.MaxCuttingSpeed))
@@ -218,13 +191,13 @@ namespace ControllerCNC.Planning
                 }
 
                 driver.SEND(nextInstructions);
-
-                var duration = nextInstructions.Select(i => i.CalculateTotalTime());
-                var timeToQueue = duration.Sum(d => (float)d) / Configuration.TimerFrequency;
-                currentlyQueuedTime += timeToQueue;
-                timeQueue.Enqueue(currentlyQueuedTime);
+                var cuttingDistance = planStream.GetRemainingConstantDistance();
+                var rampTime = planStream.GetRemainingRampTime();
+                _remainingSeconds = rampTime + cuttingDistance / currentCuttingSpeed.ToMetric();
             }
+
             while (driver.IncompleteInstructionCount > 0)
+                //wait until all instructions are completed
                 Thread.Sleep(10);
 
             StreamingIsComplete?.Invoke();
@@ -297,6 +270,11 @@ namespace ControllerCNC.Planning
         public static Point4Dmm GetPositionRev(double x, double y, double z)
         {
             return new Point4Dmm(y, x, y, z);
+        }
+
+        public static Axes Combine(StepInstrution x, StepInstrution y, StepInstrution z)
+        {
+            return Axes.UVXY(y, x, y, z);
         }
 
         public static Point4Dmm GetPositionRev(Point3Dmm point)

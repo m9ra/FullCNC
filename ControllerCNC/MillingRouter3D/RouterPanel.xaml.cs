@@ -13,6 +13,7 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Media.Media3D;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
@@ -22,7 +23,7 @@ using ControllerCNC.Loading;
 using ControllerCNC.Machine;
 using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
-
+using GeometryCNC.Primitives;
 using MillingRouter3D.GUI;
 using MillingRouter3D.Primitives;
 
@@ -65,7 +66,7 @@ namespace MillingRouter3D
 
         private readonly int _messageShowDelay = 3000;
 
-        private int _lastRemainingSeconds = 0;
+        private double _lastRemainingSeconds = 0;
 
         private double _positionOffsetY = 0;
 
@@ -87,6 +88,8 @@ namespace MillingRouter3D
         /// Plan builder that currently streams instructions to cnc.
         /// </summary>
         private PlanBuilder3D _planStreamer;
+
+        private AcceleratingPlanBuilder3D _planStreamer2;
 
         public RouterPanel()
         {
@@ -581,16 +584,15 @@ namespace MillingRouter3D
 
             if (_planStreamer != null)
             {
-                var elapsedSeconds = (int)Math.Round((DateTime.Now - _planStart).TotalSeconds);
-                var totalSeconds = (int)Math.Round(_planStreamer.TotalSeconds)+Cnc.RemainingPlanTickEstimation;
+                var elapsedSeconds = (DateTime.Now - _planStart).TotalSeconds;
+                _lastRemainingSeconds = _planStreamer.RemainingSeconds;
+                var plannedTime = 1.0 * Cnc.RemainingPlanTickEstimation / Configuration.TimerFrequency;
 
-                _lastRemainingSeconds = totalSeconds - elapsedSeconds;
-                var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);
-                var elapsedTime = new TimeSpan(0, 0, 0, elapsedSeconds);
-
-                if (remainingTime.TotalDays < 2)
+                var totalTime = new TimeSpan(0, 0, 0, (int)Math.Round(_lastRemainingSeconds + elapsedSeconds + plannedTime));
+                var elapsedTime = new TimeSpan(0, 0, 0, (int)Math.Round(elapsedSeconds));
+                if (totalTime.TotalDays < 2)
                 {
-                    ShowMessage(elapsedTime.ToString() + "/" + remainingTime.ToString());
+                    ShowMessage(elapsedTime.ToString() + "/" + totalTime.ToString());
                 }
             }
 
@@ -651,12 +653,68 @@ namespace MillingRouter3D
                 return;
             }
 
-            disableMotionCommands();
-            Workspace.DisableChanges();
-            activateExecutionControls();
+            //disableChanges();
 
             var state = Cnc.PlannedState;
             var currentPosition = PlanBuilder3D.GetPosition(state);
+
+            var p = new Point3D(currentPosition.X, currentPosition.Y, currentPosition.Z);
+            var p2 = p + new Vector3D(100, 0, 0);
+            var p3 = p2 + new Vector3D(100, -10, 0);
+            var p4 = p3 + new Vector3D(0, 0, 100);
+            var segment1 = new ToolPathSegment(p, p2, MotionMode.IsLinear);
+            var segment2 = new ToolPathSegment(p2, p3, MotionMode.IsLinear);
+            var segment3 = new ToolPathSegment(p3, p4, MotionMode.IsLinear);
+
+
+            _planStreamer2 = new AcceleratingPlanBuilder3D(Cnc);
+
+            /*planner.Add(segment1);
+            planner.Add(segment2);
+            planner.Add(segment3);*/
+
+            var segmentCount = 180;
+            var lastPoint = p;
+            var radius = 20.0;
+            /*
+            var center = new Point3D(p.X, p.Y - radius, p.Z);
+            for (var i = 0; i < segmentCount; ++i)
+            {
+                var x = center.X + Math.Cos(Math.PI * 2 / segmentCount * i) * radius;
+                var y = center.Y + Math.Sin(Math.PI * 2 / segmentCount * i) * radius;
+                var newPoint = new Point3D(x, y, p.Z);
+
+                var segment = new ToolPathSegment(lastPoint, newPoint, MotionMode.IsLinear);
+                _planStreamer2.Add(segment);
+                lastPoint = newPoint;
+            }*/
+
+            /*var rnd = new Random(1);
+             for(var i = 0; i < 20; ++i)
+             {
+                 var rp = new Point3D(rnd.NextDouble() * 150, rnd.NextDouble() * 150, rnd.NextDouble() * 100);
+                 var segment = new ToolPathSegment(lastPoint, rp,MotionMode.IsLinear);
+
+                 _planStreamer2.Add(segment);
+                 lastPoint = rp;
+             }
+             */
+
+            var newPoint = new Point3D(p.X, p.Y - 100, p.Z);
+            for (var i = 0; i < 20; ++i)
+            {
+                var s1 = new ToolPathSegment(p, newPoint, MotionMode.IsLinear);
+                var s2 = new ToolPathSegment(newPoint, p, MotionMode.IsLinear);
+
+                _planStreamer2.Add(s1);
+                _planStreamer2.Add(s2);
+            }
+
+            _planStreamer2.SetDesiredSpeed(Workspace.CuttingSpeedMm);
+
+            return;
+
+            //TODO this is only for  acceleration testing.
 
             var startPoint = Workspace.EntryPoint;
             var start = new Point3Dmm(startPoint.PositionX, startPoint.PositionY, _zLevel);
@@ -691,16 +749,27 @@ namespace MillingRouter3D
 
             CheckEngineDialog.WaitForConfirmation(() =>
             {
-                /**/
-                builder.SetStreamingCuttingSpeed(getCuttingSpeed());
-                builder.StreamingIsComplete += planCompleted;/*/
+                executePlan(builder);
+            });
+        }
+
+        private void disableChanges()
+        {
+            disableMotionCommands();
+            Workspace.DisableChanges();
+            activateExecutionControls();
+        }
+
+        private void executePlan(PlanBuilder3D builder)
+        {
+            builder.SetStreamingCuttingSpeed(getCuttingSpeed());
+            builder.StreamingIsComplete += planCompleted;/*/
                 Cnc.SEND(plan);
                 Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
-                _planStreamer = builder;
-                _planStart = DateTime.Now;
-                builder.StreamInstructions(Cnc);
-                this.Focus();
-            });
+            _planStreamer = builder;
+            _planStart = DateTime.Now;
+            builder.StreamInstructions(Cnc);
+            this.Focus();
         }
 
         private void planCompleted()
@@ -893,12 +962,21 @@ namespace MillingRouter3D
         {
             var position = getCurrentPosition();
             _positionOffsetX = position.X;
-            _positionOffsetY = position.Y;
+            _positionOffsetY = Workspace.RangeY - position.Y;
         }
 
         private void GoToZerosXY_Click(object sender, RoutedEventArgs e)
         {
-            throw new NotImplementedException();
+            disableChanges();
+
+
+            var position = getCurrentPosition();
+
+            var builder = new PlanBuilder3D(position.Z, position.Z, getCuttingSpeed(), Configuration.MaxPlaneSpeed, Configuration.MaxPlaneAcceleration);
+            builder.SetPosition(position);
+            builder.AddRampedLine(new Point2Dmm(_positionOffsetX, Workspace.RangeY - _positionOffsetY));
+
+            executePlan(builder);
         }
 
         private void StartPlan_Click(object sender, RoutedEventArgs e)
@@ -1023,6 +1101,9 @@ namespace MillingRouter3D
 
             if (Workspace != null)
                 Workspace.CuttingSpeedMm = speed;
+
+            if (_planStreamer2 != null)
+                _planStreamer2.SetDesiredSpeed(speed);
 
             CuttingSpeed.Text = string.Format("{0:0.000}mm/s", speed);
         }

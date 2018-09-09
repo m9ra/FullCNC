@@ -50,14 +50,17 @@ namespace ControllerCNC.Machine
         internal override int[] GetStepTimings()
         {
             var result = new int[Math.Abs(StepCount)];
-            var periodAccumulator = PeriodNumerator / 2;
+            var periodAccumulator = 0;
+            if (PeriodNumerator > 0)
+                periodAccumulator = PeriodDenominator / PeriodNumerator;
+
             for (var i = 0; i < Math.Abs(StepCount); ++i)
             {
                 var activationTime = BaseDeltaT;
                 if (PeriodNumerator > 0)
                 {
                     periodAccumulator += PeriodNumerator;
-                    if (PeriodDenominator >= periodAccumulator)
+                    if (PeriodDenominator < periodAccumulator)
                     {
                         periodAccumulator -= PeriodDenominator;
                         activationTime += 1;

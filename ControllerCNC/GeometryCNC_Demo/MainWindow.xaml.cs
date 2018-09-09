@@ -126,7 +126,7 @@ namespace GeometryCNC_Demo
                 if (target.MotionMode == MotionMode.IsLinearRapid)
                     activeSegments = rapidSegments;
 
-                activeSegments.AddSegment(lastTarget.Point, target.Point);
+                activeSegments.AddSegment(lastTarget.End, target.End);
                 lastTarget = target;
             }
 
@@ -138,13 +138,13 @@ namespace GeometryCNC_Demo
             output3D(createModel(rapidMesh, frontColor: Brushes.DarkOrange, useComplexMaterial: true));
 
             var pointSize = 1.0;
-            var activePoint = createCube(targets.First().Point, pointSize);
+            var activePoint = createCube(targets.First().End, pointSize);
             output3D(activePoint);
 
             enableSlider(targets.Length, (tick) =>
             {
                 remove3D(activePoint);
-                activePoint = createCube(targets[tick].Point, pointSize);
+                activePoint = createCube(targets[tick].End, pointSize);
                 output3D(activePoint);
             });
         }

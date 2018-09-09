@@ -238,7 +238,7 @@ void ConstantPlan::createNextActivation()
 
 	if (this->_periodNumerator > 0) {
 		this->_periodAccumulator += this->_periodNumerator;
-		if (this->_periodDenominator >= this->_periodAccumulator) {
+		if (this->_periodDenominator < this->_periodAccumulator) {
 			this->_periodAccumulator -= this->_periodDenominator;
 			currentDeltaT += 1;
 		}
@@ -271,6 +271,8 @@ void ConstantPlan::loadFrom(byte * data)
 	this->_periodNumerator = periodNumerator;
 	this->_periodDenominator = periodDenominator;
 	this->_periodAccumulator = 0;
+	if (this->_periodNumerator > 0)
+		this->_periodAccumulator = this->_periodDenominator / this->_periodNumerator;
 }
 
 void ConstantPlan::initForHoming()

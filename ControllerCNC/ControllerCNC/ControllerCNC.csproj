@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -9,10 +9,11 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>ControllerCNC</RootNamespace>
     <AssemblyName>ControllerCNC</AssemblyName>
-    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -103,8 +104,10 @@
     <Compile Include="Machine\StateInfo.cs" />
     <Compile Include="Machine\StateDataInstruction.cs" />
     <Compile Include="Machine\StepInstrution.cs" />
+    <Compile Include="Planning\AcceleratingPlanBuilder3D.cs" />
     <Compile Include="Planning\BitmapMash.cs" />
     <Compile Include="Planning\CoordController.cs" />
+    <Compile Include="Planning\PathSpeedLimitCalculator.cs" />
     <Compile Include="Planning\GeometryUtils.cs" />
     <Compile Include="Planning\ImageInterpolator.cs" />
     <Compile Include="Planning\OffsetCalculator.cs" />
@@ -119,6 +122,7 @@
     <Compile Include="Planning\PlaneProjector.cs" />
     <Compile Include="Planning\PointTracer4D.cs" />
     <Compile Include="Planning\StrokeOffsetCalculator.cs" />
+    <Compile Include="Planning\ToolPathSegmentSlicer.cs" />
     <Compile Include="Planning\TraceProfiles\ProfileBase.cs" />
     <Compile Include="Planning\TraceProfiles\TargetPlaneSpeedOptimizer.cs" />
     <Compile Include="Planning\StraightLinePlanner2D.cs" />
@@ -134,6 +138,7 @@
     <Compile Include="Primitives\Extensions.cs" />
     <Compile Include="Primitives\ILoadProvider.cs" />
     <Compile Include="Primitives\Point3Dmm.cs" />
+    <Compile Include="Primitives\Point3Dstep.cs" />
     <Compile Include="Primitives\TowerSpeed.cs" />
     <Compile Include="Primitives\Point2Dmm.cs" />
     <Compile Include="Primitives\Point4Dmm.cs" />
@@ -213,7 +218,12 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <ProjectReference Include="..\GeometryCNC\GeometryCNC.csproj">
+      <Project>{3797e233-15fe-453f-a2d0-4f29eb0acddc}</Project>
+      <Name>GeometryCNC</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

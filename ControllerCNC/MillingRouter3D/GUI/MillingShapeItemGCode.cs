@@ -52,11 +52,11 @@ namespace MillingRouter3D.GUI
             return;
             */
 
-            var maxZ = _toolPath.Targets.Select(t => t.Point.Z).Max();
-            var minZ = _toolPath.Targets.Select(t => t.Point.Z).Min();
+            var maxZ = _toolPath.Targets.Select(t => t.End.Z).Max();
+            var minZ = _toolPath.Targets.Select(t => t.End.Z).Min();
             foreach (var target in _toolPath.Targets)
             {
-                var p = target.Point;
+                var p = target.End;
                 var p3Dmm = new Point3Dmm(p.X + PositionX, -p.Y + PositionY, -p.Z + builder.ZeroLevel);
                 if (target.MotionMode == MotionMode.IsLinearRapid)
                 {
@@ -75,7 +75,7 @@ namespace MillingRouter3D.GUI
         /// <inheritdoc/>
         protected override void OnRender(DrawingContext drawingContext)
         {
-            var itemPoints = _toolPath.Targets.Select(t => new Point2Dmm(t.Point.X + PositionX, -t.Point.Y + PositionY));
+            var itemPoints = _toolPath.Targets.Select(t => new Point2Dmm(t.End.X + PositionX, -t.End.Y + PositionY));
 
             var geometry = CreatePathFigure(new[] { itemPoints.ToArray() });
             drawingContext.DrawGeometry(null, new Pen(Brushes.Blue, 1.0), geometry);

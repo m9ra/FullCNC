@@ -38,5 +38,11 @@ namespace ControllerCNC.Primitives
 
             return metricSpeed / time;
         }
+
+        public static Acceleration FromMetric(double metric)
+        {
+            var speed = Speed.FromMilimetersPerSecond(metric);
+            return new Acceleration(speed, speed.Ticks);
+        }
     }
 }

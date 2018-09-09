@@ -10,13 +10,18 @@ namespace GeometryCNC.Primitives
     [Serializable]
     public class ToolPathSegment
     {
-        public readonly Point3D Point;
+        public readonly Point3D End;
+
+        public readonly Point3D Start;
 
         public readonly MotionMode MotionMode;
 
-        internal ToolPathSegment(Point3D start, MotionMode motionMode)
+        public double Length => (End - Start).Length;
+
+        public ToolPathSegment(Point3D start, Point3D end, MotionMode motionMode)
         {
-            Point = start;
+            Start = start;
+            End = end;
             MotionMode = motionMode;
         }
     }

@@ -464,6 +464,10 @@ namespace ControllerCNC.Machine
                         badDataReceived();
                         break;
 
+                    case MachineResponse.Comment:
+                        System.Diagnostics.Debug.WriteLine("Comment: " + Encoding.ASCII.GetString(data));
+                        break;
+
                     default:
                         System.Diagnostics.Debug.WriteLine("Unprocessed command: " + _parser.Response);
                         break;
@@ -707,8 +711,6 @@ namespace ControllerCNC.Machine
             var simulationDelay = 10;
             while (true)
             {
-                Thread.Sleep(simulationDelay);
-
                 if (_queuedInstructions.Count > 0)
                 {
                     InstructionCNC instruction;
@@ -723,7 +725,7 @@ namespace ControllerCNC.Machine
 
                     if (SIMULATE_REAL_DELAY)
                     {
-                        Thread.Sleep((int)Math.Max(0, (long)time - (long)simulationDelay));
+                        Thread.Sleep((int)Math.Round(time));
                     }
                     else
                     {
@@ -737,6 +739,10 @@ namespace ControllerCNC.Machine
                         if (_queuedInstructions.Count == 0 && OnInstructionQueueIsComplete != null)
                             OnInstructionQueueIsComplete();
                     }
+                }
+                else
+                {
+                    Thread.Sleep(10);
                 }
             }
         }

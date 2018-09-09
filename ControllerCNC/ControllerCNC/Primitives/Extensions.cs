@@ -8,7 +8,7 @@ using ControllerCNC.Machine;
 
 namespace ControllerCNC.Primitives
 {
-    internal static class Extensions
+    public static class Extensions
     {
         public static IEnumerable<Point4Dmm> DuplicateTo4Dmm(this IEnumerable<Point2Dmm> points)
         {
@@ -23,6 +23,11 @@ namespace ControllerCNC.Primitives
         public static Point4Dstep As4Dstep(this Point4Dmm point)
         {
             return new Point4Dstep(mmToStep(point.U), mmToStep(point.V), mmToStep(point.X), mmToStep(point.Y));
+        }
+
+        public static Point3Dstep As3Dstep(this Point3Dmm point)
+        {
+            return new Point3Dstep(mmToStep(point.X), mmToStep(point.Y), mmToStep(point.Z));
         }
 
         public static Point2Dstep As2Dstep(this Point2Dmm point)

@@ -230,7 +230,7 @@
                                 <StackPanel>
                                     <TextBlock FontSize="30" FontWeight="Bold">Cutting speed</TextBlock>
                                     <TextBlock Name="CuttingSpeed" FontSize="30" TextAlignment="Center">0mm/s</TextBlock>
-                                    <Slider IsDirectionReversed="False" Name="Speed" Minimum="250" Maximum="3125" ValueChanged="CuttingDeltaT_ValueChanged">
+                                    <Slider IsDirectionReversed="False" Name="Speed" Minimum="250" Maximum="10000" ValueChanged="CuttingDeltaT_ValueChanged">
                                         <Slider.LayoutTransform>
                                             <ScaleTransform ScaleX="2" ScaleY="2" />
                                         </Slider.LayoutTransform>
