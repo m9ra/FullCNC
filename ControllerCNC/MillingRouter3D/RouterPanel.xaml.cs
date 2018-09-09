@@ -582,7 +582,7 @@ namespace MillingRouter3D
             if (_planStreamer != null)
             {
                 var elapsedSeconds = (int)Math.Round((DateTime.Now - _planStart).TotalSeconds);
-                var totalSeconds = (int)Math.Round(_planStreamer.TotalSeconds);
+                var totalSeconds = (int)Math.Round(_planStreamer.TotalSeconds)+Cnc.RemainingPlanTickEstimation;
 
                 _lastRemainingSeconds = totalSeconds - elapsedSeconds;
                 var remainingTime = new TimeSpan(0, 0, 0, _lastRemainingSeconds);

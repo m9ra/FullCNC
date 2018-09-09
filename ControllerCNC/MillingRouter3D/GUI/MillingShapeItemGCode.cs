@@ -12,7 +12,7 @@ using GeometryCNC.Primitives;
 namespace MillingRouter3D.GUI
 {
     [Serializable]
-    class MillingShapeItemGCode : MillingItem
+    internal class MillingShapeItemGCode : MillingItem
     {
         private readonly ToolPath _toolPath;
 
@@ -43,6 +43,15 @@ namespace MillingRouter3D.GUI
 
         internal override void BuildPlan(PlanBuilder3D builder, MillingWorkspacePanel workspace)
         {
+            /*
+            for (var i = 0; i < 100; ++i)
+            {
+                builder.AddRampedLine(new Point3Dmm(PositionX , PositionY, builder.ZeroLevel + 5));
+                builder.AddRampedLine(new Point3Dmm(PositionX, PositionY, builder.ZeroLevel));
+            }
+            return;
+            */
+
             var maxZ = _toolPath.Targets.Select(t => t.Point.Z).Max();
             var minZ = _toolPath.Targets.Select(t => t.Point.Z).Min();
             foreach (var target in _toolPath.Targets)
@@ -51,6 +60,7 @@ namespace MillingRouter3D.GUI
                 var p3Dmm = new Point3Dmm(p.X + PositionX, -p.Y + PositionY, -p.Z + builder.ZeroLevel);
                 if (target.MotionMode == MotionMode.IsLinearRapid)
                 {
+                    //builder.AddRampedLine(new Point3Dmm(p3Dmm.X, p3Dmm.Y, builder.ZeroLevel));
                     builder.AddRampedLine(p3Dmm);
                     //builder.AddCuttingLine(p3Dmm);
                 }

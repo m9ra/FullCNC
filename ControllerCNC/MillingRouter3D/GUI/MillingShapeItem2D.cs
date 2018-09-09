@@ -221,8 +221,8 @@ namespace MillingRouter3D.GUI
             itemPoints = OffsetCalculator.Join(itemPoints);
             var offsetClusters = new List<Point2Dmm[]>();
             var remainingClusters = new HashSet<Point2Dmm[]>(itemPoints);
-            var toolWidth = 4.0;
-            for (var i = 0; i < 10; ++i)
+            var toolWidth = 6.0;
+            for (var i = 0; i < 1; ++i)
             {
                 if (remainingClusters.Count == 0)
                     break;
