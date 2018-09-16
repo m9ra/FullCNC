@@ -26,9 +26,11 @@ namespace ControllerCNC.Planning
 
         private double _lengthAccumulator;
 
-        private int _remX, _remY, _remZ;
+        private readonly double _ratioX, _ratioY, _ratioZ;
 
-        private double _accX, _accY, _accZ;
+        private double _tickAccX, _tickAccY, _tickAccZ;
+
+        private int _currX, _currY, _currZ;
 
         internal ToolPathSegmentSlicer(ToolPathSegment segment)
         {
@@ -41,64 +43,65 @@ namespace ControllerCNC.Planning
             _totalY = eY - sY;
             _totalZ = eZ - sZ;
 
-            _remX = _totalX;
-            _remY = _totalY;
-            _remZ = _totalZ;
+            _ratioX = _totalX * Configuration.MilimetersPerStep / _totalLength;
+            _ratioY = _totalY * Configuration.MilimetersPerStep / _totalLength;
+            _ratioZ = _totalZ * Configuration.MilimetersPerStep / _totalLength;
         }
 
-        internal InstructionCNC Slice(double speed, double timeGrain)
+        internal InstructionCNC Slice(double speed, double desiredTimeGrain)
         {
-            var desiredLength = speed * timeGrain;
-            desiredLength = Math.Min(desiredLength, _totalLength - _lengthAccumulator);
-            var time = desiredLength / speed;
+            var desiredLength = speed * desiredTimeGrain;
+            var realLength = Math.Min(desiredLength, _totalLength - _lengthAccumulator);
 
-            var proportion = desiredLength / _totalLength;
+            var newLength = _lengthAccumulator + realLength;
+            var exactTicks = (newLength / speed) * Configuration.TimerFrequency;
 
-            _accX += _totalX * proportion;
-            _accY += _totalY * proportion;
-            _accZ += _totalZ * proportion;
+            var xInstr = constantInstruction(speed, newLength, exactTicks, _ratioX, _totalX, ref _currX, ref _tickAccX);
+            var yInstr = constantInstruction(speed, newLength, exactTicks, _ratioY, _totalY, ref _currY, ref _tickAccY);
+            var zInstr = constantInstruction(speed, newLength, exactTicks, _ratioZ, _totalZ, ref _currZ, ref _tickAccZ);
 
-            var cX = collectSteps(ref _accX);
-            var cY = collectSteps(ref _accY);
-            var cZ = collectSteps(ref _accZ);
-
-            _remX -= cX;
-            _remY -= cY;
-            _remZ -= cZ;
-
-            _lengthAccumulator += desiredLength;
-            if (IsComplete && (_remX != 0 || _remY != 0 || _remZ != 0))
+            _lengthAccumulator = newLength;
+            if (IsComplete && (_currX != _totalX || _currY != _totalY || _currZ != _totalZ))
                 throw new NotImplementedException("Invalid step counting");
-
-            var tickCount = time * Configuration.TimerFrequency;
-
-            var xInstr = constantInstruction(tickCount, cX);
-            var yInstr = constantInstruction(tickCount, cY);
-            var zInstr = constantInstruction(tickCount, cZ);
 
             return PlanBuilder3D.Combine(xInstr, yInstr, zInstr);
         }
 
-        private ConstantInstruction constantInstruction(double tickCount, int cX)
+        private ConstantInstruction constantInstruction(double speed, double newLength, double exactTicks, double ratio, int totalSteps, ref int currSteps, ref double tickAcc)
         {
+            var oldPercentage = _lengthAccumulator / _totalLength;
+            var newPercentage = newLength / _totalLength;
+            var exactSpeed = speed * Math.Abs(ratio);
+
+            var absTotalSteps = Math.Abs(totalSteps);
+            var oldSteps = (int)Math.Floor(oldPercentage * absTotalSteps);
+            var newSteps = (int)Math.Floor(newPercentage * absTotalSteps);
+
+            var acX = newSteps - oldSteps;
+            var exactStepSpeed = exactSpeed / Configuration.MilimetersPerStep;
+            var exactStepDuration = Configuration.TimerFrequency / exactStepSpeed;
+            var exactTickRemainder = exactStepDuration - Math.Truncate(exactStepDuration);
+
+            var cX = Math.Sign(ratio) * acX;
+            currSteps += cX;
             checked
             {
                 if (cX == 0)
                 {
-                    return new ConstantInstruction(0, (int)Math.Round(tickCount), 0);
+                    var totalDuration = (int)Math.Truncate(exactTicks);
+                    tickAcc += exactTicks - totalDuration;
+                    var totalRemainder = (int)Math.Truncate(tickAcc);
+                    tickAcc -= totalRemainder;
+                    totalDuration += totalRemainder;
+                    return new ConstantInstruction(0, totalDuration, 0);
                 }
 
-                var exactTickCount = (int)Math.Round(tickCount);
+                tickAcc += acX * exactTickRemainder;
+                var baseDeltaT = Math.Truncate(exactStepDuration);
+                var remainder = Math.Truncate(tickAcc);
+                tickAcc -= remainder;
+                var instruction = new ConstantInstruction((short)cX, (int)baseDeltaT, (ushort)remainder);
 
-                var acX = Math.Abs(cX);
-                var baseDeltaT = exactTickCount / acX;
-                var remainder = exactTickCount - baseDeltaT * acX;
-                var instruction = new ConstantInstruction((short)cX, baseDeltaT, (ushort)remainder);
-                //var realDuration = instruction.GetInstructionDuration();
-                var steps = instruction.GetStepTimings();
-                var realRealDuration = steps.Sum();
-                if (Math.Abs(realRealDuration) != exactTickCount)
-                    throw new NotImplementedException();
                 return instruction;
             }
         }

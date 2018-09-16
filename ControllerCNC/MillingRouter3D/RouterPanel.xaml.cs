@@ -689,7 +689,7 @@ namespace MillingRouter3D
                 lastPoint = newPoint;
             }*/
 
-            /*var rnd = new Random(1);
+            var rnd = new Random(1);
              for(var i = 0; i < 20; ++i)
              {
                  var rp = new Point3D(rnd.NextDouble() * 150, rnd.NextDouble() * 150, rnd.NextDouble() * 100);
@@ -698,17 +698,17 @@ namespace MillingRouter3D
                  _planStreamer2.Add(segment);
                  lastPoint = rp;
              }
-             */
+             /**/
 
-            var newPoint = new Point3D(p.X, p.Y - 100, p.Z);
-            for (var i = 0; i < 20; ++i)
+            /*var newPoint = new Point3D(p.X + 100, p.Y, p.Z);
+            for (var i = 0; i < 1; ++i)
             {
                 var s1 = new ToolPathSegment(p, newPoint, MotionMode.IsLinear);
                 var s2 = new ToolPathSegment(newPoint, p, MotionMode.IsLinear);
 
                 _planStreamer2.Add(s1);
-                _planStreamer2.Add(s2);
-            }
+                //_planStreamer2.Add(s2);
+            }*/
 
             _planStreamer2.SetDesiredSpeed(Workspace.CuttingSpeedMm);
 

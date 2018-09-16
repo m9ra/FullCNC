@@ -22,7 +22,7 @@ namespace ControllerCNC.Planning
         private readonly Queue<ToolPathSegment> _workSegments = new Queue<ToolPathSegment>();
 
         private readonly Dictionary<ToolPathSegment, double> _edgeLimits = new Dictionary<ToolPathSegment, double>();
-        
+
         private readonly int _maxPlannedInstructionCount = 5;
 
         // is used to calculate corner speed limits
@@ -72,7 +72,7 @@ namespace ControllerCNC.Planning
         private void _streamer()
         {
             var currentSpeed = 0.0;
-            var startBuffer = new Queue<InstructionCNC>();
+            var instructionBuffer = new Queue<InstructionCNC>();
             while (true)
             {
                 ToolPathSegment currentSegment = null;
@@ -129,17 +129,17 @@ namespace ControllerCNC.Planning
                         cn += 1;
                     }
 
-                    startBuffer.Enqueue(nextInstruction);
-                    if (_cnc.IncompleteInstructionCount == 0 && startBuffer.Count < _maxPlannedInstructionCount)
+                    instructionBuffer.Enqueue(nextInstruction);
+                    if (_cnc.IncompleteInstructionCount == 0 && instructionBuffer.Count < _maxPlannedInstructionCount)
                     {
                         //buffer instructions so the machine has full buffer right away
-                        startBuffer.Enqueue(nextInstruction);
-                        continue;
+                        if (!slicer.IsComplete)
+                            continue;
                     }
 
-                    while (startBuffer.Count > 0)
+                    while (instructionBuffer.Count > 0)
                     {
-                        var bufferedInstruction = startBuffer.Dequeue();
+                        var bufferedInstruction = instructionBuffer.Dequeue();
                         if (!_cnc.SEND(bufferedInstruction))
                             throw new NotSupportedException("Invalid instruction");
                     }

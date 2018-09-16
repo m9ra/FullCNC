@@ -236,7 +236,7 @@ namespace ControllerCNC.Machine
             foreach (var instruction in plan)
             {
                 if (!checkBoundaries(instruction, ref testState))
-                    //atomic behaviour for whole plan
+                    //atomic behaviour for the whole plan
                     return false;
             }
             return true;
