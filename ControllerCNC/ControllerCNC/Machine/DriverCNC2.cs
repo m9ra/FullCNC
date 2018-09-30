@@ -551,7 +551,7 @@ namespace ControllerCNC.Machine
             {
                 clearDriverState();
 
-                _sendQueue.Enqueue(Encoding.ASCII.GetBytes("$%#"));
+                _sendQueue.Enqueue(Encoding.ASCII.GetBytes("$%!"));
                 Monitor.Pulse(_L_instructionQueue);
             }
         }

@@ -24,6 +24,8 @@ namespace ControllerCNC.Machine
         /// </summary>
         public static readonly uint TimerFrequency = 2000000;
 
+        public static readonly int MinActivationDelay = 10;
+
         /// <summary>
         /// How many steps for single revolution has to be done.
         /// </summary>
