@@ -53,7 +53,6 @@ namespace ControllerCNC.Machine
             var periodAccumulator = 0;
             if (PeriodNumerator > 0)
                 periodAccumulator = PeriodDenominator / PeriodNumerator;
-
             for (var i = 0; i < Math.Abs(StepCount); ++i)
             {
                 var activationTime = BaseDeltaT;

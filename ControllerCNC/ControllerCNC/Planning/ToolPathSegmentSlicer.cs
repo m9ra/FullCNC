@@ -32,6 +32,8 @@ namespace ControllerCNC.Planning
 
         private int _currX, _currY, _currZ;
 
+        private ulong _tX, _tY, _tZ;
+
         internal ToolPathSegmentSlicer(ToolPathSegment segment)
         {
             toSteps(segment.Start, out var sX, out var sY, out var sZ);
@@ -60,9 +62,16 @@ namespace ControllerCNC.Planning
             var yInstr = constantInstruction(speed, newLength, exactTicks, _ratioY, _totalY, ref _currY, ref _tickAccY);
             var zInstr = constantInstruction(speed, newLength, exactTicks, _ratioZ, _totalZ, ref _currZ, ref _tickAccZ);
 
+            _tX += xInstr.GetInstructionDuration();
+            _tY += yInstr.GetInstructionDuration();
+            _tZ += zInstr.GetInstructionDuration();
+
             _lengthAccumulator = newLength;
             if (IsComplete && (_currX != _totalX || _currY != _totalY || _currZ != _totalZ))
                 throw new NotImplementedException("Invalid step counting");
+
+            if (IsComplete && (_tX != _tY || _tY != _tZ))
+                throw new NotImplementedException("Invalid tick counting");
 
             return PlanBuilder3D.Combine(xInstr, yInstr, zInstr);
         }

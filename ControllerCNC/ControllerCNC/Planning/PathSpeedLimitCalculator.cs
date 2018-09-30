@@ -17,7 +17,7 @@ namespace ControllerCNC.Planning
 
         internal int FollowingSegmentCount { get; private set; }
 
-        public static readonly double TimeGrain = 0.05;
+        public static readonly double TimeGrain = 0.02;
 
         private readonly List<ToolPathSegment> _followingSegments = new List<ToolPathSegment>();
 
