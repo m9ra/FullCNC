@@ -27,6 +27,7 @@ Editor:	http://www.visualmicro.com
 #define INT16_TO_BYTES(vl) (((byte*)&vl)[1]), (((byte*)&vl)[0])
 #define UINT16_MAX 65535
 #define INT32_MAX 2147483647
+#define INT32_MIN -2147483648
 
 
 #define MAX_ACCELERATION 200 //rev/s^2
@@ -148,7 +149,7 @@ public:
 class ConstantPlan : public Plan {
 public:
 	// How much data is required for load
-	static const byte dataSize = 10;
+	static const byte dataSize = 12;
 
 	ConstantPlan(byte clkPin, byte dirPin);
 
@@ -170,6 +171,11 @@ private:
 	uint16_t _periodDenominator;
 	//Period accumulator for remainder displacement.
 	uint32_t _periodAccumulator;
+
+	// Determine whether offset is defined for the instruction
+	bool _hasOffset;
+	// The offset
+	int32_t _offset;
 };
 
 class AccelerationPlan : public Plan {
@@ -287,7 +293,7 @@ public:
 		this->_d4.createNextActivation();
 
 		bool isStepTimeMissed = false;
-
+		
 		isStepTimeMissed |= this->applySlack(this->slack.d1, _d1);
 		isStepTimeMissed |= this->applySlack(this->slack.d2, _d2);
 		isStepTimeMissed |= this->applySlack(this->slack.d3, _d3);
@@ -372,8 +378,10 @@ public:
 private:
 
 	inline bool applySlack(int32_t &slackTime, PlanType &plan) {
-		if (plan.isActivationBoundary)
+		if (plan.isActivationBoundary) {
+			slackTime = 0;
 			return false;
+		}
 
 		plan.nextActivationTime += slackTime;
 		if (plan.nextActivationTime < PORT_CHANGE_DELAY) {

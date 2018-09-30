@@ -10,19 +10,23 @@ namespace ControllerCNC.Machine
     {
         public readonly int BaseDeltaT;
 
+        public readonly int Offset;
+
         public readonly UInt16 PeriodNumerator;
 
-        public readonly UInt16 PeriodDenominator;
+        public bool HasOffset => Offset != -2147483648;
 
-        public ConstantInstruction(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator)
+        public ConstantInstruction(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator, int offset = -2147483648)
             : base(stepCount, InstructionOrientation.Normal)
         {
             BaseDeltaT = baseDeltaT;
             PeriodNumerator = periodNumerator;
+            Offset = offset;
             if (PeriodNumerator > Math.Abs(StepCount))
                 throw new NotSupportedException("Invalid numerator value");
 
-            PeriodDenominator = (UInt16)Math.Abs(StepCount);
+            if (Math.Abs(BaseDeltaT) + Offset < 0 && HasOffset)
+                throw new NotSupportedException("Invalid offset value");
         }
 
         private ConstantInstruction(ConstantInstruction originalInstruction, InstructionOrientation newOrientation)
@@ -30,7 +34,7 @@ namespace ControllerCNC.Machine
         {
             BaseDeltaT = originalInstruction.BaseDeltaT;
             PeriodNumerator = originalInstruction.PeriodNumerator;
-            PeriodDenominator = originalInstruction.PeriodDenominator;
+            Offset = originalInstruction.Offset;
         }
 
         /// </inheritdoc>
@@ -42,7 +46,7 @@ namespace ControllerCNC.Machine
             sendBuffer.AddRange(ToBytes((Int16)(StepCount * (Int16)Orientation)));
             sendBuffer.AddRange(ToBytes(BaseDeltaT));
             sendBuffer.AddRange(ToBytes(PeriodNumerator));
-            sendBuffer.AddRange(ToBytes(PeriodDenominator));
+            sendBuffer.AddRange(ToBytes(Offset));
             return sendBuffer.ToArray();
         }
 
@@ -51,20 +55,27 @@ namespace ControllerCNC.Machine
         {
             var result = new int[Math.Abs(StepCount)];
             var periodAccumulator = 0;
+            var periodDenominator = Math.Abs(StepCount);
             if (PeriodNumerator > 0)
-                periodAccumulator = PeriodDenominator / PeriodNumerator;
+                periodAccumulator = periodDenominator / PeriodNumerator;
+
+            var offset = HasOffset ? Offset : 0;
+
             for (var i = 0; i < Math.Abs(StepCount); ++i)
             {
                 var activationTime = BaseDeltaT;
                 if (PeriodNumerator > 0)
                 {
                     periodAccumulator += PeriodNumerator;
-                    if (PeriodDenominator < periodAccumulator)
+                    if (periodDenominator < periodAccumulator)
                     {
-                        periodAccumulator -= PeriodDenominator;
+                        periodAccumulator -= periodDenominator;
                         activationTime += 1;
                     }
                 }
+
+                activationTime += offset;
+                offset = 0;
 
                 result[i] = activationTime;
                 if (StepCount < 0)
@@ -76,16 +87,19 @@ namespace ControllerCNC.Machine
         /// </inheritdoc>
         public override string ToString()
         {
-            return string.Format("C({0},{1},{2},{3},{4})", StepCount, BaseDeltaT, PeriodNumerator, PeriodDenominator, Orientation);
+            return string.Format("C({0},{1},{2},{3},{4})", StepCount, BaseDeltaT, PeriodNumerator, Offset, Orientation);
         }
 
         /// </inheritdoc>
         internal override ulong GetInstructionDuration()
         {
             var result = ((ulong)Math.Abs(StepCount)) * ((ulong)Math.Abs(BaseDeltaT));
-            if (PeriodDenominator > 0)
-                result += PeriodNumerator * (ulong)Math.Abs(StepCount) / PeriodDenominator;
+            var periodDenominator = (ushort)Math.Abs(StepCount);
+            if (periodDenominator > 0)
+                result += PeriodNumerator * (ulong)Math.Abs(StepCount) / periodDenominator;
 
+            if (HasOffset)
+                result = (ulong)((long)result + Offset);
             return result;
         }
 

@@ -60,7 +60,7 @@ ISR(TIMER1_OVF_vect) {
 	SLOT0_STEPS += (int32_t)(step0p - step0n);
 	SLOT1_STEPS += (int32_t)(step1p - step1n);
 	SLOT2_STEPS += (int32_t)(step2p - step2n);
-	SLOT3_STEPS += (int32_t)(step3p - step3n);	
+	SLOT3_STEPS += (int32_t)(step3p - step3n);
 
 	/*	Serial.print('|');
 	Serial.print(step2p);
@@ -245,11 +245,16 @@ void ConstantPlan::createNextActivation()
 	}
 
 	this->nextActivationTime = currentDeltaT;
+
+	if (this->_hasOffset) {
+		this->nextActivationTime += this->_offset;
+		this->_hasOffset = false;
+	}
 }
 
 ConstantPlan::ConstantPlan(byte clkPin, byte dirPin)
 	:Plan(clkPin, dirPin),
-	_baseDeltaT(0), _periodNumerator(0), _periodDenominator(0), _periodAccumulator(0)
+	_baseDeltaT(0), _periodNumerator(0), _periodDenominator(0), _periodAccumulator(0), _hasOffset(false), _offset(0)
 {
 }
 
@@ -258,18 +263,21 @@ void ConstantPlan::loadFrom(byte * data)
 	int16_t stepCount = READ_INT16(data, 0);
 	int32_t baseDeltaT = READ_INT32(data, 2);
 	uint16_t periodNumerator = READ_UINT16(data, 2 + 4);
-	uint16_t periodDenominator = READ_UINT16(data, 2 + 4 + 2);
+	int32_t offset = READ_INT32(data, 2 + 4 + 2);
+
+	this->_offset = offset;
+	this->_hasOffset = this->_offset > INT32_MIN;
 
 	this->stepCount = abs(stepCount);
 	this->remainingSteps = this->stepCount;
+	this->_baseDeltaT = baseDeltaT;
 	this->stepMask = stepCount < 0 ? this->dirMask : 0;
 	this->isActive = this->remainingSteps > 0;
 	this->nextActivationTime = 0;
-	this->isActivationBoundary = !this->isActive;
+	this->isActivationBoundary = this->stepCount == 0 || this->_hasOffset;
 
-	this->_baseDeltaT = baseDeltaT;
 	this->_periodNumerator = periodNumerator;
-	this->_periodDenominator = periodDenominator;
+	this->_periodDenominator = this->stepCount;
 	this->_periodAccumulator = 0;
 	if (this->_periodNumerator > 0)
 		this->_periodAccumulator = this->_periodDenominator / this->_periodNumerator;

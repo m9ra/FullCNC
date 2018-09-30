@@ -282,7 +282,7 @@ void homing() {
 
 void waitForAuthentication() {
 	int authenticationStep = 0;
-	const char* password = "$%#";
+	const char* password = "$%!";
 	Serial.print("a");
 	while (authenticationStep < strlen(password))
 	{

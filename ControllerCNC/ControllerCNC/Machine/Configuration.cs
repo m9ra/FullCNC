@@ -24,6 +24,8 @@ namespace ControllerCNC.Machine
         /// </summary>
         public static readonly uint TimerFrequency = 2000000;
 
+        public static readonly int MinActivationDelay = 10;
+
         /// <summary>
         /// How many steps for single revolution has to be done.
         /// </summary>
@@ -82,7 +84,7 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// How many instructions fit into the buffer.
         /// </summary>
-        internal static int InstructionBufferLimit = 5;
+        internal static int InstructionBufferLimit = 6;
 
         /// <summary>
         /// How many steps can be stored in step buffer.
