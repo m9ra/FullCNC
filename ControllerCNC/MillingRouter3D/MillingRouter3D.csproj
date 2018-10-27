@@ -33,6 +33,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject>MillingRouter3D.App</StartupObject>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -85,6 +88,7 @@
     <Compile Include="RouterPanel.xaml.cs">
       <DependentUpon>RouterPanel.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Tests.cs" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs">

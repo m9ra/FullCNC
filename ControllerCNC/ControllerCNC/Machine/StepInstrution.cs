@@ -38,6 +38,8 @@ namespace ControllerCNC.Machine
         /// </inheritdoc>
         internal override bool IsEmpty => StepCount == 0;
 
+        internal abstract bool IsActivationBoundary { get; }
+
         /// <summary>
         /// Reorganizes instruction according to given orientation if needed.
         /// Internal orientation info is kept, therefore, applying same orientation more than once won't change anything.

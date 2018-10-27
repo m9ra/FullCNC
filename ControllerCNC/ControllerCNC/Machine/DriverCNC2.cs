@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ControllerCNC.Machine.Logging;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Ports;
@@ -15,6 +16,11 @@ namespace ControllerCNC.Machine
         /// If set to true, simulation mode is used instead of the real device.
         /// </summary>
         private readonly bool FAKE_ONLINE_MODE = false;
+
+        /// <summary>
+        /// Determine whether step timings will be logged into files.
+        /// </summary>
+        private readonly bool LOG_STEPS = false;
 
         /// <summary>
         /// Determine whether simulator should use real speeds.
@@ -127,6 +133,11 @@ namespace ControllerCNC.Machine
         private ulong _tickEstimation;
 
         /// <summary>
+        /// Logger that writes step activation times.
+        /// </summary>
+        public readonly StepLogger StepLogger;
+
+        /// <summary>
         /// How many ticks were made during estimation.
         /// </summary>
         public ulong RemainingPlanTickEstimation { get; private set; }
@@ -225,6 +236,9 @@ namespace ControllerCNC.Machine
             _communicationWorker = new Thread(SERIAL_worker);
             _communicationWorker.IsBackground = true;
             _communicationWorker.Priority = ThreadPriority.Highest;
+
+            if (LOG_STEPS)
+                StepLogger = new StepLogger(".");
         }
 
         /// <summary>
@@ -709,10 +723,12 @@ namespace ControllerCNC.Machine
             _currentState.Accept(new HomingInstruction());
 
             var simulationDelay = 10;
+            var schedulerStopped = true;
             while (true)
             {
                 if (_queuedInstructions.Count > 0)
                 {
+                    schedulerStopped = false;
                     InstructionCNC instruction;
                     lock (_L_instructionQueue)
                     {
@@ -735,6 +751,8 @@ namespace ControllerCNC.Machine
                     lock (_L_instructionQueue)
                     {
                         instructionCompleted();
+                        if (LOG_STEPS)
+                            StepLogger.LogInstruction(instruction);
 
                         if (_queuedInstructions.Count == 0 && OnInstructionQueueIsComplete != null)
                             OnInstructionQueueIsComplete();
@@ -742,9 +760,20 @@ namespace ControllerCNC.Machine
                 }
                 else
                 {
+                    if (!schedulerStopped)
+                    {
+                        schedulerStopped = true;
+                        logSchedulerStop();
+                    }
                     Thread.Sleep(10);
                 }
             }
+        }
+
+        private void logSchedulerStop()
+        {
+            if (LOG_STEPS)
+                StepLogger.LogMessage("SCHEDULER STOPPED");
         }
 
         #endregion

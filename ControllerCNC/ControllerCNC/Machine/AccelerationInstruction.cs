@@ -16,6 +16,8 @@ namespace ControllerCNC.Machine
 
         public readonly Int16 BaseRemainder;
 
+        internal override bool IsActivationBoundary => true;
+
         public AccelerationInstruction(Int16 stepCount, int initialDeltaT, Int16 baseDelta, Int16 baseRemainder, int startN)
             : base(stepCount, InstructionOrientation.Normal)
         {

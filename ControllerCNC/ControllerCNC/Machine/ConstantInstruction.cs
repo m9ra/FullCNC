@@ -16,6 +16,8 @@ namespace ControllerCNC.Machine
 
         public bool HasOffset => Offset != -2147483648;
 
+        internal override bool IsActivationBoundary => HasOffset || StepCount == 0;
+
         public ConstantInstruction(Int16 stepCount, int baseDeltaT, UInt16 periodNumerator, int offset = -2147483648)
             : base(stepCount, InstructionOrientation.Normal)
         {

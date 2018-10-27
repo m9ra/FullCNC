@@ -21,6 +21,7 @@ using ControllerCNC;
 using ControllerCNC.GUI;
 using ControllerCNC.Loading;
 using ControllerCNC.Machine;
+using ControllerCNC.Machine.Logging;
 using ControllerCNC.Planning;
 using ControllerCNC.Primitives;
 using GeometryCNC.Primitives;
@@ -99,6 +100,7 @@ namespace MillingRouter3D
             customCulture.NumberFormat.NumberDecimalSeparator = ".";
             Thread.CurrentThread.CurrentCulture = customCulture;
             SystemUtilities.PreventSleepMode();
+
 
             InitializeComponent();
             MessageBox.Visibility = Visibility.Hidden;

@@ -102,6 +102,11 @@ namespace ControllerCNC.Planning
             }
         }
 
+        internal object GetLimit(object position)
+        {
+            throw new NotImplementedException();
+        }
+
         internal static double GetAxisLimit(double r1, double r2)
         {
             var ar1 = Math.Abs(r1);
