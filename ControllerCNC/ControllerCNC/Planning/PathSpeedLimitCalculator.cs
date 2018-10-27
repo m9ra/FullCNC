@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Planning
 {
-    internal class PathSpeedLimitCalculator
+    public class PathSpeedLimitCalculator
     {
         internal readonly ToolPathSegment ActiveSegment;
 
@@ -41,7 +41,7 @@ namespace ControllerCNC.Planning
             _maxLookaheadDistance = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), 10000, out _maxLookaheadDistance);
         }
 
-        internal PathSpeedLimitCalculator(ToolPathSegment activeSegment)
+        public PathSpeedLimitCalculator(ToolPathSegment activeSegment)
         {
             ActiveSegment = activeSegment;
 
@@ -102,17 +102,13 @@ namespace ControllerCNC.Planning
             }
         }
 
-        internal object GetLimit(object position)
-        {
-            throw new NotImplementedException();
-        }
-
         internal static double GetAxisLimit(double r1, double r2)
         {
             var ar1 = Math.Abs(r1);
             var ar2 = Math.Abs(r2);
             var maxScaleFactor = Math.Max(ar1, ar2);
             var minScaleFactor = Math.Min(ar1, ar2);
+
 
             if (r1 == r2)
                 return Configuration.MaxPlaneSpeed.ToMetric();
@@ -123,6 +119,9 @@ namespace ControllerCNC.Planning
                 // direction change
                 return limit;
 
+            var speedupFactor = maxScaleFactor / minScaleFactor;
+
+
             for (var i = 0; i < _accelerationRanges.Length - 1; ++i)
             {
                 //TODO binary search
@@ -130,25 +129,24 @@ namespace ControllerCNC.Planning
                 var ac2 = Speed.FromDeltaT(_accelerationRanges[i + 1]).ToMetric();
 
                 var sp1 = ac1;
-                var sp2 = ac1 / minScaleFactor;
-
+                var sp2 = ac1 * speedupFactor;
                 if (sp2 >= ac2)
                     break;
 
-                limit = ac1 / maxScaleFactor;
+                limit = sp2;
             }
 
             return limit;
         }
 
-        internal double GetLimit(double positionPercentage)
+        public double GetLimit(double positionPercentage)
         {
             var activeSegmentRemainingLength = (ActiveSegment.End - ActiveSegment.Start).Length * (1.0 - positionPercentage);
 
             return accelerateFrom(_cornerLimit, activeSegmentRemainingLength, out _);
         }
 
-        internal void AddLookaheadSegments(IEnumerable<ToolPathSegment> workSegments, Dictionary<ToolPathSegment, double> cornerLimits)
+        public void AddLookaheadSegments(IEnumerable<ToolPathSegment> workSegments, Dictionary<ToolPathSegment, double> cornerLimits)
         {
             foreach (var segment in workSegments)
             {
@@ -187,6 +185,32 @@ namespace ControllerCNC.Planning
 
             } while (actualDistance < distance);
             return actualSpeed;
+        }
+
+
+        public static double CalculateEdgeLimit(ToolPathSegment segment1, ToolPathSegment segment2)
+        {
+            if (segment1 == null)
+                return Configuration.ReverseSafeSpeed.ToMetric();
+
+            CalculateRatios(segment1, out var rX1, out var rY1, out var rZ1);
+            CalculateRatios(segment2, out var rX2, out var rY2, out var rZ2);
+
+            var limitX = GetAxisLimit(rX1, rX2);
+            var limitY = GetAxisLimit(rY1, rY2);
+            var limitZ = GetAxisLimit(rZ1, rZ2);
+
+            return Math.Min(Math.Min(limitX, limitY), limitZ);
+        }
+
+        public static void CalculateRatios(ToolPathSegment segment, out double rX, out double rY, out double rZ)
+        {
+            var v = segment.End - segment.Start;
+            v.Normalize();
+
+            rX = v.X;
+            rY = v.Y;
+            rZ = v.Z;
         }
     }
 }

@@ -55,7 +55,7 @@ namespace ControllerCNC.Planning
                 previousSegment = _lastAddedSegment;
             }
 
-            var edgeLimit = calculateEdgeLimit(previousSegment, segment);
+            var edgeLimit = PathSpeedLimitCalculator.CalculateEdgeLimit(previousSegment, segment);
 
             lock (_L_workSegments)
             {
@@ -151,35 +151,6 @@ namespace ControllerCNC.Planning
         {
             lock (_L_desiredSpeed)
                 return _desiredSpeed;
-        }
-
-        private double calculateEdgeLimit(ToolPathSegment segment1, ToolPathSegment segment2)
-        {
-            if (segment1 == null)
-                return Configuration.ReverseSafeSpeed.ToMetric();
-
-            calculateRatios(segment1, out var rX1, out var rY1, out var rZ1);
-            calculateRatios(segment2, out var rX2, out var rY2, out var rZ2);
-
-            var limitX = PathSpeedLimitCalculator.GetAxisLimit(rX1, rX2);
-            var limitY = PathSpeedLimitCalculator.GetAxisLimit(rY1, rY2);
-            var limitZ = PathSpeedLimitCalculator.GetAxisLimit(rZ1, rZ2);
-
-            return Math.Min(Math.Min(limitX, limitY), limitZ);
-        }
-
-        private void calculateRatios(ToolPathSegment segment, out double rX, out double rY, out double rZ)
-        {
-            var length = (segment.End - segment.Start).Length;
-            var s = segment.Start;
-            var e = segment.End;
-
-            var lX = s.X - e.X;
-            var lY = s.Y - e.Y;
-            var lZ = s.Z - e.Z;
-            rX = lX / length;
-            rY = lY / length;
-            rZ = lZ / length;
-        }
+        }     
     }
 }
