@@ -19,6 +19,8 @@ namespace ControllerCNC.Planning
 
         public static readonly double TimeGrain = 0.02;
 
+        public static int[] AccelerationRanges => _accelerationRanges.ToArray();
+
         private readonly List<ToolPathSegment> _followingSegments = new List<ToolPathSegment>();
 
         private double _lookaheadDistance = 0.0;
@@ -33,9 +35,22 @@ namespace ControllerCNC.Planning
 
         static PathSpeedLimitCalculator()
         {
-            var acceleration = AccelerationBuilder.FromTo(Configuration.ReverseSafeSpeed, Configuration.MaxPlaneSpeed, Configuration.MaxPlaneAcceleration, 10000);
-            var instruction = acceleration.ToInstruction();
-            _accelerationRanges = instruction.GetStepTimings();
+            var ranges = new List<int>();
+            var v0 = Configuration.ReverseSafeSpeed.ToMetric();
+            var v = v0;
+            var vmax = Configuration.MaxPlaneSpeed.ToMetric();
+            var currentTime = 0;
+            while (v < vmax)
+            {
+                ranges.Add(Speed.FromMilimetersPerSecond(v).ToDeltaT());
+                //v=v0 + 1/2 a*t
+                currentTime += ranges.Last();
+
+                var t = 1.0 * currentTime / Configuration.TimerFrequency;
+                v = v0 + 0.5 * t * Configuration.MaxPartialAcceleration * Configuration.MilimetersPerStep;
+            }
+
+            _accelerationRanges = ranges.ToArray();
 
             _maxLookaheadDistance = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), 10000, out _maxLookaheadDistance);
         }
@@ -132,7 +147,7 @@ namespace ControllerCNC.Planning
                 if (sp2 >= ac2)
                     break;
 
-                limit = sp2;
+                limit = ac2;
             }
 
             return limit;

@@ -18,7 +18,33 @@ namespace MillingRouter3D
     {
         public static void Main(string[] args)
         {
-            CornerLimits();
+            InstructionGeneration();
+        }
+
+        public static void InstructionGeneration()
+        {
+            var p1 = new Point3D(0, 0, 0);
+            var p2 = new Point3D(0, 100, 0);
+            var p3 = new Point3D(100, 500, 0);
+            var s1 = new ToolPathSegment(p1, p2, MotionMode.IsLinear);
+            var s2 = new ToolPathSegment(p2, p3, MotionMode.IsLinear);
+
+            var instructions = AcceleratingPlanBuilder3D.GenerateInstructions(new[] { s1, s2 });
+            var xInstructions = new List<StepInstrution>();
+            var yInstructions = new List<StepInstrution>();
+            foreach (Axes instruction in instructions)
+            {
+                xInstructions.Add(instruction.InstructionU);
+                yInstructions.Add(instruction.InstructionV);
+                Console.WriteLine($"{instruction.InstructionU}  {instruction.InstructionV}");
+            }
+
+            var previousRange = PathSpeedLimitCalculator.AccelerationRanges[0];
+            foreach (var range in PathSpeedLimitCalculator.AccelerationRanges)
+            {
+                Console.WriteLine($"{range} {previousRange-range}");
+                previousRange = range;
+            }
         }
 
         public static void CornerLimits()

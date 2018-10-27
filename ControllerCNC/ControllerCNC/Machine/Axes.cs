@@ -11,22 +11,22 @@ namespace ControllerCNC.Machine
         /// <summary>
         /// Instruction for x axis.
         /// </summary>
-        internal readonly StepInstrution InstructionX;
+        public readonly StepInstrution InstructionX;
 
         /// <summary>
         /// Instruction for y axis.
         /// </summary>
-        internal readonly StepInstrution InstructionY;
+        public readonly StepInstrution InstructionY;
 
         /// <summary>
         /// Instruction for u axis.
         /// </summary>
-        internal readonly StepInstrution InstructionU;
+        public readonly StepInstrution InstructionU;
 
         /// <summary>
         /// Instruction for v axis.
         /// </summary>
-        internal readonly StepInstrution InstructionV;
+        public readonly StepInstrution InstructionV;
 
         /// </inheritdoc>
         internal override bool IsEmpty => new[] { InstructionX, InstructionY, InstructionU, InstructionV }.All(i => i == null || i.IsEmpty);

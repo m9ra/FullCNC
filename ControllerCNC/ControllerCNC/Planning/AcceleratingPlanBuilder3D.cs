@@ -69,6 +69,54 @@ namespace ControllerCNC.Planning
             }
         }
 
+        public static IEnumerable<InstructionCNC> GenerateInstructions(IEnumerable<ToolPathSegment> plan)
+        {
+            var result = new List<InstructionCNC>();
+            var desiredSpeed = 10.0;
+            var currentSpeed = 0.0;
+
+            var workSegments = new Queue<ToolPathSegment>(plan);
+
+            var edgeLimits = new Dictionary<ToolPathSegment, double>();
+            ToolPathSegment previousSegment = null;
+            foreach (var segment in workSegments)
+            {
+                if (previousSegment != null)
+                    edgeLimits[segment] = PathSpeedLimitCalculator.CalculateEdgeLimit(previousSegment, segment);
+
+                previousSegment = segment;
+            }
+
+            while (workSegments.Any())
+            {
+                var currentSegment = workSegments.Dequeue();
+
+                var limitCalculator = new PathSpeedLimitCalculator(currentSegment);
+                limitCalculator.AddLookaheadSegments(workSegments, edgeLimits);
+
+                var smoothingLookahead = 1.0 / currentSegment.Length;
+                var slicer = new ToolPathSegmentSlicer(currentSegment);
+                while (!slicer.IsComplete)
+                {
+                    var speedLimit = limitCalculator.GetLimit(slicer.Position);
+                    var speedLimitLookahead = limitCalculator.GetLimit(Math.Min(1.0, slicer.Position + smoothingLookahead));
+
+                    var targetSpeed = Math.Min(desiredSpeed, speedLimit);
+                    if (currentSpeed < speedLimitLookahead)
+                        //allow acceleration only when limit is far enough
+                        currentSpeed = PathSpeedLimitCalculator.TransitionSpeedTo(currentSpeed, targetSpeed);
+
+                    var newSpeed = Math.Min(currentSpeed, speedLimit); //speed limits are valid (acceleration limits accounted)
+                    currentSpeed = newSpeed;
+
+                    var nextInstruction = slicer.Slice(currentSpeed, PathSpeedLimitCalculator.TimeGrain);
+                    result.Add(nextInstruction);
+                }
+            }
+            return result;
+        }
+
+
         private void _streamer()
         {
             var currentSpeed = 0.0;

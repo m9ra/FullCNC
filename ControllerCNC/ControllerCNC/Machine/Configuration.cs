@@ -55,6 +55,11 @@ namespace ControllerCNC.Machine
         public static readonly int MaxAcceleration = 200 * StepsPerRevolution;
 
         /// <summary>
+        /// Maximal safe acceleration when accelerating many steps apart steps/s^2.
+        /// </summary
+        public static readonly int MaxPartialAcceleration = 2000 * StepsPerRevolution;
+
+        /// <summary>
         /// U axis is 460mm long
         /// </summary>
         internal static readonly int HwMaxStepsU = 460 * StepsPerRevolution * 100 / 125;
