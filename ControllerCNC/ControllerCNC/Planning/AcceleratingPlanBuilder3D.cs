@@ -80,25 +80,27 @@ namespace ControllerCNC.Planning
                 lock (_L_workSegments)
                 {
                     while (_workSegments.Count == 0)
-                    {
                         Monitor.Wait(_L_workSegments);
-                    }
 
                     currentSegment = _workSegments.Dequeue();
                     limitCalculator = new PathSpeedLimitCalculator(currentSegment);
                     limitCalculator.AddLookaheadSegments(_workSegments, _edgeLimits);
                 }
 
+                var smoothingLookahead = 1.0 / currentSegment.Length;
                 var slicer = new ToolPathSegmentSlicer(currentSegment);
                 while (!slicer.IsComplete)
                 {
                     var desiredSpeed = getDesiredSpeed();
                     var speedLimit = limitCalculator.GetLimit(slicer.Position);
+                    var speedLimitLookahead = limitCalculator.GetLimit(Math.Min(1.0, slicer.Position + smoothingLookahead));
+
                     var targetSpeed = Math.Min(desiredSpeed, speedLimit);
+                    if (currentSpeed < speedLimitLookahead)
+                        //allow acceleration only when limit is far enough
+                        currentSpeed = PathSpeedLimitCalculator.TransitionSpeedTo(currentSpeed, targetSpeed);
 
-                    currentSpeed = PathSpeedLimitCalculator.TransitionSpeedTo(currentSpeed, targetSpeed);
                     var newSpeed = Math.Min(currentSpeed, speedLimit); //speed limits are valid (acceleration limits accounted)
-
                     if (newSpeed == 0)
                     {
                         Thread.Sleep(10);
@@ -107,7 +109,6 @@ namespace ControllerCNC.Planning
                     currentSpeed = newSpeed;
 
                     var nextInstruction = slicer.Slice(currentSpeed, PathSpeedLimitCalculator.TimeGrain);
-
                     var cn = 0;
                     while (_cnc.IncompleteInstructionCount > _maxPlannedInstructionCount)
                     {
@@ -151,6 +152,6 @@ namespace ControllerCNC.Planning
         {
             lock (_L_desiredSpeed)
                 return _desiredSpeed;
-        }     
+        }
     }
 }

@@ -19,11 +19,6 @@ namespace ControllerCNC.Planning
 
         private double _totalLengthAccumulator = 0;
 
-        /// <summary>
-        /// How many ticks longer previous instruction was than expected.
-        /// </summary>
-        private int _slack;
-
         private double _timeAccumulator = 0.0;
 
         private int _lastStepCount = 0;
@@ -66,7 +61,7 @@ namespace ControllerCNC.Planning
             var offset = distanceToNextStep(oldSteps);
             var offsetTime = offset * stepDuration - stepDuration; //stepDuration can be used as speed because offset/post are step percents
 
-            var instruction = createInstruction(offsetTime + _timeAccumulator - _slack, stepDuration, stepCount);
+            var instruction = createInstruction(offsetTime + _timeAccumulator, stepDuration, stepCount);
             _timeAccumulator += totalTickTime;
             return instruction;
         }
@@ -82,7 +77,7 @@ namespace ControllerCNC.Planning
 
         private StepInstrution createInstruction(double offsetTime, double stepDuration, int stepCount)
         {
-            Debug.WriteLine($"Cp({offsetTime:0.00},{stepDuration:0.00},{stepCount})");
+            //Debug.WriteLine($"Cp({offsetTime:0.00},{stepDuration:0.00},{stepCount})");
 
             _lastStepCount = stepCount;
             if (stepCount == 0)

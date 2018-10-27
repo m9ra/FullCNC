@@ -37,7 +37,6 @@ namespace ControllerCNC.Planning
             var instruction = acceleration.ToInstruction();
             _accelerationRanges = instruction.GetStepTimings();
 
-
             _maxLookaheadDistance = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), 10000, out _maxLookaheadDistance);
         }
 
@@ -142,7 +141,6 @@ namespace ControllerCNC.Planning
         public double GetLimit(double positionPercentage)
         {
             var activeSegmentRemainingLength = (ActiveSegment.End - ActiveSegment.Start).Length * (1.0 - positionPercentage);
-
             return accelerateFrom(_cornerLimit, activeSegmentRemainingLength, out _);
         }
 
