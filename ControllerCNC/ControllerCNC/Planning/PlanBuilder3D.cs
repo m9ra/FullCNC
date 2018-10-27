@@ -68,6 +68,8 @@ namespace ControllerCNC.Planning
 
         public readonly Acceleration PlaneAcceleration;
 
+        public IEnumerable<PlanPart3D> PlanParts => _plan;
+
         /// <summary>
         /// Event fired after plan streaming is complete.
         /// </summary>

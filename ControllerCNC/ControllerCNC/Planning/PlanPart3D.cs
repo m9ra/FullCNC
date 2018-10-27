@@ -7,15 +7,15 @@ using ControllerCNC.Primitives;
 
 namespace ControllerCNC.Planning
 {
-    class PlanPart3D
+    public class PlanPart3D
     {
-        internal readonly Point3Dmm StartPoint;
+        public readonly Point3Dmm StartPoint;
 
-        internal readonly Point3Dmm EndPoint;
+        public readonly Point3Dmm EndPoint;
 
-        internal readonly Acceleration AccelerationRamp;
+        public readonly Acceleration AccelerationRamp;
 
-        internal readonly Speed SpeedLimit;
+        public readonly Speed SpeedLimit;
 
         public PlanPart3D(Point3Dmm currentPoint, Point3Dmm endPoint, Acceleration accelerationRamp, Speed speedLimit)
         {

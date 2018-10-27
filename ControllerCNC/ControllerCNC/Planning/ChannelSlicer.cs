@@ -108,7 +108,7 @@ namespace ControllerCNC.Planning
             checked
             {
                 _timeAccumulator -= realDuration;
-                if (_timeAccumulator < 0)
+                if (_timeAccumulator < -1)
                     throw new InvalidOperationException("time counting");
             }
         }

@@ -668,45 +668,6 @@ namespace MillingRouter3D
             var segment2 = new ToolPathSegment(p2, p3, MotionMode.IsLinear);
             var segment3 = new ToolPathSegment(p3, p4, MotionMode.IsLinear);
 
-
-            _planStreamer2 = new AcceleratingPlanBuilder3D(Cnc);
-
-            /*planner.Add(segment1);
-            planner.Add(segment2);
-            planner.Add(segment3);*/
-
-            var segmentCount = 180;
-            var lastPoint = p;
-            var radius = 20.0;
-            /*
-            var center = new Point3D(p.X, p.Y - radius, p.Z);
-            for (var i = 0; i < segmentCount; ++i)
-            {
-                var x = center.X + Math.Cos(Math.PI * 2 / segmentCount * i) * radius;
-                var y = center.Y + Math.Sin(Math.PI * 2 / segmentCount * i) * radius;
-                var newPoint = new Point3D(x, y, p.Z);
-
-                var segment = new ToolPathSegment(lastPoint, newPoint, MotionMode.IsLinear);
-                _planStreamer2.Add(segment);
-                lastPoint = newPoint;
-            }*/
-
-            var newPoint = new Point3D(p.X + 200, p.Y - 100, p.Z);
-            for (var i = 0; i < 1; ++i)
-            {
-                var s1 = new ToolPathSegment(p, newPoint, MotionMode.IsLinear);
-                var s2 = new ToolPathSegment(newPoint, p, MotionMode.IsLinear);
-
-                _planStreamer2.Add(s1);
-                //_planStreamer2.Add(s2);
-            }/**/
-
-            _planStreamer2.SetDesiredSpeed(Workspace.CuttingSpeedMm);
-
-            return;
-
-            //TODO this is only for  acceleration testing.
-
             var startPoint = Workspace.EntryPoint;
             var start = new Point3Dmm(startPoint.PositionX, startPoint.PositionY, _zLevel);
             var aboveStart = new Point3Dmm(start.X, start.Y, currentPosition.Z);
@@ -753,13 +714,24 @@ namespace MillingRouter3D
 
         private void executePlan(PlanBuilder3D builder)
         {
-            builder.SetStreamingCuttingSpeed(getCuttingSpeed());
-            builder.StreamingIsComplete += planCompleted;/*/
-                Cnc.SEND(plan);
-                Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
-            _planStreamer = builder;
+            _planStreamer2 = new AcceleratingPlanBuilder3D(Cnc);
+            foreach (var instruction in builder.PlanParts)
+            {
+                var s = instruction.StartPoint;
+                var e = instruction.EndPoint;
+
+                _planStreamer2.Add(new ToolPathSegment(new Point3D(s.X, s.Y, s.Z), new Point3D(e.X, e.Y, e.Z), MotionMode.IsLinear));
+            }
+            _planStreamer2.SetDesiredSpeed(getCuttingSpeed().ToMetric());
+
+            //builder.SetStreamingCuttingSpeed(getCuttingSpeed());
+            //builder.StreamingIsComplete += planCompleted;
+            //_planStreamer = builder;
+
+            ///*/Cnc.SEND(plan);
+            //Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
             _planStart = DateTime.Now;
-            builder.StreamInstructions(Cnc);
+            //builder.StreamInstructions(Cnc);
             this.Focus();
         }
 
