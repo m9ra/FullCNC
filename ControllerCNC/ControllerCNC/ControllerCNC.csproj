@@ -35,6 +35,16 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Test|AnyCPU'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Test\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+    <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
+    <Prefer32Bit>true</Prefer32Bit>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Data" />
@@ -117,6 +127,7 @@
     <Compile Include="Planning\PlanStream3D.cs" />
     <Compile Include="Planning\PlanBuilder3D.cs" />
     <Compile Include="Planning\PlanPart3D.cs" />
+    <Compile Include="Planning\PlanStreamerContext.cs" />
     <Compile Include="Planning\SamplingOffsetCalculator.cs" />
     <Compile Include="Planning\StraightLinePlanner4D.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />

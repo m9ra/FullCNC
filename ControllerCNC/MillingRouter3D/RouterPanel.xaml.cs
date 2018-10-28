@@ -90,8 +90,6 @@ namespace MillingRouter3D
         /// </summary>
         private PlanBuilder3D _planStreamer;
 
-        private AcceleratingPlanBuilder3D _planStreamer2;
-
         public RouterPanel()
         {
             Configuration.EnableRouterMode();
@@ -109,7 +107,6 @@ namespace MillingRouter3D
             _motionCommands.Add(GoToZerosXY);
             _motionCommands.Add(StartPlan);
             _motionCommands.Add(SetZLevel);
-            _motionCommands.Add(Speed);
 
             Cnc = new DriverCNC2();
             Cnc.OnConnectionStatusChange += () => Dispatcher.Invoke(refreshConnectionStatus);
@@ -655,19 +652,11 @@ namespace MillingRouter3D
                 return;
             }
 
-            //disableChanges();
+            disableChanges();
 
             var state = Cnc.PlannedState;
             var currentPosition = PlanBuilder3D.GetPosition(state);
-
-            var p = new Point3D(currentPosition.X, currentPosition.Y, currentPosition.Z);
-            var p2 = p + new Vector3D(100, 0, 0);
-            var p3 = p2 + new Vector3D(100, -10, 0);
-            var p4 = p3 + new Vector3D(0, 0, 100);
-            var segment1 = new ToolPathSegment(p, p2, MotionMode.IsLinear);
-            var segment2 = new ToolPathSegment(p2, p3, MotionMode.IsLinear);
-            var segment3 = new ToolPathSegment(p3, p4, MotionMode.IsLinear);
-
+           
             var startPoint = Workspace.EntryPoint;
             var start = new Point3Dmm(startPoint.PositionX, startPoint.PositionY, _zLevel);
             var aboveStart = new Point3Dmm(start.X, start.Y, currentPosition.Z);
@@ -714,24 +703,14 @@ namespace MillingRouter3D
 
         private void executePlan(PlanBuilder3D builder)
         {
-            _planStreamer2 = new AcceleratingPlanBuilder3D(Cnc);
-            foreach (var instruction in builder.PlanParts)
-            {
-                var s = instruction.StartPoint;
-                var e = instruction.EndPoint;
+            builder.SetStreamingCuttingSpeed(getCuttingSpeed());
+            builder.StreamingIsComplete += planCompleted;
+            _planStreamer = builder;
 
-                _planStreamer2.Add(new ToolPathSegment(new Point3D(s.X, s.Y, s.Z), new Point3D(e.X, e.Y, e.Z), MotionMode.IsLinear));
-            }
-            _planStreamer2.SetDesiredSpeed(getCuttingSpeed().ToMetric());
-
-            //builder.SetStreamingCuttingSpeed(getCuttingSpeed());
-            //builder.StreamingIsComplete += planCompleted;
-            //_planStreamer = builder;
-
-            ///*/Cnc.SEND(plan);
-            //Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
+            /*/Cnc.SEND(plan);
+            Cnc.OnInstructionQueueIsComplete += planCompleted;/**/
             _planStart = DateTime.Now;
-            //builder.StreamInstructions(Cnc);
+            builder.StreamInstructions(Cnc);
             this.Focus();
         }
 
@@ -744,7 +723,6 @@ namespace MillingRouter3D
             enableMotionCommands();
             deactiveExecutionControls();
         }
-
 
         #endregion
 
@@ -872,10 +850,7 @@ namespace MillingRouter3D
         {
             if (CoordController == null)
                 return;
-
-            if (_planStreamer != null)
-                Speed.IsEnabled = _allowCommands;
-
+            
             var speed = getTransitionSpeed().ToMetric();
             var speeds = PlanBuilder3D.GetPositionRev(_tr_dirX * speed, _tr_dirY * speed, _tr_dirZ * speed);
             CoordController.SetDesiredSpeeds(speeds.U, speeds.V, speeds.X, speeds.Y);
@@ -884,9 +859,9 @@ namespace MillingRouter3D
                 builder.SetStreamingCuttingSpeed(getCuttingSpeed());
         }
 
-        private Speed getCuttingSpeed()
+        private double getCuttingSpeed()
         {
-            return ControllerCNC.Primitives.Speed.FromMilimetersPerSecond(Workspace.CuttingSpeedMm);
+            return Workspace.CuttingSpeedMm;
         }
 
         private Speed getTransitionSpeed()
@@ -896,7 +871,7 @@ namespace MillingRouter3D
 
             if (MoveByCuttingSpeed.IsChecked.Value)
             {
-                return getCuttingSpeed();
+                return ControllerCNC.Primitives.Speed.FromMilimetersPerSecond(getCuttingSpeed());
             }
             else
             {
@@ -932,10 +907,9 @@ namespace MillingRouter3D
         {
             disableChanges();
 
-
             var position = getCurrentPosition();
-
-            var builder = new PlanBuilder3D(position.Z, position.Z, getCuttingSpeed(), Configuration.MaxPlaneSpeed, Configuration.MaxPlaneAcceleration);
+            var speed = ControllerCNC.Primitives.Speed.FromMilimetersPerSecond(getCuttingSpeed());
+            var builder = new PlanBuilder3D(position.Z, position.Z, speed, Configuration.MaxPlaneSpeed, Configuration.MaxPlaneAcceleration);
             builder.SetPosition(position);
             builder.AddRampedLine(new Point2Dmm(_positionOffsetX, Workspace.RangeY - _positionOffsetY));
 
@@ -1065,8 +1039,8 @@ namespace MillingRouter3D
             if (Workspace != null)
                 Workspace.CuttingSpeedMm = speed;
 
-            if (_planStreamer2 != null)
-                _planStreamer2.SetDesiredSpeed(speed);
+            if (_planStreamer != null)
+                _planStreamer.SetStreamingCuttingSpeed(speed);
 
             CuttingSpeed.Text = string.Format("{0:0.000}mm/s", speed);
         }

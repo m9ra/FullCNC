@@ -1,5 +1,6 @@
 ﻿using ControllerCNC.Machine;
 using ControllerCNC.Primitives;
+using GeometryCNC.Primitives;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -7,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Controls;
+using System.Windows.Media.Media3D;
 
 namespace ControllerCNC.Planning
 {
@@ -20,12 +22,12 @@ namespace ControllerCNC.Planning
         /// <summary>
         /// Current cutting speed for stream genertion.
         /// </summary>
-        private Speed _stream_cuttingSpeed = Speed.Zero;
+        private double _stream_cuttingSpeed = 0;
 
         /// <summary>
         /// Lock for stream generation.
         /// </summary>
-        private object _L_stream = new object();
+        private object _L_speed = new object();
 
         /// <summary>
         /// Where the builder starts.
@@ -157,45 +159,54 @@ namespace ControllerCNC.Planning
 
         private void _stream(DriverCNC2 driver)
         {
-            var planStream = new PlanStream3D(_plan.ToArray());
-            var preloadTime = 0.05;
-
-            var lastCuttingSpeed = Speed.Zero;
-
-            while (!planStream.IsComplete)
+            var context = new PlanStreamerContext();
+            foreach (var part in PlanParts)
             {
-                while (_stop)
+                var s = part.StartPoint;
+                var e = part.EndPoint;
+
+                var segment = new ToolPathSegment(new Point3D(s.X, s.Y, s.Z), new Point3D(e.X, e.Y, e.Z), MotionMode.IsLinear);
+                context.AddSegment(segment);
+            }
+
+            var zeroCompatibleSpeed = Configuration.ReverseSafeSpeed.ToMetric();
+            var instructionBuffer = new Queue<InstructionCNC>();
+            var maxPlannedInstructionCount = 5;
+
+            while (!context.IsComplete)
+            {
+                while (_stop && context.CurrentSpeed <= zeroCompatibleSpeed)
                 {
                     _isStreaming = false;
                     Thread.Sleep(10);
                 }
-
                 _isStreaming = true;
 
-                var currentCuttingSpeed = _stream_cuttingSpeed;
-
-                if (driver.IncompleteInstructionCount >= 3)
+                if (driver.IncompleteInstructionCount >= maxPlannedInstructionCount)
                 {
                     //wait some time so we are not spinning like crazy
-                    Thread.Sleep(5);
+                    Thread.Sleep(1);
                     continue;
                 }
 
-                IEnumerable<InstructionCNC> nextInstructions;
-                if (planStream.IsSpeedLimitedBy(Configuration.MaxCuttingSpeed))
+                do
                 {
-                    var lengthLimit = preloadTime * currentCuttingSpeed.ToMetric();
-                    nextInstructions = planStream.ShiftByConstantSpeed(lengthLimit, currentCuttingSpeed);
-                }
-                else
-                {
-                    nextInstructions = planStream.NextRampInstructions();
-                }
+                    double speed;
+                    lock (_L_speed)
+                        speed = _stream_cuttingSpeed;
 
-                driver.SEND(nextInstructions);
-                var cuttingDistance = planStream.GetRemainingConstantDistance();
-                var rampTime = planStream.GetRemainingRampTime();
-                _remainingSeconds = rampTime + cuttingDistance / currentCuttingSpeed.ToMetric();
+                    if (_stop)
+                        speed = zeroCompatibleSpeed;
+
+                    var instruction = context.GenerateNextInstruction(speed);
+                    instructionBuffer.Enqueue(instruction);
+                } while (driver.IncompleteInstructionCount == 0 && !context.IsComplete && instructionBuffer.Count < maxPlannedInstructionCount);
+
+                while (instructionBuffer.Count > 0)
+                {
+                    var instruction = instructionBuffer.Dequeue();
+                    driver.SEND(instruction);
+                }
             }
 
             while (driver.IncompleteInstructionCount > 0)
@@ -232,9 +243,10 @@ namespace ControllerCNC.Planning
             return builder.Build();
         }
 
-        public void SetStreamingCuttingSpeed(Speed speed)
+        public void SetStreamingCuttingSpeed(double speed)
         {
-            _stream_cuttingSpeed = speed;
+            lock (_L_speed)
+                _stream_cuttingSpeed = speed;
         }
 
         public void SetPosition(Point3Dmm target)
@@ -323,7 +335,7 @@ namespace ControllerCNC.Planning
         public void Stop()
         {
             if (!_isStreaming)
-                return;
+                return; 
 
             _stop = true;
             while (_isStreaming)

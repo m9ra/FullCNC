@@ -25,11 +25,16 @@ namespace MillingRouter3D
         {
             var p1 = new Point3D(0, 0, 0);
             var p2 = new Point3D(0, 100, 0);
-            var p3 = new Point3D(100, 500, 0);
+            var p3 = new Point3D(1000, 5000, 0);
             var s1 = new ToolPathSegment(p1, p2, MotionMode.IsLinear);
             var s2 = new ToolPathSegment(p2, p3, MotionMode.IsLinear);
 
+            var start = DateTime.Now;
             var instructions = AcceleratingPlanBuilder3D.GenerateInstructions(new[] { s1, s2 });
+            var end = DateTime.Now;
+            Console.WriteLine((end - start).TotalSeconds);
+            Console.ReadKey();
+
             var xInstructions = new List<StepInstrution>();
             var yInstructions = new List<StepInstrution>();
             foreach (Axes instruction in instructions)
@@ -42,7 +47,7 @@ namespace MillingRouter3D
             var previousRange = PathSpeedLimitCalculator.AccelerationRanges[0];
             foreach (var range in PathSpeedLimitCalculator.AccelerationRanges)
             {
-                Console.WriteLine($"{range} {previousRange-range}");
+                Console.WriteLine($"{range} {previousRange - range}");
                 previousRange = range;
             }
         }

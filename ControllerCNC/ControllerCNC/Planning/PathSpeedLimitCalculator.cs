@@ -31,17 +31,21 @@ namespace ControllerCNC.Planning
 
         private static readonly int[] _accelerationRanges;
 
+        private static readonly double[] _accelerationRangesMetric;
+
         private static readonly double _maxLookaheadDistance;
 
         static PathSpeedLimitCalculator()
         {
             var ranges = new List<int>();
+            var rangesMetric = new List<double>();
             var v0 = Configuration.ReverseSafeSpeed.ToMetric();
             var v = v0;
             var vmax = Configuration.MaxPlaneSpeed.ToMetric();
             var currentTime = 0;
             while (v < vmax)
             {
+                rangesMetric.Add(v);
                 ranges.Add(Speed.FromMilimetersPerSecond(v).ToDeltaT());
                 //v=v0 + 1/2 a*t
                 currentTime += ranges.Last();
@@ -51,6 +55,7 @@ namespace ControllerCNC.Planning
             }
 
             _accelerationRanges = ranges.ToArray();
+            _accelerationRangesMetric = rangesMetric.ToArray();
 
             _maxLookaheadDistance = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), 10000, out _maxLookaheadDistance);
         }
@@ -69,7 +74,26 @@ namespace ControllerCNC.Planning
             if (currentSpeed == targetSpeed)
                 return currentSpeed;
 
+            if (currentSpeed < Configuration.ReverseSafeSpeed.ToMetric())
+                currentSpeed = Configuration.ReverseSafeSpeed.ToMetric();
+
             var direction = Math.Sign(targetSpeed - currentSpeed);
+            var currentDeltaT = Speed.FromMilimetersPerSecond(currentSpeed).ToDeltaT();
+            var t = 1.0 * currentDeltaT / Configuration.TimerFrequency;
+            var newSpeed = currentSpeed + 0.5 * direction * t * Configuration.MaxPartialAcceleration * Configuration.MilimetersPerStep;
+
+            if (targetSpeed > currentSpeed)
+            {
+                if (newSpeed > targetSpeed)
+                    newSpeed = targetSpeed;
+            }
+            else
+            {
+                if (newSpeed < targetSpeed)
+                    newSpeed = targetSpeed;
+            }
+
+            return newSpeed;
 
             var i1 = GetAccelerationIndex(currentSpeed, direction >= 0);
             var i2 = GetAccelerationIndex(targetSpeed, direction >= 0);
@@ -100,7 +124,6 @@ namespace ControllerCNC.Planning
                 }
 
                 return _accelerationRanges.Length;
-
             }
             else
             {
@@ -123,7 +146,6 @@ namespace ControllerCNC.Planning
             var maxScaleFactor = Math.Max(ar1, ar2);
             var minScaleFactor = Math.Min(ar1, ar2);
 
-
             if (r1 == r2)
                 return Configuration.MaxPlaneSpeed.ToMetric();
 
@@ -134,13 +156,11 @@ namespace ControllerCNC.Planning
                 return limit;
 
             var speedupFactor = maxScaleFactor / minScaleFactor;
-
-
             for (var i = 0; i < _accelerationRanges.Length - 1; ++i)
             {
                 //TODO binary search
-                var ac1 = Speed.FromDeltaT(_accelerationRanges[i]).ToMetric();
-                var ac2 = Speed.FromDeltaT(_accelerationRanges[i + 1]).ToMetric();
+                var ac1 = _accelerationRangesMetric[i];
+                var ac2 = _accelerationRangesMetric[i + 1];
 
                 var sp1 = ac1;
                 var sp2 = ac1 * speedupFactor;
