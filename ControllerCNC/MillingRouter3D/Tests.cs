@@ -30,7 +30,7 @@ namespace MillingRouter3D
             var s2 = new ToolPathSegment(p2, p3, MotionMode.IsLinear);
 
             var start = DateTime.Now;
-            var instructions = AcceleratingPlanBuilder3D.GenerateInstructions(new[] { s1, s2 });
+            var instructions = PlanStreamerContext.GenerateInstructions(new[] { s1, s2 }, 10);
             var end = DateTime.Now;
             Console.WriteLine((end - start).TotalSeconds);
             Console.ReadKey();

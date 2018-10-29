@@ -116,7 +116,6 @@
     <Compile Include="Machine\StateInfo.cs" />
     <Compile Include="Machine\StateDataInstruction.cs" />
     <Compile Include="Machine\StepInstrution.cs" />
-    <Compile Include="Planning\AcceleratingPlanBuilder3D.cs" />
     <Compile Include="Planning\BitmapMash.cs" />
     <Compile Include="Planning\ChannelSlicer.cs" />
     <Compile Include="Planning\CoordController.cs" />

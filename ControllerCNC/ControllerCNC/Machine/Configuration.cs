@@ -165,9 +165,19 @@ namespace ControllerCNC.Machine
         public static readonly Speed ReverseSafeSpeed = Speed.FromDeltaT(StartDeltaT);
 
         /// <summary>
+        /// Metric version of <see cref="ReverseSafeSpeed"/>.
+        /// </summary>
+        public static readonly double ReverseSafeSpeedMetric = ReverseSafeSpeed.ToMetric();
+
+        /// <summary>
         /// Maximal speed for head moving in a plane (X,Y or U,V).
         /// </summary>
         public static readonly Speed MaxPlaneSpeed = Speed.FromDeltaT(FastestDeltaT);
+
+        /// <summary>
+        /// Metric version of <see cref="MaxPlaneSpeed"/>.
+        /// </summary>
+        public static readonly double MaxPlaneSpeedMetric = MaxPlaneSpeed.ToMetric();
 
         /// <summary>
         /// Maximum speed that is supported for cutting plans.

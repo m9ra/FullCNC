@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ControllerCNC.Planning
 {
-    class PlanStreamerContext
+    public class PlanStreamerContext
     {
         private readonly Queue<SegmentPlanningInfo> _workSegments = new Queue<SegmentPlanningInfo>();
 
@@ -54,6 +54,24 @@ namespace ControllerCNC.Planning
             }
         }
 
+        public static IEnumerable<InstructionCNC> GenerateInstructions(IEnumerable<ToolPathSegment> plan, double desiredSpeed)
+        {
+            var context = new PlanStreamerContext();
+            foreach (var segment in plan)
+            {
+                context.AddSegment(segment);
+            }
+
+            var result = new List<InstructionCNC>();
+            while (!context.IsComplete)
+            {
+                var instruction = context.GenerateNextInstruction(desiredSpeed);
+                if (instruction != null)
+                    result.Add(instruction);
+            }
+            return result;
+        }
+
         internal InstructionCNC GenerateNextInstruction(double desiredSpeed)
         {
             if (_currentSlicer == null || _currentSlicer.IsComplete)
@@ -69,7 +87,17 @@ namespace ControllerCNC.Planning
             var currentSegment = _currentSegmentInfo.Segment;
             var smoothingLookahead = 1.0 / currentSegment.Length;
             var speedLimit = limitCalculator.GetLimit(_currentSlicer.Position);
-            var speedLimitLookahead = limitCalculator.GetLimit(Math.Min(1.0, _currentSlicer.Position + smoothingLookahead));
+
+            double speedLimitLookahead;
+            if (_currentSpeed < speedLimit)
+            {
+                // lookahead is useful to prevent short term accelerations - call it only when acceleration is possible
+                speedLimitLookahead = limitCalculator.GetLimit(Math.Min(1.0, _currentSlicer.Position + smoothingLookahead));
+            }
+            else
+            {
+                speedLimitLookahead = speedLimit;
+            }
 
             var targetSpeed = Math.Min(desiredSpeed, speedLimit);
             if (_currentSpeed < speedLimitLookahead)

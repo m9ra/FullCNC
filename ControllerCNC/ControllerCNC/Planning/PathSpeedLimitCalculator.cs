@@ -33,6 +33,10 @@ namespace ControllerCNC.Planning
 
         private static readonly double[] _accelerationRangesMetric;
 
+        private static readonly double[] _accelerationDistances;
+
+        private static readonly double[] _accelerationSpeeds;
+
         private static readonly double _maxLookaheadDistance;
 
         static PathSpeedLimitCalculator()
@@ -57,6 +61,7 @@ namespace ControllerCNC.Planning
             _accelerationRanges = ranges.ToArray();
             _accelerationRangesMetric = rangesMetric.ToArray();
 
+            calculateAccelerationLimits(out _accelerationDistances, out _accelerationSpeeds);
             _maxLookaheadDistance = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), 10000, out _maxLookaheadDistance);
         }
 
@@ -74,8 +79,7 @@ namespace ControllerCNC.Planning
             if (currentSpeed == targetSpeed)
                 return currentSpeed;
 
-            if (currentSpeed < Configuration.ReverseSafeSpeed.ToMetric())
-                currentSpeed = Configuration.ReverseSafeSpeed.ToMetric();
+            currentSpeed = Math.Max(currentSpeed, Configuration.ReverseSafeSpeedMetric);
 
             var direction = Math.Sign(targetSpeed - currentSpeed);
             var currentDeltaT = Speed.FromMilimetersPerSecond(currentSpeed).ToDeltaT();
@@ -94,16 +98,6 @@ namespace ControllerCNC.Planning
             }
 
             return newSpeed;
-
-            var i1 = GetAccelerationIndex(currentSpeed, direction >= 0);
-            var i2 = GetAccelerationIndex(targetSpeed, direction >= 0);
-            if (Math.Abs(i1 - i2) <= 1)
-            {
-                return targetSpeed;
-            }
-
-            var nextDeltaT = _accelerationRanges[i1 + direction];
-            return Speed.FromDeltaT(nextDeltaT).ToMetric();
         }
 
         internal static int GetAccelerationIndex(double speed, bool isAcceleration)
@@ -199,28 +193,6 @@ namespace ControllerCNC.Planning
             }
         }
 
-        private static double accelerateFrom(double startingSpeed, double distance, out double distanceBeforeMax)
-        {
-            var maxSpeed = Configuration.MaxPlaneSpeed.ToMetric();
-
-            var actualSpeed = startingSpeed;
-            var actualDistance = 0.0;
-            do
-            {
-                var grainDistance = TimeGrain * actualSpeed;
-                actualSpeed = TransitionSpeedTo(actualSpeed, double.PositiveInfinity);
-
-                actualDistance += grainDistance;
-                distanceBeforeMax = actualDistance;
-
-                if (actualSpeed >= Configuration.MaxPlaneSpeed.ToMetric())
-                    break;
-
-            } while (actualDistance < distance);
-            return actualSpeed;
-        }
-
-
         public static double CalculateEdgeLimit(ToolPathSegment segment1, ToolPathSegment segment2)
         {
             if (segment1 == null)
@@ -244,6 +216,57 @@ namespace ControllerCNC.Planning
             rX = v.X;
             rY = v.Y;
             rZ = v.Z;
+        }
+
+        private static void calculateAccelerationLimits(out double[] distances, out double[] speeds)
+        {
+            var maxSpeed = Configuration.MaxPlaneSpeedMetric;
+            var actualSpeed = Configuration.ReverseSafeSpeedMetric;
+            var actualDistance = 0.0;
+
+            var distancesL = new List<double>();
+            var speedsL = new List<double>();
+
+            distancesL.Add(actualDistance);
+            speedsL.Add(actualSpeed);
+            do
+            {
+                var grainDistance = TimeGrain * actualSpeed;
+                actualSpeed = TransitionSpeedTo(actualSpeed, double.PositiveInfinity);
+                actualDistance += grainDistance;
+
+                distancesL.Add(actualDistance);
+                speedsL.Add(actualSpeed);
+
+            } while (actualSpeed < maxSpeed);
+            
+            distances = distancesL.ToArray();
+            speeds = speedsL.ToArray();
+        }
+
+        private static double accelerateFrom(double startingSpeed, double distance, out double distanceBeforeMax)
+        {
+            var lengthOffset = 0.0;
+            for (var i = 0; i < _accelerationSpeeds.Length; ++i)
+            {
+                var speed = _accelerationSpeeds[i];
+                if (speed > startingSpeed)
+                    break;
+
+                lengthOffset = _accelerationDistances[i];
+            }
+
+            double reachedSpeed;
+            var offsetedDistance = distance + lengthOffset;
+            var j = _accelerationSpeeds.Length;
+            do
+            {
+                j -= 1;
+                reachedSpeed = _accelerationSpeeds[j];
+                distanceBeforeMax = _accelerationDistances[j];
+            } while (offsetedDistance < distanceBeforeMax);
+
+            return reachedSpeed;
         }
     }
 }
