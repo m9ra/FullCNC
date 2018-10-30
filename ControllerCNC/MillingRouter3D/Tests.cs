@@ -2,6 +2,7 @@
 using ControllerCNC.Machine;
 using ControllerCNC.Machine.Logging;
 using ControllerCNC.Planning;
+using ControllerCNC.Primitives;
 using GeometryCNC.Primitives;
 using System;
 using System.Collections.Generic;
@@ -44,8 +45,9 @@ namespace MillingRouter3D
                 Console.WriteLine($"{instruction.InstructionU}  {instruction.InstructionV}");
             }
 
-            var previousRange = PathSpeedLimitCalculator.AccelerationRanges[0];
-            foreach (var range in PathSpeedLimitCalculator.AccelerationRanges)
+            var ranges = PathSpeedLimitCalculator.AccelerationRangesMetric.Select(r => Speed.FromMilimetersPerSecond(r).ToDeltaT()).ToArray();
+            var previousRange = ranges[0];
+            foreach (var range in ranges)
             {
                 Console.WriteLine($"{range} {previousRange - range}");
                 previousRange = range;

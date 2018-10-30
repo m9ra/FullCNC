@@ -390,8 +390,8 @@ namespace MillingRouter3D.GUI
         /// </summary>
         protected Point2Dmm rotate(Point2Dmm point, double minC1, double maxC1, double minC2, double maxC2)
         {
-            var c1 = minC1 + maxC1 / 2.0;
-            var c2 = minC2 + maxC2 / 2.0;
+            var c1 = (minC1 + maxC1) / 2.0;
+            var c2 = (minC2 + maxC2) / 2.0;
 
             var centeredX = point.C1 - c1;
             var centeredY = point.C2 - c2;

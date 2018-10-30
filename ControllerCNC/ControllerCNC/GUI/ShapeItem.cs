@@ -489,8 +489,8 @@ namespace ControllerCNC.GUI
         /// </summary>
         protected Point4Dmm rotate(Point4Dmm point)
         {
-            var c1 = _shapeMinC1 + _shapeMaxC1 / 2.0;
-            var c2 = _shapeMinC2 + _shapeMaxC2 / 2.0;
+            var c1 = (_shapeMinC1 + _shapeMaxC1) / 2.0;
+            var c2 = (_shapeMinC2 + _shapeMaxC2) / 2.0;
 
             var centeredU = point.U - c1;
             var centeredV = point.V - c2;

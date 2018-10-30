@@ -19,7 +19,7 @@ namespace ControllerCNC.Planning
 
         public static readonly double TimeGrain = 0.02;
 
-        public static int[] AccelerationRanges => _accelerationRanges.ToArray();
+        public static double[] AccelerationRangesMetric => _accelerationRangesMetric.ToArray();
 
         private readonly List<ToolPathSegment> _followingSegments = new List<ToolPathSegment>();
 
@@ -28,8 +28,6 @@ namespace ControllerCNC.Planning
         private double _cornerLimit;
 
         private double _optimisticCornerLimit;
-
-        private static readonly int[] _accelerationRanges;
 
         private static readonly double[] _accelerationRangesMetric;
 
@@ -58,11 +56,10 @@ namespace ControllerCNC.Planning
                 v = v0 + 0.5 * t * Configuration.MaxPartialAcceleration * Configuration.MilimetersPerStep;
             }
 
-            _accelerationRanges = ranges.ToArray();
             _accelerationRangesMetric = rangesMetric.ToArray();
 
             calculateAccelerationLimits(out _accelerationDistances, out _accelerationSpeeds);
-            _maxLookaheadDistance = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), 10000, out _maxLookaheadDistance);
+            _maxLookaheadDistance = _accelerationDistances.Last();
         }
 
         public PathSpeedLimitCalculator(ToolPathSegment activeSegment)
@@ -100,39 +97,6 @@ namespace ControllerCNC.Planning
             return newSpeed;
         }
 
-        internal static int GetAccelerationIndex(double speed, bool isAcceleration)
-        {
-            if (speed == 0)
-                speed = Configuration.ReverseSafeSpeed.ToMetric();
-
-            var ticks = Speed.FromMilimetersPerSecond(speed).ToDeltaT();
-
-            if (isAcceleration)
-            {
-                for (var i = 0; i < _accelerationRanges.Length; ++i)
-                {
-                    if (ticks >= _accelerationRanges[i])
-                    {
-                        return i;
-                    }
-                }
-
-                return _accelerationRanges.Length;
-            }
-            else
-            {
-                for (var i = _accelerationRanges.Length - 1; i >= 0; --i)
-                {
-                    if (ticks <= _accelerationRanges[i])
-                    {
-                        return i;
-                    }
-                }
-
-                return 0;
-            }
-        }
-
         internal static double GetAxisLimit(double r1, double r2)
         {
             var ar1 = Math.Abs(r1);
@@ -150,7 +114,7 @@ namespace ControllerCNC.Planning
                 return limit;
 
             var speedupFactor = maxScaleFactor / minScaleFactor;
-            for (var i = 0; i < _accelerationRanges.Length - 1; ++i)
+            for (var i = 0; i < _accelerationRangesMetric.Length - 1; ++i)
             {
                 //TODO binary search
                 var ac1 = _accelerationRangesMetric[i];
@@ -170,7 +134,7 @@ namespace ControllerCNC.Planning
         public double GetLimit(double positionPercentage)
         {
             var activeSegmentRemainingLength = (ActiveSegment.End - ActiveSegment.Start).Length * (1.0 - positionPercentage);
-            return accelerateFrom(_cornerLimit, activeSegmentRemainingLength, out _);
+            return accelerateFrom(_cornerLimit, activeSegmentRemainingLength);
         }
 
         public void AddLookaheadSegments(IEnumerable<ToolPathSegment> workSegments, Dictionary<ToolPathSegment, double> cornerLimits)
@@ -181,14 +145,14 @@ namespace ControllerCNC.Planning
                     break;
 
                 var segmentCornerLimit = cornerLimits[segment];
-                var reachableSpeed = accelerateFrom(segmentCornerLimit, _lookaheadDistance, out _);
+                var reachableSpeed = accelerateFrom(segmentCornerLimit, _lookaheadDistance);
 
                 _optimisticCornerLimit = Math.Min(_optimisticCornerLimit, reachableSpeed);
 
                 _lookaheadDistance += segment.Length;
 
                 //limit is min from each lookahead corner and final stop
-                var safeSpeed = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), _lookaheadDistance, out _);
+                var safeSpeed = accelerateFrom(Configuration.ReverseSafeSpeed.ToMetric(), _lookaheadDistance);
                 _cornerLimit = Math.Min(safeSpeed, _optimisticCornerLimit);
             }
         }
@@ -239,12 +203,12 @@ namespace ControllerCNC.Planning
                 speedsL.Add(actualSpeed);
 
             } while (actualSpeed < maxSpeed);
-            
+
             distances = distancesL.ToArray();
             speeds = speedsL.ToArray();
         }
 
-        private static double accelerateFrom(double startingSpeed, double distance, out double distanceBeforeMax)
+        private static double accelerateFrom(double startingSpeed, double distance)
         {
             var lengthOffset = 0.0;
             for (var i = 0; i < _accelerationSpeeds.Length; ++i)
@@ -258,6 +222,7 @@ namespace ControllerCNC.Planning
 
             double reachedSpeed;
             var offsetedDistance = distance + lengthOffset;
+            var distanceBeforeMax = 0.0;
             var j = _accelerationSpeeds.Length;
             do
             {
