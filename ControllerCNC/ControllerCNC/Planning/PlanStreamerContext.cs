@@ -85,7 +85,7 @@ namespace ControllerCNC.Planning
 
             var limitCalculator = _currentSegmentInfo.LimitCalculator;
             var currentSegment = _currentSegmentInfo.Segment;
-            var smoothingLookahead = 1.0 / currentSegment.Length;
+            var smoothingLookahead = 5.0 / currentSegment.Length;
             var speedLimit = limitCalculator.GetLimit(_currentSlicer.Position);
 
             double speedLimitLookahead;
