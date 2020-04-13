@@ -579,8 +579,6 @@ namespace MillingRouter3D
             PositionY.Text = (Workspace.RangeY - position.Y - _positionOffsetY).ToString("0.000");
             PositionZ.Text = (position.Z - _zLevel).ToString("0.000");
 
-            Workspace.HeadXYZ.Position = position;
-
             if (_planStreamer != null)
             {
                 var elapsedSeconds = (DateTime.Now - _planStart).TotalSeconds;
@@ -589,11 +587,23 @@ namespace MillingRouter3D
 
                 var totalTime = new TimeSpan(0, 0, 0, (int)Math.Round(_lastRemainingSeconds + elapsedSeconds + plannedTime));
                 var elapsedTime = new TimeSpan(0, 0, 0, (int)Math.Round(elapsedSeconds));
+                var progressValue = _planStreamer.Progress * 100;
+                if (_planStreamer.IsStreaming)
+                {
+                    PlanProgress.Value = progressValue;
+                }
+                else if (_planStreamer.IsChangingPosition)
+                {
+                    position = _planStreamer.CurrentStreamPosition.As3Dmm();
+                }
+                var progress = progressValue.ToString("N1") + "%";
                 if (totalTime.TotalDays < 2)
                 {
-                    ShowMessage(elapsedTime.ToString() + "/" + totalTime.ToString());
+                    ShowMessage(progress + " in " + totalTime.ToString());
                 }
             }
+
+            Workspace.HeadXYZ.Position = position;
 
             if (Cnc.CurrentState.IsHomeCalibrated)
             {
@@ -626,11 +636,15 @@ namespace MillingRouter3D
             if (_planStreamer.IsStreaming)
             {
                 _planStreamer.Stop();
+                StopPlan.IsEnabled = true;
+                PlanProgressSlider.IsEnabled = true;
                 setPauseControl(isPaused: true);
             }
             else
             {
                 _planStreamer.Continue();
+                StopPlan.IsEnabled = false;
+                PlanProgressSlider.IsEnabled = false;
                 setPauseControl(isPaused: false);
             }
         }
@@ -656,7 +670,7 @@ namespace MillingRouter3D
 
             var state = Cnc.PlannedState;
             var currentPosition = PlanBuilder3D.GetPosition(state);
-           
+
             var startPoint = Workspace.EntryPoint;
             var start = new Point3Dmm(startPoint.PositionX, startPoint.PositionY, _zLevel);
             var aboveStart = new Point3Dmm(start.X, start.Y, currentPosition.Z);
@@ -745,9 +759,10 @@ namespace MillingRouter3D
             Dispatcher.Invoke(() =>
             {
                 StartPlan.IsEnabled = false;
-                StopPlan.IsEnabled = true;
+                StopPlan.IsEnabled = false;
                 PausePlan.IsEnabled = true;
                 setPauseControl(isPaused: false);
+                PlanProgressSlider.IsEnabled = false;
             });
         }
 
@@ -759,6 +774,7 @@ namespace MillingRouter3D
                 StopPlan.IsEnabled = false;
                 PausePlan.IsEnabled = false;
                 setPauseControl(isPaused: false);
+                PlanProgressSlider.IsEnabled = false;
             });
         }
 
@@ -850,7 +866,7 @@ namespace MillingRouter3D
         {
             if (CoordController == null)
                 return;
-            
+
             var speed = getTransitionSpeed().ToMetric();
             var speeds = PlanBuilder3D.GetPositionRev(_tr_dirX * speed, _tr_dirY * speed, _tr_dirZ * speed);
             CoordController.SetDesiredSpeeds(speeds.U, speeds.V, speeds.X, speeds.Y);
@@ -1091,6 +1107,14 @@ namespace MillingRouter3D
             var waitI = new ConstantInstruction((short)0, 1000000, 0);
             var instruction = Axes.UVXY(waitI, stepI, waitI, waitI);
             Cnc.SEND(instruction);
+        }
+
+        private void PlanProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_planStreamer == null || _planStreamer.IsStreaming)
+                return;
+
+            _planStreamer.SetProgress(PlanProgressSlider.Value / 100.0);
         }
 
         private void NewPlan_Click(object sender, RoutedEventArgs e)

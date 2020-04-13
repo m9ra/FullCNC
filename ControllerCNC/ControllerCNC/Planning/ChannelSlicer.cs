@@ -11,6 +11,8 @@ namespace ControllerCNC.Planning
 {
     class ChannelSlicer
     {
+        public readonly int StepDir;
+
         private readonly double _totalLength;
 
         private readonly double _ratio;
@@ -27,12 +29,17 @@ namespace ControllerCNC.Planning
 
         internal bool IsComplete => _totalLengthAccumulator == _totalLength;
 
-        internal double Position => _totalLengthAccumulator / _totalLength;
+        internal int CompletedSteps { get; private set; }
+
+        internal double SliceProgress => _totalLengthAccumulator / _totalLength;
+
+        internal double TotalLength => _totalLength;
 
         internal ChannelSlicer(double totalLength, int totalSteps, double ratio)
         {
             _totalLength = totalLength;
             _totalSteps = Math.Abs(totalSteps);
+            StepDir = Math.Sign(totalSteps);
             _ratio = ratio;
         }
 
@@ -62,6 +69,7 @@ namespace ControllerCNC.Planning
             var offsetTime = offset * stepDuration - stepDuration; //stepDuration can be used as speed because offset/post are step percents
 
             var instruction = createInstruction(offsetTime + _timeAccumulator, stepDuration, stepCount);
+            CompletedSteps += stepCount * StepDir;
             _timeAccumulator += totalTickTime;
             return instruction;
         }

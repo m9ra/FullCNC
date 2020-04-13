@@ -183,85 +183,109 @@
                         </DockPanel>
                     </DockPanel>
                 </DockPanel>
-                <StackPanel Background="LightCyan" DockPanel.Dock="Left" Width="210">
-                    <Border BorderBrush="Black" BorderThickness="1">
-                        <TextBlock Name="ConnectionStatus" FontSize="50" FontWeight="Bold" Background="Red" TextAlignment="Center">Offline</TextBlock>
-                    </Border>
-                    <Border BorderBrush="Black" BorderThickness="1">
-                        <StackPanel DockPanel.Dock="Right" Margin="0 20 0 0">
-                            <StackPanel Orientation="Vertical">
-                                <CheckBox Name="HoldMovement">
-                                    <TextBlock Text="Hold"/>
-                                    <CheckBox.LayoutTransform>
-                                        <ScaleTransform ScaleX="2" ScaleY="2" />
-                                    </CheckBox.LayoutTransform>
-                                </CheckBox>
-
-                                <CheckBox Name="MoveByCuttingSpeed" IsChecked="True">
-                                    <TextBlock Text="Cutting speed"/>
-                                    <CheckBox.LayoutTransform>
-                                        <ScaleTransform ScaleX="2" ScaleY="2" />
-                                    </CheckBox.LayoutTransform>
-                                </CheckBox>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftUpB" Content="LF"/>
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="UpB" Content="F"/>
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="UpRightB" Content="FR"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftB" Content="L"/>
-                                <Border Height="70" Width="70">
-                                    <StackPanel Orientation="Vertical">
-                                        <ToggleButton Style="{StaticResource MovementArrow}" x:Name="AscendB" Height="35" FontSize="25" Content="↑"/>
-                                        <ToggleButton Style="{StaticResource MovementArrow}" x:Name="DescendB" Height="35" FontSize="25" Content="↓"/>
-                                    </StackPanel>
-                                </Border>
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="RightB" Content="R"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftBottomB" DockPanel.Dock="Bottom" Content="LB"/>
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomB" DockPanel.Dock="Bottom" Content="B"/>
-                                <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomRightB" DockPanel.Dock="Bottom" Content="BR"/>
-                            </StackPanel>
-
-
-                            <Border Margin="0 10">
-                                <StackPanel>
-                                    <TextBlock FontSize="30" FontWeight="Bold">Cutting speed</TextBlock>
-                                    <TextBlock Name="CuttingSpeed" FontSize="30" TextAlignment="Center">0mm/s</TextBlock>
-                                    <Slider IsDirectionReversed="False" Name="Speed" Minimum="250" Maximum="10000" ValueChanged="CuttingDeltaT_ValueChanged">
-                                        <Slider.LayoutTransform>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" >
+                    <StackPanel Background="LightCyan" Width="210">
+                        <Border BorderBrush="Black" BorderThickness="1">
+                            <TextBlock Name="ConnectionStatus" FontSize="50" FontWeight="Bold" Background="Red" TextAlignment="Center">Offline</TextBlock>
+                        </Border>
+                        <Border BorderBrush="Black" BorderThickness="1">
+                            <StackPanel DockPanel.Dock="Right" Margin="0 20 0 0">
+                                <StackPanel Orientation="Vertical">
+                                    <CheckBox Name="HoldMovement">
+                                        <TextBlock Text="Hold"/>
+                                        <CheckBox.LayoutTransform>
                                             <ScaleTransform ScaleX="2" ScaleY="2" />
-                                        </Slider.LayoutTransform>
-                                    </Slider>
+                                        </CheckBox.LayoutTransform>
+                                    </CheckBox>
 
-                                    <TextBlock FontSize="30" FontWeight="Bold" Text="Tool kerf"/>
-                                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                        <TextBox TextChanged="ToolKerf_TextChanged" Margin="0" Padding="0" BorderThickness="0" x:Name="CuttingKerf" Background="Transparent" FontSize="30" TextAlignment="Center" Text="0"/>
-                                        <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
-                                    </StackPanel>
-
-                                    <TextBlock FontSize="30" FontWeight="Bold" Text="Layer depth"/>
-                                    <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
-                                        <TextBox TextChanged="MaxLayerCut_TextChanged" Margin="0" Padding="0" BorderThickness="0" x:Name="MaxLayerCut" Background="Transparent" FontSize="30" TextAlignment="Center" Text="0"/>
-                                        <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
-                                    </StackPanel>
+                                    <CheckBox Name="MoveByCuttingSpeed" IsChecked="True">
+                                        <TextBlock Text="Cutting speed"/>
+                                        <CheckBox.LayoutTransform>
+                                            <ScaleTransform ScaleX="2" ScaleY="2" />
+                                        </CheckBox.LayoutTransform>
+                                    </CheckBox>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftUpB" Content="LF"/>
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="UpB" Content="F"/>
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="UpRightB" Content="FR"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftB" Content="L"/>
+                                    <Border Height="70" Width="70">
+                                        <StackPanel Orientation="Vertical">
+                                            <ToggleButton Style="{StaticResource MovementArrow}" x:Name="AscendB" Height="35" FontSize="25" Content="↑"/>
+                                            <ToggleButton Style="{StaticResource MovementArrow}" x:Name="DescendB" Height="35" FontSize="25" Content="↓"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="RightB" Content="R"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="LeftBottomB" DockPanel.Dock="Bottom" Content="LB"/>
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomB" DockPanel.Dock="Bottom" Content="B"/>
+                                    <ToggleButton Style="{StaticResource MovementArrow}" x:Name="BottomRightB" DockPanel.Dock="Bottom" Content="BR"/>
                                 </StackPanel>
 
-                            </Border>
-                        </StackPanel>
-                    </Border>
-                    <Border BorderBrush="Black" Margin="0 20 0 0" BorderThickness="1">
-                        <StackPanel>
-                            <Button Name="Calibration" Style="{StaticResource CommandButton}" Click="CalibrationButton_Click">Calibrate</Button>
-                            <Button Name="ExitButton" Style="{StaticResource CommandButton}" Click="ExitButton_Click">Exit</Button>
-                            <Border Margin="0 30">
-                                <Button Name="SetZLevel" Style="{StaticResource CommandButton}" Click="SetZLevel_Click">Set Z level</Button>
-                            </Border>
-                        </StackPanel>
+
+                                <Border Margin="0 10">
+                                    <StackPanel>
+                                        <TextBlock FontSize="30" FontWeight="Bold">Cutting speed</TextBlock>
+                                        <TextBlock Name="CuttingSpeed" FontSize="30" TextAlignment="Center">0mm/s</TextBlock>
+                                        <Slider IsDirectionReversed="False" Name="Speed" Minimum="250" Maximum="10000" ValueChanged="CuttingDeltaT_ValueChanged">
+                                            <Slider.LayoutTransform>
+                                                <ScaleTransform ScaleX="2" ScaleY="2" />
+                                            </Slider.LayoutTransform>
+                                        </Slider>
+
+                                        <TextBlock FontSize="30" FontWeight="Bold" Text="Tool kerf"/>
+                                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                            <TextBox TextChanged="ToolKerf_TextChanged" Margin="0" Padding="0" BorderThickness="0" x:Name="CuttingKerf" Background="Transparent" FontSize="30" TextAlignment="Center" Text="0"/>
+                                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                                        </StackPanel>
+
+                                        <TextBlock FontSize="30" FontWeight="Bold" Text="Layer depth"/>
+                                        <StackPanel HorizontalAlignment="Center" Orientation="Horizontal">
+                                            <TextBox TextChanged="MaxLayerCut_TextChanged" Margin="0" Padding="0" BorderThickness="0" x:Name="MaxLayerCut" Background="Transparent" FontSize="30" TextAlignment="Center" Text="0"/>
+                                            <TextBlock Margin="0" Padding="0" FontSize="30" TextAlignment="Center">mm</TextBlock>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                        <Border BorderBrush="Black" Margin="0 20 0 0" BorderThickness="1">
+                            <StackPanel>
+                                <Button Name="Calibration" Style="{StaticResource CommandButton}" Click="CalibrationButton_Click">Calibrate</Button>
+                                <Button Name="ExitButton" Style="{StaticResource CommandButton}" Click="ExitButton_Click">Exit</Button>
+                                <Border Margin="0 30">
+                                    <Button Name="SetZLevel" Style="{StaticResource CommandButton}" Click="SetZLevel_Click">Set Z level</Button>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <Border>
+                        <Grid Margin="0">
+                           
+                            <ProgressBar Orientation="Vertical" BorderThickness="0" Width="60" Name="PlanProgress" Value="0" Minimum="0" Maximum="100">
+
+                            </ProgressBar>
+
+                            <Slider  Orientation="Vertical" BorderThickness="0" Value="{Binding ElementName=PlanProgress, Path=Value}" ValueChanged="PlanProgressSlider_ValueChanged" Background="Transparent" IsDirectionReversed="False" Name="PlanProgressSlider" Minimum="0" Maximum="100">
+                                <Slider.LayoutTransform>
+                                    <ScaleTransform ScaleX="3.5" ScaleY="2" />
+                                </Slider.LayoutTransform>
+                            </Slider>
+                            <TextBlock FontSize="35" FontWeight="Bold" Text="{Binding ElementName=PlanProgress, Path=Value, StringFormat={}{0:N1}%}" HorizontalAlignment="Center" VerticalAlignment="Center" >
+                                <TextBlock.LayoutTransform>
+                                    <RotateTransform Angle="90"></RotateTransform>
+                                </TextBlock.LayoutTransform>
+                            </TextBlock>
+                        </Grid>
+
+
                     </Border>
                 </StackPanel>
+
                 <Border Background="Gray" Name="WorkspaceSlot" BorderBrush="Black" BorderThickness="2"></Border>
             </DockPanel>
             <StackPanel Name="MessageBox" Opacity="0.8" PreviewMouseDown="MessageBox_PreviewMouseDown" >

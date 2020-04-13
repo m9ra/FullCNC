@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using System.Windows.Media.Media3D;
 using ControllerCNC.Machine;
 
 namespace ControllerCNC.Primitives
@@ -28,6 +28,21 @@ namespace ControllerCNC.Primitives
         public static Point3Dstep As3Dstep(this Point3Dmm point)
         {
             return new Point3Dstep(mmToStep(point.X), mmToStep(point.Y), mmToStep(point.Z));
+        }
+
+        public static Point3Dstep As3Dstep(this StateInfo state)
+        {
+            return new Point3Dstep(state.V, state.X, state.Y);
+        }
+
+        public static Point3Dmm As3Dmm(this Point3Dstep point)
+        {
+            return new Point3Dmm(stepToMm(point.X), stepToMm(point.Y), stepToMm(point.Z));
+        }
+
+        public static Point3D As3D(this Point3Dmm point)
+        {
+            return new Point3D(point.X, point.Y, point.Z);
         }
 
         public static Point2Dstep As2Dstep(this Point2Dmm point)

@@ -64,6 +64,8 @@ namespace ControllerCNC.Planning
         /// </summary>
         private readonly double _transitionLevel;
 
+        private PlanStreamerContext _context = null;
+
         public readonly Speed CuttingSpeed;
 
         public readonly Speed TransitionSpeed;
@@ -86,7 +88,33 @@ namespace ControllerCNC.Planning
 
         public bool IsStreaming => _isStreaming;
 
+        public bool IsChangingPosition { get; private set; }
+
         public double ZeroLevel => _zeroLevel;
+
+        public double Progress
+        {
+            get
+            {
+                if (_context == null)
+                {
+                    return 0;
+                }
+
+                return _context.CompletedLength / _context.TotalLength;
+            }
+        }
+
+        public Point3Dstep CurrentStreamPosition
+        {
+            get
+            {
+                if (_context == null)
+                    return null;
+
+                return _context.CurrentPosition;
+            }
+        }
 
         public PlanBuilder3D(double transitionLevel, double zeroLevel, Speed cuttingSpeed, Speed transitionSpeed, Acceleration planeAcceleration)
         {
@@ -159,28 +187,55 @@ namespace ControllerCNC.Planning
 
         private void _stream(DriverCNC2 driver)
         {
-            var context = new PlanStreamerContext();
+            PlanStreamerContext intermContext = null;
+            _context = new PlanStreamerContext();
             foreach (var part in PlanParts)
             {
                 var s = part.StartPoint;
                 var e = part.EndPoint;
 
                 var segment = new ToolPathSegment(new Point3D(s.X, s.Y, s.Z), new Point3D(e.X, e.Y, e.Z), MotionMode.IsLinear);
-                context.AddSegment(segment);
+                _context.AddSegment(segment);
             }
 
             var zeroCompatibleSpeed = Configuration.ReverseSafeSpeed.ToMetric();
             var instructionBuffer = new Queue<InstructionCNC>();
             var maxPlannedInstructionCount = 5;
 
-            while (!context.IsComplete)
+            var currentContext = _context;
+
+            while (!currentContext.IsComplete || intermContext != null)
             {
-                while (_stop && context.CurrentSpeed <= zeroCompatibleSpeed)
+                if (intermContext != null && intermContext.IsComplete)
+                {
+                    intermContext = null;
+                    currentContext = _context;
+                    continue;
+                }
+
+                while (_stop && _context.CurrentSpeed <= zeroCompatibleSpeed)
                 {
                     _isStreaming = false;
                     Thread.Sleep(10);
                 }
                 _isStreaming = true;
+
+                if (IsChangingPosition)
+                {
+                    // create intermediate context which will transfer machine to the new position
+                    var np = CurrentStreamPosition.As3Dmm();
+                    var cp = driver.CurrentState.As3Dstep().As3Dmm();
+                    var cpTransition = new Point3Dmm(cp.X, cp.Y, _transitionLevel);
+                    var npTransition = new Point3Dmm(np.X, np.Y, _transitionLevel);
+
+                    intermContext = new PlanStreamerContext();
+                    intermContext.AddSegment(new ToolPathSegment(cp.As3D(), cpTransition.As3D(), MotionMode.IsLinear));
+                    intermContext.AddSegment(new ToolPathSegment(cpTransition.As3D(), npTransition.As3D(), MotionMode.IsLinear));
+                    intermContext.AddSegment(new ToolPathSegment(npTransition.As3D(), np.As3D(), MotionMode.IsLinear));
+
+                    currentContext = intermContext;
+                    IsChangingPosition = false;
+                }
 
                 if (driver.IncompleteInstructionCount >= maxPlannedInstructionCount)
                 {
@@ -198,14 +253,15 @@ namespace ControllerCNC.Planning
                     if (_stop)
                         speed = zeroCompatibleSpeed;
 
-                    var instruction = context.GenerateNextInstruction(speed);
+                    var instruction = currentContext.GenerateNextInstruction(speed);
                     instructionBuffer.Enqueue(instruction);
-                } while (driver.IncompleteInstructionCount == 0 && !context.IsComplete && instructionBuffer.Count < maxPlannedInstructionCount);
+                } while (driver.IncompleteInstructionCount == 0 && !currentContext.IsComplete && instructionBuffer.Count < maxPlannedInstructionCount);
 
                 while (instructionBuffer.Count > 0)
                 {
                     var instruction = instructionBuffer.Dequeue();
-                    driver.SEND(instruction);
+                    if (!driver.SEND(instruction))
+                        throw new InvalidOperationException("Instruction was not accepted. (Probably over bounds?). Progress: " + Progress * 100);
                 }
             }
 
@@ -335,11 +391,11 @@ namespace ControllerCNC.Planning
         public void Stop()
         {
             if (!_isStreaming)
-                return; 
+                return;
 
             _stop = true;
             while (_isStreaming)
-                //spin lock, respose should be very fast
+                //spin lock, response should be very fast
                 Thread.Sleep(1);
         }
 
@@ -350,8 +406,17 @@ namespace ControllerCNC.Planning
 
             _stop = false;
             while (!_isStreaming)
-                //spin lock, respose should be very fast
+                //spin lock, response should be very fast
                 Thread.Sleep(1);
+        }
+
+        public void SetProgress(double value)
+        {
+            if (_isStreaming)
+                throw new InvalidOperationException("Can't change progress while streaming");
+
+            IsChangingPosition = true;
+            _context.MoveToCompletedLength(_context.TotalLength * value);
         }
 
         #endregion

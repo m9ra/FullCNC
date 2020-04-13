@@ -1,4 +1,5 @@
 ﻿using ControllerCNC.Machine;
+using ControllerCNC.Primitives;
 using GeometryCNC.Primitives;
 using System;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace ControllerCNC.Planning
 {
     public class PlanStreamerContext
     {
-        private readonly Queue<SegmentPlanningInfo> _workSegments = new Queue<SegmentPlanningInfo>();
+        private readonly List<SegmentPlanningInfo> _workSegments = new List<SegmentPlanningInfo>();
 
         private readonly Dictionary<ToolPathSegment, double> _edgeLimits = new Dictionary<ToolPathSegment, double>();
 
@@ -22,11 +23,43 @@ namespace ControllerCNC.Planning
 
         private SegmentPlanningInfo _currentSegmentInfo = null;
 
+        private int _nextWorkSegmentIndex = 0;
+
         private double _currentSpeed = 0;
 
-        public bool IsComplete => _workSegments.Count == 0 && (_currentSlicer == null || _currentSlicer.IsComplete);
+        private double _completedLength = 0;
+
+        private double _totalLength = 0;
+
+        public bool IsComplete => _nextWorkSegmentIndex >= _workSegments.Count && (_currentSlicer == null || _currentSlicer.IsComplete);
 
         public double CurrentSpeed => _currentSpeed;
+
+        public double CompletedLength
+        {
+            get
+            {
+                if (_currentSlicer == null)
+                    return _completedLength;
+
+                return _currentSlicer.CompletedLength + _completedLength;
+            }
+        }
+
+        public double TotalLength => _totalLength;
+
+        public Point3Dstep CurrentPosition
+        {
+            get
+            {
+                if (_currentSlicer == null)
+                {
+                    return null;
+                }
+
+                return _currentSlicer.CurrentPosition;
+            }
+        }
 
         internal void AddSegment(ToolPathSegment segment)
         {
@@ -37,9 +70,10 @@ namespace ControllerCNC.Planning
             }
 
             _lastAddedSegment = segment;
+            _totalLength += segment.Length;
 
             var segmentInfo = new SegmentPlanningInfo(segment);
-            _workSegments.Enqueue(segmentInfo);
+            _workSegments.Add(segmentInfo);
 
             foreach (var limitCalculator in _openLimitCalculators)
             {
@@ -76,23 +110,26 @@ namespace ControllerCNC.Planning
         {
             if (_currentSlicer == null || _currentSlicer.IsComplete)
             {
-                _currentSegmentInfo = _workSegments.Dequeue();
-                if (_currentSegmentInfo == null)
-                    return null;
+                if (_currentSlicer != null)
+                {
+                    _completedLength += _currentSlicer.CompletedLength;
+                }
 
+                _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
                 _currentSlicer = new ToolPathSegmentSlicer(_currentSegmentInfo.Segment);
+                _nextWorkSegmentIndex += 1;
             }
 
             var limitCalculator = _currentSegmentInfo.LimitCalculator;
             var currentSegment = _currentSegmentInfo.Segment;
             var smoothingLookahead = 1.0 / currentSegment.Length;
-            var speedLimit = limitCalculator.GetLimit(_currentSlicer.Position);
+            var speedLimit = limitCalculator.GetLimit(_currentSlicer.SliceProgress);
 
             double speedLimitLookahead;
             if (_currentSpeed < speedLimit)
             {
                 // lookahead is useful to prevent short term accelerations - call it only when acceleration is possible
-                speedLimitLookahead = limitCalculator.GetLimit(Math.Min(1.0, _currentSlicer.Position + smoothingLookahead));
+                speedLimitLookahead = limitCalculator.GetLimit(Math.Min(1.0, _currentSlicer.SliceProgress + smoothingLookahead));
             }
             else
             {
@@ -108,6 +145,52 @@ namespace ControllerCNC.Planning
             _currentSpeed = newSpeed;
 
             return _currentSlicer.Slice(_currentSpeed, PathSpeedLimitCalculator.TimeGrain);
+        }
+
+        internal void MoveToCompletedLength(double targetLength)
+        {
+            targetLength = Math.Max(0, targetLength);
+            targetLength = Math.Min(_totalLength, targetLength);
+
+            --_nextWorkSegmentIndex;
+
+            if (_nextWorkSegmentIndex < 1)
+            {
+                _completedLength = 0;
+                _nextWorkSegmentIndex = 0;
+            }
+
+
+            while (_completedLength > targetLength)
+            {
+                --_nextWorkSegmentIndex;
+                _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
+                _completedLength -= _currentSegmentInfo.Segment.Length;
+            }
+
+            while (_completedLength < targetLength && _nextWorkSegmentIndex < _workSegments.Count)
+            {
+                _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
+                if (_completedLength + _currentSegmentInfo.Segment.Length >= targetLength)
+                {
+                    // we found the correct segment
+                    break;
+                }
+
+                ++_nextWorkSegmentIndex;
+                _completedLength += _currentSegmentInfo.Segment.Length;
+            }
+
+            _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
+            _currentSlicer = new ToolPathSegmentSlicer(_currentSegmentInfo.Segment);
+            ++_nextWorkSegmentIndex;
+            while (_currentSlicer.SliceProgress * _currentSlicer.Segment.Length + _completedLength < targetLength)
+            {
+                _currentSlicer.Slice(_currentSpeed, PathSpeedLimitCalculator.TimeGrain);
+
+                if (_currentSlicer.IsComplete)
+                    break;
+            }
         }
     }
 

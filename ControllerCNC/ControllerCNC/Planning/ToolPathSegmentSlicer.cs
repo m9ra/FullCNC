@@ -14,7 +14,30 @@ namespace ControllerCNC.Planning
     {
         internal bool IsComplete => _x.IsComplete;
 
-        public double Position => _x.Position;
+        public double SliceProgress => _x.SliceProgress;
+
+        public readonly ToolPathSegment Segment;
+
+        public double CompletedLength
+        {
+            get
+            {
+                var slicer = maxLengthSlicer(_x, _y, _z);
+                return slicer.SliceProgress * _totalLength;
+            }
+        }
+
+        public Point3Dstep CurrentPosition
+        {
+            get
+            {
+                var ps = Segment.Start;
+                var start = new Point3Dmm(ps.X, ps.Y, ps.Z);
+                var p = start.As3Dstep();
+                var position = new Point3Dstep(p.X + _x.CompletedSteps, p.Y + _y.CompletedSteps, p.Z + _z.CompletedSteps);
+                return position;
+            }
+        }
 
         private readonly int _totalX;
 
@@ -28,6 +51,8 @@ namespace ControllerCNC.Planning
 
         public ToolPathSegmentSlicer(ToolPathSegment segment)
         {
+            Segment = segment;
+
             toSteps(segment.Start, out var sX, out var sY, out var sZ);
             toSteps(segment.End, out var eX, out var eY, out var eZ);
 
@@ -78,6 +103,21 @@ namespace ControllerCNC.Planning
             x = pStep.X;
             y = pStep.Y;
             z = pStep.Z;
+        }
+
+        private ChannelSlicer maxLengthSlicer(params ChannelSlicer[] slicers)
+        {
+            var bestSlicer = slicers[0];
+            for (var i = 1; i < slicers.Length; ++i)
+            {
+                var oslicer = slicers[i];
+                if (bestSlicer.TotalLength < oslicer.TotalLength)
+                {
+                    bestSlicer = oslicer;
+                }
+            }
+
+            return bestSlicer;
         }
     }
 }

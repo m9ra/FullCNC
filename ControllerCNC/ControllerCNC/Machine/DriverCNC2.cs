@@ -123,7 +123,7 @@ namespace ControllerCNC.Machine
         private readonly double _startDelay = 0.001;
 
         /// <summary>
-        /// Ration between machine and real clock.
+        /// Ratio between machine and real clock.
         /// </summary>
         private readonly double _clockRatio = 1.0 / 1.004;
 
