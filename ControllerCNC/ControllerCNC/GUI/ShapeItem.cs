@@ -552,7 +552,7 @@ namespace ControllerCNC.GUI
 
         protected Point4Dmm[] applyKerf(IEnumerable<Point4Dmm> points, WorkspacePanel workspace)
         {
-           /* var pointsUV = points.ToUV();
+            /*var pointsUV = points.ToUV();
 
             var offsetCalculator = new OffsetCalculator(pointsUV.Reverse());
             var offsetPoints = offsetCalculator.WithOffset(workspace.CuttingKerf / 2).First();
@@ -583,18 +583,22 @@ namespace ControllerCNC.GUI
             var startPointXY = startPoint.ToXY();
 
             //find UV next
+            var iteration = 0;
             var i = (startIndex + increment + points.Length) % points.Length;
             while (points[i].ToUV().Equals(startPointUV))
             {
-                i = (i + increment + points.Length) % points.Length;
+                i = (iteration + points.Length) % points.Length;
+                iteration += increment;
             }
             var endPointUV = points[i].ToUV();
 
             //find XY next
+            iteration = 0;
             i = (startIndex + increment + points.Length) % points.Length;
             while (points[i].ToXY().Equals(startPointXY))
             {
-                i = (i + increment + points.Length) % points.Length;
+                i = (iteration + points.Length) % points.Length;
+                iteration += increment;
             }
             var endPointXY = points[i].ToXY();
 
