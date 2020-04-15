@@ -724,6 +724,7 @@ namespace ControllerCNC.Machine
 
             var simulationDelay = 10;
             var schedulerStopped = true;
+            var timeSlack = 0.0;
             while (true)
             {
                 if (_queuedInstructions.Count > 0)
@@ -737,15 +738,18 @@ namespace ControllerCNC.Machine
                     }
 
                     var tickCount = instruction.CalculateTotalTime();
-                    var time = 1000.0 * tickCount / Configuration.TimerFrequency;
+                    var time = 1000.0 * tickCount / Configuration.TimerFrequency / _clockRatio + timeSlack;
 
                     if (SIMULATE_REAL_DELAY)
                     {
-                        Thread.Sleep((int)Math.Round(time));
+                        var realTime = Math.Max(0, (int)Math.Round(time));
+                        timeSlack = time - realTime;
+
+                        Thread.Sleep(realTime);
                     }
                     else
                     {
-                        Thread.Sleep(200);
+                        Thread.Sleep(simulationDelay);
                     }
 
                     lock (_L_instructionQueue)

@@ -127,6 +127,7 @@
     <Compile Include="Planning\PlanBuilder3D.cs" />
     <Compile Include="Planning\PlanPart3D.cs" />
     <Compile Include="Planning\PlanStreamerContext.cs" />
+    <Compile Include="Planning\PlanStreamerState.cs" />
     <Compile Include="Planning\SamplingOffsetCalculator.cs" />
     <Compile Include="Planning\StraightLinePlanner4D.cs" />
     <Compile Include="Planning\PlanBuilder.cs" />

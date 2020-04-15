@@ -374,6 +374,14 @@ namespace MillingRouter3D
             {
                 var menu = new ContextMenu();
 
+                var propItem = new MenuItem();
+                propItem.Header = "Properties";
+                propItem.Click += (e, s) =>
+                {
+                    new MillingItemPropertiesDialog(shapeItem, Workspace);
+                };
+                menu.Items.Add(propItem);
+
                 var copyItem = new MenuItem();
                 copyItem.Header = "Copy";
                 copyItem.Click += (e, s) =>
@@ -582,7 +590,7 @@ namespace MillingRouter3D
             if (_planStreamer != null)
             {
                 var elapsedSeconds = (DateTime.Now - _planStart).TotalSeconds;
-                _lastRemainingSeconds = _planStreamer.RemainingSeconds;
+                _lastRemainingSeconds = 1.0 * _planStreamer.RemainingTicksEstimation / Configuration.TimerFrequency;
                 var plannedTime = 1.0 * Cnc.RemainingPlanTickEstimation / Configuration.TimerFrequency;
 
                 var totalTime = new TimeSpan(0, 0, 0, (int)Math.Round(_lastRemainingSeconds + elapsedSeconds + plannedTime));
@@ -599,7 +607,7 @@ namespace MillingRouter3D
                 var progress = progressValue.ToString("N1") + "%";
                 if (totalTime.TotalDays < 2)
                 {
-                    ShowMessage(progress + " in " + totalTime.ToString());
+                    ShowMessage(elapsedTime + " / " + totalTime.ToString());
                 }
             }
 

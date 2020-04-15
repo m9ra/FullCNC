@@ -40,11 +40,6 @@ namespace ControllerCNC.Planning
         private double _currentLevel = 0;
 
         /// <summary>
-        /// How much of time remains to the end of stream.
-        /// </summary>
-        private double _remainingSeconds;
-
-        /// <summary>
         /// Determine whether streaming should be stopped.
         /// </summary>
         private volatile bool _stop;
@@ -84,13 +79,24 @@ namespace ControllerCNC.Planning
         /// </summary>
         public Point3Dmm CurrentPoint => _currentPoint;
 
-        public double RemainingSeconds => _remainingSeconds;
-
         public bool IsStreaming => _isStreaming;
 
         public bool IsChangingPosition { get; private set; }
 
         public double ZeroLevel => _zeroLevel;
+
+        public ulong RemainingTicksEstimation
+        {
+            get
+            {
+                if (_context == null)
+                {
+                    return 0;
+                }
+
+                return _context.RemainingTicksEstimation;
+            }
+        }
 
         public double Progress
         {
@@ -188,7 +194,7 @@ namespace ControllerCNC.Planning
         private void _stream(DriverCNC2 driver)
         {
             PlanStreamerContext intermContext = null;
-            _context = new PlanStreamerContext();
+            _context = new PlanStreamerContext(true);
             foreach (var part in PlanParts)
             {
                 var s = part.StartPoint;
@@ -218,6 +224,7 @@ namespace ControllerCNC.Planning
                     _isStreaming = false;
                     Thread.Sleep(10);
                 }
+
                 _isStreaming = true;
 
                 if (IsChangingPosition)
@@ -228,7 +235,7 @@ namespace ControllerCNC.Planning
                     var cpTransition = new Point3Dmm(cp.X, cp.Y, _transitionLevel);
                     var npTransition = new Point3Dmm(np.X, np.Y, _transitionLevel);
 
-                    intermContext = new PlanStreamerContext();
+                    intermContext = new PlanStreamerContext(false);
                     intermContext.AddSegment(new ToolPathSegment(cp.As3D(), cpTransition.As3D(), MotionMode.IsLinear));
                     intermContext.AddSegment(new ToolPathSegment(cpTransition.As3D(), npTransition.As3D(), MotionMode.IsLinear));
                     intermContext.AddSegment(new ToolPathSegment(npTransition.As3D(), np.As3D(), MotionMode.IsLinear));
@@ -248,12 +255,16 @@ namespace ControllerCNC.Planning
                 {
                     double speed;
                     lock (_L_speed)
+                    {
                         speed = _stream_cuttingSpeed;
+                    }
 
                     if (_stop)
+                    {
                         speed = zeroCompatibleSpeed;
+                    }
 
-                    var instruction = currentContext.GenerateNextInstruction(speed);
+                    var instruction = currentContext.GenerateNextInstruction(speed, stopRemainingTimeLockstep: _stop);
                     instructionBuffer.Enqueue(instruction);
                 } while (driver.IncompleteInstructionCount == 0 && !currentContext.IsComplete && instructionBuffer.Count < maxPlannedInstructionCount);
 

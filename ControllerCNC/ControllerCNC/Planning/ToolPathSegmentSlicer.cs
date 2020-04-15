@@ -12,6 +12,16 @@ namespace ControllerCNC.Planning
 {
     public class ToolPathSegmentSlicer
     {
+        private readonly int _totalX;
+
+        private readonly int _totalY;
+
+        private readonly int _totalZ;
+
+        private readonly double _totalLength;
+
+        private ChannelSlicer _x, _y, _z;
+
         internal bool IsComplete => _x.IsComplete;
 
         public double SliceProgress => _x.SliceProgress;
@@ -38,16 +48,6 @@ namespace ControllerCNC.Planning
                 return position;
             }
         }
-
-        private readonly int _totalX;
-
-        private readonly int _totalY;
-
-        private readonly int _totalZ;
-
-        private readonly double _totalLength;
-
-        private readonly ChannelSlicer _x, _y, _z;
 
         public ToolPathSegmentSlicer(ToolPathSegment segment)
         {
@@ -118,6 +118,16 @@ namespace ControllerCNC.Planning
             }
 
             return bestSlicer;
+        }
+
+        internal ToolPathSegmentSlicer DeepCopy()
+        {
+            var copy = (ToolPathSegmentSlicer)MemberwiseClone();
+            copy._x = copy._x.ShallowCopy();
+            copy._y = copy._y.ShallowCopy();
+            copy._z = copy._z.ShallowCopy();
+
+            return copy;
         }
     }
 }

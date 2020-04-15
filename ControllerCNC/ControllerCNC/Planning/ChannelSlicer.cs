@@ -115,5 +115,10 @@ namespace ControllerCNC.Planning
                     throw new InvalidOperationException("time counting");
             }
         }
+
+        internal ChannelSlicer ShallowCopy()
+        {
+            return (ChannelSlicer)MemberwiseClone();
+        }
     }
 }

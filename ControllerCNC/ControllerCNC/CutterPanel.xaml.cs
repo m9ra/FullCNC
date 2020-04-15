@@ -367,6 +367,14 @@ namespace ControllerCNC
             {
                 var menu = new ContextMenu();
 
+                var propItem = new MenuItem();
+                propItem.Header = "Properties";
+                propItem.Click += (e, s) =>
+                {
+                    new PointProviderPropertiesDialog(shapeItem);
+                };
+                menu.Items.Add(propItem);
+
                 var copyItem = new MenuItem();
                 copyItem.Header = "Copy";
                 copyItem.Click += (e, s) =>

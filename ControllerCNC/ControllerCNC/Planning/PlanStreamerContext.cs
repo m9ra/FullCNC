@@ -2,62 +2,94 @@
 using ControllerCNC.Primitives;
 using GeometryCNC.Primitives;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ControllerCNC.Planning
 {
     public class PlanStreamerContext
     {
-        private readonly List<SegmentPlanningInfo> _workSegments = new List<SegmentPlanningInfo>();
+        private readonly BlockingCollection<Action> _estimationSteps = null;
 
         private readonly Dictionary<ToolPathSegment, double> _edgeLimits = new Dictionary<ToolPathSegment, double>();
 
         private readonly HashSet<PathSpeedLimitCalculator> _openLimitCalculators = new HashSet<PathSpeedLimitCalculator>();
 
+        private List<SegmentPlanningInfo> _workSegments = new List<SegmentPlanningInfo>();
+
         private ToolPathSegment _lastAddedSegment = null;
 
-        private ToolPathSegmentSlicer _currentSlicer = null;
+        private PlanStreamerState _currentState;
 
-        private SegmentPlanningInfo _currentSegmentInfo = null;
+        private PlanStreamerState _timeEstimationState;
 
-        private int _nextWorkSegmentIndex = 0;
+        private volatile PlanStreamerState _previewTimeEstimationState;
 
-        private double _currentSpeed = 0;
+        private double _previewEstimationDesiredSpeed = Double.NaN;
 
-        private double _completedLength = 0;
+        private double _lastEstimationDesiredSpeed = Double.NaN;
+
+        private bool _wasEstimationLockstepDisabled = false;
 
         private double _totalLength = 0;
 
-        public bool IsComplete => _nextWorkSegmentIndex >= _workSegments.Count && (_currentSlicer == null || _currentSlicer.IsComplete);
+        private ulong _remainingTicksEstimation = 0;
 
-        public double CurrentSpeed => _currentSpeed;
+        public bool IsComplete => _currentState != null && _currentState.IsComplete;
+
+        public double TotalLength => _totalLength;
+
+        public ulong RemainingTicksEstimation => _remainingTicksEstimation;
+
+        public double CurrentSpeed
+        {
+            get
+            {
+                if (_currentState == null)
+                {
+                    return 0;
+                }
+
+                return _currentState.CurrentSpeed;
+            }
+        }
+
 
         public double CompletedLength
         {
             get
             {
-                if (_currentSlicer == null)
-                    return _completedLength;
+                if (_currentState == null)
+                {
+                    return 0;
+                }
 
-                return _currentSlicer.CompletedLength + _completedLength;
+                return _currentState.CompletedLength;
             }
         }
-
-        public double TotalLength => _totalLength;
 
         public Point3Dstep CurrentPosition
         {
             get
             {
-                if (_currentSlicer == null)
+                if (_currentState == null)
                 {
                     return null;
                 }
 
-                return _currentSlicer.CurrentPosition;
+                return _currentState.CurrentPosition;
+            }
+        }
+
+        internal PlanStreamerContext(bool runRemainingTimeEstimation)
+        {
+            if (runRemainingTimeEstimation)
+            {
+                _estimationSteps = new BlockingCollection<Action>();
             }
         }
 
@@ -90,7 +122,7 @@ namespace ControllerCNC.Planning
 
         public static IEnumerable<InstructionCNC> GenerateInstructions(IEnumerable<ToolPathSegment> plan, double desiredSpeed)
         {
-            var context = new PlanStreamerContext();
+            var context = new PlanStreamerContext(false);
             foreach (var segment in plan)
             {
                 context.AddSegment(segment);
@@ -106,90 +138,109 @@ namespace ControllerCNC.Planning
             return result;
         }
 
-        internal InstructionCNC GenerateNextInstruction(double desiredSpeed)
+        internal InstructionCNC GenerateNextInstruction(double desiredSpeed, bool stopRemainingTimeLockstep = false)
         {
-            if (_currentSlicer == null || _currentSlicer.IsComplete)
+            if (_currentState == null)
             {
-                if (_currentSlicer != null)
+                _currentState = new PlanStreamerState(_workSegments.ToArray());
+                if (_estimationSteps != null)
                 {
-                    _completedLength += _currentSlicer.CompletedLength;
+                    _timeEstimationState = _currentState.CreateBranch();
+                    var th = new Thread(_runRemainingTicksEstimation);
+                    th.Priority = ThreadPriority.Lowest;
+                    th.IsBackground = true;
+                    th.Start();
                 }
 
-                _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
-                _currentSlicer = new ToolPathSegmentSlicer(_currentSegmentInfo.Segment);
-                _nextWorkSegmentIndex += 1;
+                _workSegments = null; // prevent modifications after generation started
             }
 
-            var limitCalculator = _currentSegmentInfo.LimitCalculator;
-            var currentSegment = _currentSegmentInfo.Segment;
-            var smoothingLookahead = 5.0 / currentSegment.Length;
-            var speedLimit = limitCalculator.GetLimit(_currentSlicer.SliceProgress);
-
-            double speedLimitLookahead;
-            if (_currentSpeed < speedLimit)
+            var instruction = _currentState.GenerateNextInstruction(desiredSpeed);
+            if (_timeEstimationState != null && !stopRemainingTimeLockstep)
             {
-                // lookahead is useful to prevent short term accelerations - call it only when acceleration is possible
-                speedLimitLookahead = limitCalculator.GetLimit(Math.Min(1.0, _currentSlicer.SliceProgress + smoothingLookahead));
+                if (!_wasEstimationLockstepDisabled && desiredSpeed == _previewEstimationDesiredSpeed)
+                {
+                    _estimationSteps.Add(() =>
+                    {
+                        moveEstimationByNextInstruction(desiredSpeed);
+                    });
+                }
+                else
+                {
+                    _previewEstimationDesiredSpeed = desiredSpeed;
+                    var newState = _currentState.CreateBranch();
+                    _previewTimeEstimationState = newState;
+                    _estimationSteps.Add(() =>
+                    {
+                        _lastEstimationDesiredSpeed = desiredSpeed;
+                        setNewTimeEstimationState(newState);
+                    });
+                }
             }
-            else
-            {
-                speedLimitLookahead = speedLimit;
-            }
 
-            var targetSpeed = Math.Min(desiredSpeed, speedLimit);
-            if (_currentSpeed < speedLimitLookahead)
-                //allow acceleration only when limit is far enough
-                _currentSpeed = PathSpeedLimitCalculator.TransitionSpeedTo(_currentSpeed, targetSpeed);
+            _wasEstimationLockstepDisabled = stopRemainingTimeLockstep;
 
-            var newSpeed = Math.Min(_currentSpeed, speedLimit); //speed limits are valid (acceleration limits accounted)
-            _currentSpeed = newSpeed;
-
-            return _currentSlicer.Slice(_currentSpeed, PathSpeedLimitCalculator.TimeGrain);
+            return instruction;
         }
+
 
         internal void MoveToCompletedLength(double targetLength)
         {
             targetLength = Math.Max(0, targetLength);
             targetLength = Math.Min(_totalLength, targetLength);
 
-            --_nextWorkSegmentIndex;
+            _currentState.MoveToCompletedLength(targetLength);
 
-            if (_nextWorkSegmentIndex < 1)
+            if (_timeEstimationState != null)
             {
-                _completedLength = 0;
-                _nextWorkSegmentIndex = 0;
+                var newState = _currentState.CreateBranch();
+                _previewTimeEstimationState = newState;
+                _estimationSteps.Add(() => setNewTimeEstimationState(newState));
             }
+        }
 
+        private void moveEstimationByNextInstruction(double desiredSpeed)
+        {
+            var instruction = _timeEstimationState.GenerateNextInstruction(desiredSpeed);
+            _remainingTicksEstimation -= instruction.CalculateTotalTime();
 
-            while (_completedLength > targetLength)
+            if (_lastEstimationDesiredSpeed != desiredSpeed)
             {
-                --_nextWorkSegmentIndex;
-                _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
-                _completedLength -= _currentSegmentInfo.Segment.Length;
+                _lastEstimationDesiredSpeed = desiredSpeed;
+                recalculateRemainingTime();
             }
+        }
 
-            while (_completedLength < targetLength && _nextWorkSegmentIndex < _workSegments.Count)
+
+        private void setNewTimeEstimationState(PlanStreamerState state)
+        {
+            _timeEstimationState = state;
+            recalculateRemainingTime();
+        }
+
+        private void recalculateRemainingTime()
+        {
+            // we need to recalculate the state from current point
+            var stateCopy = _timeEstimationState.CreateBranch();
+            var remainingTicks = 0UL;
+            while (!stateCopy.IsComplete)
             {
-                _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
-                if (_completedLength + _currentSegmentInfo.Segment.Length >= targetLength)
-                {
-                    // we found the correct segment
-                    break;
-                }
+                if (_previewTimeEstimationState != _timeEstimationState)
+                    // early stopping - the recalculation will run soon again
+                    return;
 
-                ++_nextWorkSegmentIndex;
-                _completedLength += _currentSegmentInfo.Segment.Length;
+                var instruction = stateCopy.GenerateNextInstruction(_lastEstimationDesiredSpeed);
+                remainingTicks += instruction.CalculateTotalTime();
             }
+            _remainingTicksEstimation = remainingTicks;
+        }
 
-            _currentSegmentInfo = _workSegments[_nextWorkSegmentIndex];
-            _currentSlicer = new ToolPathSegmentSlicer(_currentSegmentInfo.Segment);
-            ++_nextWorkSegmentIndex;
-            while (_currentSlicer.SliceProgress * _currentSlicer.Segment.Length + _completedLength < targetLength)
+        private void _runRemainingTicksEstimation()
+        {
+            while (true)
             {
-                _currentSlicer.Slice(_currentSpeed, PathSpeedLimitCalculator.TimeGrain);
-
-                if (_currentSlicer.IsComplete)
-                    break;
+                var action = _estimationSteps.Take();
+                action();
             }
         }
     }
