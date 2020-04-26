@@ -93,6 +93,7 @@
       <DependentUpon>PointProviderPropertiesDialog.xaml</DependentUpon>
     </Compile>
     <Compile Include="GUI\ScaffoldItem.cs" />
+    <Compile Include="GUI\LevelMillingItem.cs" />
     <Compile Include="MillingShapeFactory.cs" />
     <Compile Include="Primitives\MillingJoin.cs" />
     <Compile Include="RouterPanel.xaml.cs">

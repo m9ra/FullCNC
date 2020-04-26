@@ -237,6 +237,11 @@ namespace MillingRouter3D.GUI
             return ConvertToVisual(new Point2Dmm(point.X, point.Y));
         }
 
+        internal Point2Dmm ConvertFromVisual(Point visualPoint)
+        {
+            return new Point2Dmm(visualPoint.X / _mmToVisualFactorC1, visualPoint.Y / _mmToVisualFactorC2);
+        }
+
         /// <summary>
         /// Initializes content of the item.
         /// </summary>

@@ -25,9 +25,9 @@ namespace MillingRouter3D.GUI
         /// </summary>
         private readonly Point2Dmm[][] _shapeDefinition;
 
-        private IEnumerable<Point2Dmm[]> _currentOffsetLines = null;
+        protected IEnumerable<Point2Dmm[]> _currentOffsetLines = null;
 
-        internal IEnumerable<PlaneShape> Shapes { get; private set; }
+        internal virtual IEnumerable<PlaneShape> Shapes { get; private set; }
 
         internal IEnumerable<Point2Dmm[]> OffsetLines
         {
@@ -39,6 +39,8 @@ namespace MillingRouter3D.GUI
                 return afterScaleTransformation(_currentOffsetLines);
             }
         }
+
+        protected virtual bool useDenseCalculation { get { return true; } }
 
         private double maxC1 => Shapes.Select(s => s.MaxC1).Max();
 
@@ -56,14 +58,14 @@ namespace MillingRouter3D.GUI
         /// <summary>
         /// Determine size of the shape in milimeters.
         /// </summary>
-        private Size _shapeMetricSize;
+        protected Size _shapeMetricSize;
 
         /// <summary>
         /// Depth of the milling process.
         /// </summary>
         private double _millingDepth = 0.0;
 
-        internal double MetricWidth
+        internal virtual double MetricWidth
         {
             get
             {
@@ -80,7 +82,7 @@ namespace MillingRouter3D.GUI
             }
         }
 
-        internal double MetricHeight
+        internal virtual double MetricHeight
         {
             get
             {
@@ -129,7 +131,7 @@ namespace MillingRouter3D.GUI
         /// </summary>
         private Pen _cutPen = new Pen();
 
-        internal IEnumerable<Point2Dmm[]> ShapeDefinition
+        internal virtual IEnumerable<Point2Dmm[]> ShapeDefinition
         {
             get
             {
@@ -141,7 +143,7 @@ namespace MillingRouter3D.GUI
         {
             get
             {
-                return definitionTransformation(ShapeDefinition);
+                return definitionTransformation(ShapeDefinition, PositionX, PositionY);
             }
         }
 
@@ -194,9 +196,10 @@ namespace MillingRouter3D.GUI
                 MetricHeight = c2Diff;
         }
 
-        private void refreshOfffsetLines()
+        protected virtual void refreshOfffsetLines()
         {
-            _currentOffsetLines = scaledOnlyDefinitionTransformation(_shapeDefinition);
+            var shapeDefinition = ShapeDefinition;
+            _currentOffsetLines = scaledOnlyDefinitionTransformation(shapeDefinition);
             /*/   var offsetClusters = new List<Point2Dmm[]>();
                var remainingClusters = new HashSet<Point2Dmm[]>(_currentOffsetLines);
                foreach (var cluster in remainingClusters.ToArray())
@@ -217,7 +220,7 @@ namespace MillingRouter3D.GUI
 
             /**/
 
-            var itemPoints = scaledOnlyDefinitionTransformation(_shapeDefinition);
+            var itemPoints = scaledOnlyDefinitionTransformation(shapeDefinition);
             itemPoints = OffsetCalculator.Join(itemPoints);
             var offsetClusters = new List<Point2Dmm[]>();
             var remainingClusters = new HashSet<Point2Dmm[]>(itemPoints);
@@ -229,7 +232,7 @@ namespace MillingRouter3D.GUI
 
                 foreach (var cluster in remainingClusters.ToArray())
                 {
-                    var offsetCalculator = new OffsetCalculator(cluster);
+                    var offsetCalculator = new OffsetCalculator(cluster, useDenseCalculation);
                     var offsetPoints = offsetCalculator.WithOffset(toolWidth / 2 * (i + 1));
                     if (offsetPoints.Any())
                     {
@@ -254,7 +257,7 @@ namespace MillingRouter3D.GUI
             _currentOffsetLines = offsetClusters.OrderByDescending(c => c.Select(p => p.C2).Min()).ToArray();/**/
         }
 
-        private Point2Dmm[][] preparePoints(IEnumerable<Point2Dmm[]> points)
+        protected Point2Dmm[][] preparePoints(IEnumerable<Point2Dmm[]> points)
         {
             points = points.Select(p => p.Distinct().Concat(new[] { p.First() }).ToArray()).ToArray();
 
@@ -301,7 +304,7 @@ namespace MillingRouter3D.GUI
             }
         }
 
-        protected IEnumerable<Point2Dmm[]> definitionTransformation(IEnumerable<Point2Dmm[]> pointClusters)
+        protected IEnumerable<Point2Dmm[]> definitionTransformation(IEnumerable<Point2Dmm[]> pointClusters, double offsetX, double offsetY)
         {
             var ratioC1 = 1.0 * maxC1 - minC1;
             if (ratioC1 == 0)
@@ -326,7 +329,7 @@ namespace MillingRouter3D.GUI
 
                     var x = (point.C1 - minC1) / ratioC1 * _shapeMetricSize.Width;
                     var y = (point.C2 - minC2) / ratioC2 * _shapeMetricSize.Height;
-                    point = new Point2Dmm(x + PositionX, y + PositionY);
+                    point = new Point2Dmm(x + offsetX, y + offsetY);
                     result.Add(point);
                 }
 
@@ -403,10 +406,10 @@ namespace MillingRouter3D.GUI
                 );
         }
 
-        private IEnumerable<Point2Dmm[]> afterScaleTransformation(IEnumerable<Point2Dmm[]> definition)
+        protected IEnumerable<Point2Dmm[]> afterScaleTransformation(IEnumerable<Point2Dmm[]> definition)
         {
             var result = new List<Point2Dmm[]>();
-            if (!definition.Any())
+            if (definition==null || !definition.Any() || definition.Any(d=>!d.Any()))
                 return result;
 
             var minC1 = definition.SelectMany(c => c).Min(p => p.C1);

@@ -128,9 +128,9 @@ namespace MillingRouter3D
 
             PreviewKeyUp += previewKeyUp;
             PreviewKeyDown += previewKeyDown;
-            ContextMenu = createWorkspaceMenu();
 
             resetWorkspace(true);
+            Workspace.ContextMenu = createWorkspaceMenu();
 
             initializeTransitionHandlers();
 
@@ -328,9 +328,28 @@ namespace MillingRouter3D
         {
             var menu = new ContextMenu();
 
-            var centerCutPanel = new MenuItem();
+            var zLevelCut = new MenuItem();
+            zLevelCut.Header = "Add leveling shape";
+            zLevelCut.Click += addLevelingShape;
+
+            menu.Items.Add(zLevelCut);
+
 
             return menu;
+        }
+
+        private void addLevelingShape(object sender, RoutedEventArgs e)
+        {
+            var position = Mouse.GetPosition(Workspace);
+            var item = new LevelMillingItem(UnusedVersion(new ReadableIdentifier("zlevel")));
+            item.MetricHeight = 50;
+            item.MetricWidth = 50;
+            Workspace.Children.Add(item);
+
+            item.RecalculateToWorkspace(Workspace, Workspace.DesiredSize);
+            var position2Dmm = item.ConvertFromVisual(position);
+            item.PositionX = position2Dmm.C1;
+            item.PositionY = position2Dmm.C2;
         }
 
         private ListBoxItem createListItem(MillingJoin join)
@@ -400,6 +419,31 @@ namespace MillingRouter3D
 
                 item.ContextMenu = menu;
             }
+
+            var shapeItemG = workItem as MillingShapeItemGCode;
+            if (shapeItemG != null)
+            {
+                var menu = new ContextMenu();
+
+                var propItem = new MenuItem();
+                propItem.Header = "Properties";
+                propItem.Click += (e, s) =>
+                {
+                    new MillingItemPropertiesDialog(shapeItemG, Workspace);
+                };
+                menu.Items.Add(propItem);
+
+                var deleteItem = new MenuItem();
+                deleteItem.Header = "Delete";
+                deleteItem.Click += (e, s) =>
+                {
+                    Workspace.Children.Remove(shapeItemG);
+                };
+                menu.Items.Add(deleteItem);
+
+                item.ContextMenu = menu;
+            }
+
             return item;
         }
 

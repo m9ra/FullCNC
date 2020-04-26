@@ -42,10 +42,11 @@ namespace ControllerCNC.Planning
 
         private int _removeCompensation;
 
-        public OffsetCalculator(IEnumerable<Point2Dmm> points, bool createVisualLog = false)
+        public OffsetCalculator(IEnumerable<Point2Dmm> points, bool useDenseCalculation = true, bool createVisualLog = false)
         {
             _points = filter(points.ToArray()).ToArray();
-            _points = makeDense(_points).ToArray();
+            if (useDenseCalculation)
+                _points = makeDense(_points).ToArray();
             //_points = points.Select(AsPoint).ToArray();
             _isClosedShape = _points.First().Equals(_points.Last());
 
@@ -882,7 +883,7 @@ namespace ControllerCNC.Planning
 
         private void updateBisector(int i, List<Point> bisectors, List<Point> points, double offset)
         {
-            if (points.Count == 0)
+            if (points.Count == 0 || i < -bisectors.Count || i > bisectors.Count * 2)
                 return;
 
             var p_prev = getPoint(i - 1, points);
