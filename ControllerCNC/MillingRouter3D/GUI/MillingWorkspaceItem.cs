@@ -269,6 +269,7 @@ namespace MillingRouter3D.GUI
             var desiredAngle = _rotationAngle;
             RotationAngle = desiredAngle + 1;
             RotationAngle = desiredAngle;
+            CacheMode = new BitmapCache();
         }
     }
 }

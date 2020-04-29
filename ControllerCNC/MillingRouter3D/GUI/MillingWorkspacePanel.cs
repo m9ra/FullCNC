@@ -65,7 +65,7 @@ namespace MillingRouter3D.GUI
                     return;
 
                 _cuttingSpeed = value;
-                fireSettingsChangedForAllChildren();
+                fireOnSettingsChanged();
             }
         }
 
@@ -204,7 +204,6 @@ namespace MillingRouter3D.GUI
         internal MillingWorkspacePanel(RouterPanel parent, double rangeX, double rangeY, double rangeZ)
         {
             HeadXYZ = new HeadCNC(_xyColor, this);
-            CacheMode = new BitmapCache();
             Background = Brushes.White;
             RangeX = Math.Abs(rangeX);
             RangeY = Math.Abs(rangeY);
