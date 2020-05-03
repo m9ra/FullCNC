@@ -107,11 +107,11 @@ namespace ControllerCNC.Planning
             if (r1 == r2)
                 return Configuration.MaxPlaneSpeed.ToMetric();
 
-            var limit = Speed.FromDeltaT(Configuration.StartDeltaT).ToMetric() / maxScaleFactor;
+            var limit = Speed.FromDeltaT(Configuration.StartDeltaT).ToMetric();
 
             if (r1 * r2 < 0 || r1 * r2 == 0)
                 // direction change
-                return limit;
+                return limit / maxScaleFactor;
 
             var speedupFactor = maxScaleFactor / minScaleFactor;
             for (var i = 0; i < _accelerationRangesMetric.Length - 1; ++i)
@@ -128,7 +128,7 @@ namespace ControllerCNC.Planning
                 limit = ac2;
             }
 
-            return limit;
+            return limit / maxScaleFactor;
         }
 
         public double GetLimit(double positionPercentage)
@@ -169,7 +169,9 @@ namespace ControllerCNC.Planning
             var limitY = GetAxisLimit(rY1, rY2);
             var limitZ = GetAxisLimit(rZ1, rZ2);
 
-            return Math.Min(Math.Min(limitX, limitY), limitZ);
+            var naturalLimit = Math.Min(Math.Min(limitX, limitY), limitZ);
+
+            return Math.Min(naturalLimit, Configuration.MaxPlaneSpeedMetric);
         }
 
         public static void CalculateRatios(ToolPathSegment segment, out double rX, out double rY, out double rZ)
